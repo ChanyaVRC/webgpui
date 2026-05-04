@@ -91,8 +91,11 @@ webgpui/
 - Low-dependency base utilities
 
 ### 3.13 `webgpui-layout`
-- MVP simple layout (stack/absolute)
-- Future expansion toward Flex/Grid equivalents
+- `Direction::Column` (default) and `Direction::Row` stack layout
+- `flex_grow` for proportional main-axis space distribution
+- `TextMeasure` trait (object-safe) + `DefaultTextMeasure` (pixel-font baseline)
+- Text leaf nodes auto-sized from content and `font_size` via `TextMeasure`; wraps to available width
+- `LayoutEngine::compute_with` accepts a custom `&dyn TextMeasure`
 
 ### 3.14 `webgpui-app`
 - Integrate app runtime flow
