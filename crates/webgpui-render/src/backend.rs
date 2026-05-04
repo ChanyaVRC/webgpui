@@ -123,15 +123,15 @@ impl BackendSelector {
     /// Creates a renderer instance for this backend.
     ///
     /// # Errors
-    /// Returns `RenderError` if:
-    /// - The backend is not compiled in (use `is_available()` to check)
-    /// - GPU initialization fails
-    /// - GPU device is lost or unavailable
+    /// * [`RenderError::BackendUnavailable`] — the backend is not compiled in
+    ///   (check [`is_available`][Self::is_available] first).
+    /// * [`RenderError::Other`] — the backend requires a window handle or
+    ///   additional integration; use `webgpui-app` for full setup.
     ///
     /// # Note
-    /// Window parameter type is not specified here; actual implementations
-    /// will require a specific window type (e.g., `winit::window::Window`).
-    /// This is a placeholder for the trait-based factory pattern.
+    /// This is a low-level factory stub.  wgpu and CUDA backends require a
+    /// window handle that is not representable without a concrete type here.
+    /// Prefer [`webgpui_app::AppBuilder`] for typical application use.
     pub fn create(&self) -> Result<Box<dyn crate::Renderer>, RenderError> {
         match self {
             #[cfg(feature = "backend-wgpu")]
@@ -144,9 +144,7 @@ impl BackendSelector {
             }
 
             #[cfg(not(feature = "backend-wgpu"))]
-            BackendSelector::Wgpu => Err(RenderError::Other(
-                "wgpu backend not compiled in; enable 'backend-wgpu' feature".to_string(),
-            )),
+            BackendSelector::Wgpu => Err(RenderError::BackendUnavailable),
 
             #[cfg(feature = "backend-cuda")]
             BackendSelector::Cuda => {
@@ -158,9 +156,7 @@ impl BackendSelector {
             }
 
             #[cfg(not(feature = "backend-cuda"))]
-            BackendSelector::Cuda => Err(RenderError::Other(
-                "CUDA backend not compiled in; enable 'backend-cuda' feature".to_string(),
-            )),
+            BackendSelector::Cuda => Err(RenderError::BackendUnavailable),
 
             #[cfg(feature = "backend-cpu")]
             BackendSelector::Cpu => {
@@ -173,9 +169,7 @@ impl BackendSelector {
             }
 
             #[cfg(not(feature = "backend-cpu"))]
-            BackendSelector::Cpu => Err(RenderError::Other(
-                "CPU backend not compiled in; enable 'backend-cpu' feature".to_string(),
-            )),
+            BackendSelector::Cpu => Err(RenderError::BackendUnavailable),
         }
     }
 }
