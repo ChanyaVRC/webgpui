@@ -84,6 +84,7 @@ impl Platform for WinitPlatform {
         let handle = WinitWindowHandle {
             window: Arc::clone(&window),
         };
+        let mut last_cursor_pos = Point::ZERO;
 
         event_loop.set_control_flow(ControlFlow::Poll);
 
@@ -122,25 +123,25 @@ impl Platform for WinitPlatform {
                             WindowEvent::CursorMoved { position, .. } => {
                                 let sf = window.scale_factor();
                                 let lp = position.to_logical::<f32>(sf);
+                                last_cursor_pos = Point::new(lp.x, lp.y);
                                 handler.on_event(
                                     PlatformEvent::Input(InputEvent::MouseMoved {
-                                        position: Point::new(lp.x, lp.y),
+                                        position: last_cursor_pos,
                                     }),
                                     &handle,
                                 );
                             }
                             WindowEvent::MouseInput { state, button, .. } => {
                                 let mb = convert_mouse_button(button);
-                                let pos = Point::ZERO; // position tracked via CursorMoved
                                 let ev = match state {
                                     ElementState::Pressed => InputEvent::MousePressed {
                                         button: mb,
-                                        position: pos,
+                                        position: last_cursor_pos,
                                         modifiers: Modifiers::none(),
                                     },
                                     ElementState::Released => InputEvent::MouseReleased {
                                         button: mb,
-                                        position: pos,
+                                        position: last_cursor_pos,
                                         modifiers: Modifiers::none(),
                                     },
                                 };
@@ -156,7 +157,7 @@ impl Platform for WinitPlatform {
                                 };
                                 handler.on_event(
                                     PlatformEvent::Input(InputEvent::MouseScrolled {
-                                        position: Point::ZERO,
+                                        position: last_cursor_pos,
                                         delta_x: dx,
                                         delta_y: dy,
                                         modifiers: Modifiers::none(),
