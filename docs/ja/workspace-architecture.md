@@ -82,8 +82,9 @@ webgpui/
 - マウス押下/離上/スクロールイベントは最新の論理カーソル座標を使用
 
 ### 3.11 `webgpui-input`
-- マウス/キーボード状態管理
-- フォーカス、ヒットテスト連携用データ
+- マウス/キーボード状態管理（`InputState`、`InputEvent`）
+- `EventPhase` 列挙型（Capture / Target / Bubble）と `dispatch()` によるDOM式三フェーズイベントルーティング
+- `FocusManager`: タブ順レジストリ、Tab/Shift+Tab の折り返しトラバーサル、`handle_key` 統合フック
 
 ### 3.12 `webgpui-geometry`
 - `Rect`, `Point`, `Size`, `Color` など共通型
@@ -99,6 +100,7 @@ webgpui/
 
 ### 3.15 `apps/demo-basic`
 - クリア描画、矩形描画、入力表示の確認
+- M1 キーボードベースライン: Tab フォーカス移動（テキストボックス↔ボタン）、Enter/Space ボタン活性化、フォーカスリング
 - CI のスモーク確認対象（将来的に）
 
 ### 3.16 `apps/demo-migration`

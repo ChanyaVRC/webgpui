@@ -82,8 +82,9 @@ webgpui/
 - Mouse press/release/scroll events use the latest logical cursor position
 
 ### 3.11 `webgpui-input`
-- Mouse/keyboard state handling
-- Data for focus and hit-test integration
+- Mouse/keyboard state handling (`InputState`, `InputEvent`)
+- `EventPhase` enum (Capture / Target / Bubble) and `dispatch()` for DOM-style three-phase event routing
+- `FocusManager`: tab-order registry, Tab/Shift+Tab traversal with wrap-around, `handle_key` integration hook
 
 ### 3.12 `webgpui-geometry`
 - Shared types such as `Rect`, `Point`, `Size`, `Color`
@@ -99,6 +100,7 @@ webgpui/
 
 ### 3.15 `apps/demo-basic`
 - Validate clear render, rectangle render, input display
+- M1 keyboard baseline: Tab focus traversal (textbox ↔ button), Enter/Space button activation, focus ring
 - Future CI smoke target
 
 ### 3.16 `apps/demo-migration`
