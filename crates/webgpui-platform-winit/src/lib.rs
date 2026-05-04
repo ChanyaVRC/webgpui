@@ -89,125 +89,121 @@ impl Platform for WinitPlatform {
         event_loop.set_control_flow(ControlFlow::Poll);
 
         event_loop
-            .run(move |event, elwt| {
-                match event {
-                    Event::WindowEvent {
-                        ref event,
-                        window_id,
-                    } if window_id == window.id() => {
-                        match event {
-                            WindowEvent::CloseRequested => {
-                                handler.on_event(PlatformEvent::CloseRequested, &handle);
-                                elwt.exit();
+            .run(move |event, elwt| match event {
+                Event::WindowEvent {
+                    ref event,
+                    window_id,
+                } if window_id == window.id() => match event {
+                    WindowEvent::CloseRequested => {
+                        handler.on_event(PlatformEvent::CloseRequested, &handle);
+                        elwt.exit();
+                    }
+                    WindowEvent::RedrawRequested => {
+                        handler.on_event(PlatformEvent::RedrawRequested, &handle);
+                    }
+                    WindowEvent::Resized(ps) => {
+                        let size = Size::new(ps.width as f32, ps.height as f32);
+                        handler.on_event(
+                            PlatformEvent::Resized {
+                                physical_size: size,
+                            },
+                            &handle,
+                        );
+                    }
+                    WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
+                        handler.on_event(
+                            PlatformEvent::ScaleFactorChanged {
+                                scale_factor: *scale_factor,
+                            },
+                            &handle,
+                        );
+                    }
+                    WindowEvent::CursorMoved { position, .. } => {
+                        let sf = window.scale_factor();
+                        let lp = position.to_logical::<f32>(sf);
+                        last_cursor_pos = Point::new(lp.x, lp.y);
+                        handler.on_event(
+                            PlatformEvent::Input(InputEvent::MouseMoved {
+                                position: last_cursor_pos,
+                            }),
+                            &handle,
+                        );
+                    }
+                    WindowEvent::MouseInput { state, button, .. } => {
+                        let mb = convert_mouse_button(button);
+                        let ev = match state {
+                            ElementState::Pressed => InputEvent::MousePressed {
+                                button: mb,
+                                position: last_cursor_pos,
+                                modifiers: Modifiers::none(),
+                            },
+                            ElementState::Released => InputEvent::MouseReleased {
+                                button: mb,
+                                position: last_cursor_pos,
+                                modifiers: Modifiers::none(),
+                            },
+                        };
+                        handler.on_event(PlatformEvent::Input(ev), &handle);
+                    }
+                    WindowEvent::MouseWheel { delta, .. } => {
+                        let (dx, dy) = match delta {
+                            MouseScrollDelta::LineDelta(x, y) => (*x * 20.0, *y * 20.0),
+                            MouseScrollDelta::PixelDelta(p) => {
+                                let lp = p.to_logical::<f32>(window.scale_factor());
+                                (lp.x, lp.y)
                             }
-                            WindowEvent::RedrawRequested => {
-                                handler.on_event(PlatformEvent::RedrawRequested, &handle);
-                            }
-                            WindowEvent::Resized(ps) => {
-                                let size = Size::new(ps.width as f32, ps.height as f32);
-                                handler.on_event(
-                                    PlatformEvent::Resized {
-                                        physical_size: size,
-                                    },
-                                    &handle,
-                                );
-                            }
-                            WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
-                                handler.on_event(
-                                    PlatformEvent::ScaleFactorChanged {
-                                        scale_factor: *scale_factor,
-                                    },
-                                    &handle,
-                                );
-                            }
-                            WindowEvent::CursorMoved { position, .. } => {
-                                let sf = window.scale_factor();
-                                let lp = position.to_logical::<f32>(sf);
-                                last_cursor_pos = Point::new(lp.x, lp.y);
-                                handler.on_event(
-                                    PlatformEvent::Input(InputEvent::MouseMoved {
-                                        position: last_cursor_pos,
-                                    }),
-                                    &handle,
-                                );
-                            }
-                            WindowEvent::MouseInput { state, button, .. } => {
-                                let mb = convert_mouse_button(button);
-                                let ev = match state {
-                                    ElementState::Pressed => InputEvent::MousePressed {
-                                        button: mb,
-                                        position: last_cursor_pos,
-                                        modifiers: Modifiers::none(),
-                                    },
-                                    ElementState::Released => InputEvent::MouseReleased {
-                                        button: mb,
-                                        position: last_cursor_pos,
-                                        modifiers: Modifiers::none(),
-                                    },
-                                };
-                                handler.on_event(PlatformEvent::Input(ev), &handle);
-                            }
-                            WindowEvent::MouseWheel { delta, .. } => {
-                                let (dx, dy) = match delta {
-                                    MouseScrollDelta::LineDelta(x, y) => (*x * 20.0, *y * 20.0),
-                                    MouseScrollDelta::PixelDelta(p) => {
-                                        let lp = p.to_logical::<f32>(window.scale_factor());
-                                        (lp.x, lp.y)
-                                    }
-                                };
-                                handler.on_event(
-                                    PlatformEvent::Input(InputEvent::MouseScrolled {
-                                        position: last_cursor_pos,
-                                        delta_x: dx,
-                                        delta_y: dy,
-                                        modifiers: Modifiers::none(),
-                                    }),
-                                    &handle,
-                                );
-                            }
-                            WindowEvent::KeyboardInput {
-                                event:
-                                    KeyEvent {
-                                        logical_key,
-                                        state,
-                                        text,
-                                        ..
-                                    },
+                        };
+                        handler.on_event(
+                            PlatformEvent::Input(InputEvent::MouseScrolled {
+                                position: last_cursor_pos,
+                                delta_x: dx,
+                                delta_y: dy,
+                                modifiers: Modifiers::none(),
+                            }),
+                            &handle,
+                        );
+                    }
+                    WindowEvent::KeyboardInput {
+                        event:
+                            KeyEvent {
+                                logical_key,
+                                state,
+                                text,
                                 ..
-                            } => {
-                                let key = convert_key(logical_key);
-                                let ev = match state {
-                                    ElementState::Pressed => InputEvent::KeyPressed {
-                                        key,
-                                        modifiers: Modifiers::none(),
-                                    },
-                                    ElementState::Released => InputEvent::KeyReleased {
-                                        key,
-                                        modifiers: Modifiers::none(),
-                                    },
-                                };
-                                handler.on_event(PlatformEvent::Input(ev), &handle);
+                            },
+                        ..
+                    } => {
+                        let key = convert_key(logical_key);
+                        let ev = match state {
+                            ElementState::Pressed => InputEvent::KeyPressed {
+                                key,
+                                modifiers: Modifiers::none(),
+                            },
+                            ElementState::Released => InputEvent::KeyReleased {
+                                key,
+                                modifiers: Modifiers::none(),
+                            },
+                        };
+                        handler.on_event(PlatformEvent::Input(ev), &handle);
 
-                                if *state == ElementState::Pressed {
-                                    if let Some(s) = text {
-                                        for ch in s.chars() {
-                                            handler.on_event(
-                                                PlatformEvent::Input(InputEvent::CharInput { ch }),
-                                                &handle,
-                                            );
-                                        }
-                                    }
+                        if *state == ElementState::Pressed {
+                            if let Some(s) = text {
+                                for ch in s.chars() {
+                                    handler.on_event(
+                                        PlatformEvent::Input(InputEvent::CharInput { ch }),
+                                        &handle,
+                                    );
                                 }
                             }
-                            _ => {}
                         }
                     }
-                    Event::AboutToWait => {
-                        window.request_redraw();
-                        handler.on_event(PlatformEvent::Idle, &handle);
-                    }
                     _ => {}
+                },
+                Event::AboutToWait => {
+                    window.request_redraw();
+                    handler.on_event(PlatformEvent::Idle, &handle);
                 }
+                _ => {}
             })
             .map_err(|e| PlatformError::EventLoop(e.to_string()))
     }
