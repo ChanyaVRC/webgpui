@@ -280,7 +280,7 @@ diff wgpu-metrics.txt cuda-metrics.txt
 ```
 
 ### Metrics Comparison
-Expected output format (defined in [CI Metrics Format](ci-metrics-format.md)):
+Expected output format (defined in [CI Metrics Format](metrics-format.md)):
 ```
 p0-metrics:
   avg_ms: 14.2

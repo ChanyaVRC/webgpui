@@ -280,7 +280,7 @@ diff wgpu-metrics.txt cuda-metrics.txt
 ```
 
 ### メトリクス比較
-予想される出力形式（[CI Metrics Format](ci-metrics-format.md) で定義):
+予想 される出力形式（[CI Metrics Format](metrics-format.md) で定義):
 ```
 p0-metrics:
   avg_ms: 14.2
