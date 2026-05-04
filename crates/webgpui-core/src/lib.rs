@@ -235,7 +235,9 @@ impl NodeTree {
         let Some(idx) = self.id_to_index.get(&id).copied() else {
             return false;
         };
-        node_set_layout(&mut self.nodes[idx], layout);
+        if self.nodes[idx].layout != layout {
+            node_set_layout(&mut self.nodes[idx], layout);
+        }
         true
     }
 

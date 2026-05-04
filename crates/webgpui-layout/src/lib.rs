@@ -29,7 +29,7 @@ pub enum PositionType {
 // ---------------------------------------------------------------------------
 
 /// Per-node layout properties.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct LayoutStyle {
     pub position: PositionType,
     /// Explicit x-offset for `Absolute` nodes.
