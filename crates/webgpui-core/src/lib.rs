@@ -19,6 +19,7 @@ pub struct NodeId(pub u32);
 
 impl NodeId {
     pub const ROOT: Self = Self(0);
+    const TOMBSTONE: Self = Self(u32::MAX);
 }
 
 impl std::fmt::Display for NodeId {
@@ -110,6 +111,10 @@ impl Node {
             parent: None,
             dirty: true,
         }
+    }
+
+    fn is_tombstone(&self) -> bool {
+        self.id == NodeId::TOMBSTONE
     }
 }
 
@@ -217,7 +222,7 @@ impl NodeTree {
         for ri in to_remove {
             self.id_to_index.remove(&self.nodes[ri].id);
             // Mark slot as removed by resetting to a placeholder.
-            self.nodes[ri].id = NodeId(u32::MAX);
+            self.nodes[ri].id = NodeId::TOMBSTONE;
         }
         true
     }
@@ -254,7 +259,7 @@ impl NodeTree {
     pub fn flush_dirty(&mut self) -> HashSet<NodeId> {
         let mut dirty = HashSet::new();
         for node in &mut self.nodes {
-            if node.dirty && node.id != NodeId(u32::MAX) {
+            if node.dirty && !node.is_tombstone() {
                 dirty.insert(node.id);
                 node.dirty = false;
             }
@@ -287,7 +292,7 @@ impl NodeTree {
 
     /// Iterates over all valid nodes in arena order.
     pub fn iter(&self) -> impl Iterator<Item = &Node> {
-        self.nodes.iter().filter(|n| n.id != NodeId(u32::MAX))
+        self.nodes.iter().filter(|n| !n.is_tombstone())
     }
 }
 
