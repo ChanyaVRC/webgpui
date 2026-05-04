@@ -30,7 +30,7 @@ jobs:
             eval "$P1_METRICS_COMMAND"
           elif [[ -f Cargo.toml ]]; then
             echo "[p1-gate] running default demo benchmark command"
-            cargo run -p demo-basic -- --benchmark p1 --output .ci/p1-metrics.txt
+            cargo run --release -p demo-basic -- --benchmark p1 --output .ci/p1-metrics.txt
           else
             echo "[p1-gate] Cargo.toml not found and no P1_METRICS_COMMAND provided"
             echo "[p1-gate] Create .ci/p1-metrics.txt in KEY=VALUE format before gate"

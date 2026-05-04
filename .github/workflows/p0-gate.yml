@@ -30,7 +30,7 @@ jobs:
             eval "$P0_METRICS_COMMAND"
           elif [[ -f Cargo.toml ]]; then
             echo "[p0-gate] running default demo benchmark command"
-            cargo run -p demo-basic -- --benchmark p0 --output .ci/p0-metrics.txt
+            cargo run --release -p demo-basic -- --benchmark p0 --output .ci/p0-metrics.txt
           else
             echo "[p0-gate] Cargo.toml not found and no P0_METRICS_COMMAND provided"
             echo "[p0-gate] Create .ci/p0-metrics.txt in KEY=VALUE format before gate"
