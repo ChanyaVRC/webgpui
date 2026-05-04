@@ -79,6 +79,7 @@ webgpui/
 ### 3.10 `webgpui-platform-winit`
 - `winit` implementation
 - Window creation and input event intake
+- Mouse press/release/scroll events use the latest logical cursor position
 
 ### 3.11 `webgpui-input`
 - Mouse/keyboard state handling
