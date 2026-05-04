@@ -55,7 +55,7 @@ pub struct BatchKey {
     pub z_order: u16,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum BlendModeKey {
     Opaque,
     Alpha,
@@ -227,7 +227,7 @@ impl Batcher {
             let kb = b.key.unwrap();
             ka.z_order
                 .cmp(&kb.z_order)
-                .then_with(|| (ka.blend_mode as u8).cmp(&(kb.blend_mode as u8)))
+                .then_with(|| ka.blend_mode.cmp(&kb.blend_mode))
         });
 
         &self.batches
