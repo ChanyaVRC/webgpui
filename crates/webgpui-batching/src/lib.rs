@@ -167,6 +167,8 @@ impl DrawBatch {
 pub struct Batcher {
     batches: Vec<DrawBatch>,
     current_z: u16,
+    /// Maps [`BatchKey`] → index into `batches` for O(1) lookup.
+    batch_index: std::collections::HashMap<BatchKey, usize>,
 }
 
 impl Batcher {
@@ -174,6 +176,7 @@ impl Batcher {
         Self {
             batches: Vec::new(),
             current_z: 0,
+            batch_index: std::collections::HashMap::new(),
         }
     }
 
@@ -183,6 +186,7 @@ impl Batcher {
     /// to minimise pipeline / blend state switches.
     pub fn process(&mut self, draw_list: &DrawList) -> &[DrawBatch] {
         self.batches.clear();
+        self.batch_index.clear();
         self.current_z = 0;
 
         for cmd in draw_list.commands() {
@@ -239,11 +243,13 @@ impl Batcher {
     }
 
     fn get_or_create(&mut self, key: BatchKey) -> &mut DrawBatch {
-        if let Some(pos) = self.batches.iter().position(|b| b.key == Some(key)) {
+        if let Some(&pos) = self.batch_index.get(&key) {
             return &mut self.batches[pos];
         }
+        let pos = self.batches.len();
         self.batches.push(DrawBatch::new(key));
-        self.batches.last_mut().unwrap()
+        self.batch_index.insert(key, pos);
+        &mut self.batches[pos]
     }
 
     /// Returns the number of GPU triangles that will be submitted.
