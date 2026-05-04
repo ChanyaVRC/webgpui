@@ -395,7 +395,10 @@ impl FocusManager {
             return None;
         }
         let len = self.focusable.len();
-        let next = match self.focused.and_then(|id| self.focusable.iter().position(|&x| x == id)) {
+        let next = match self
+            .focused
+            .and_then(|id| self.focusable.iter().position(|&x| x == id))
+        {
             Some(pos) => (pos as i64 + delta).rem_euclid(len as i64) as usize,
             None if delta > 0 => 0,
             None => len - 1,
@@ -665,7 +668,13 @@ mod tests {
         let mut fm = FocusManager::new();
         assert!(fm.handle_key(KeyCode::Tab, Modifiers::none()));
         assert!(fm.focused().is_none());
-        assert!(fm.handle_key(KeyCode::Tab, Modifiers { shift: true, ..Default::default() }));
+        assert!(fm.handle_key(
+            KeyCode::Tab,
+            Modifiers {
+                shift: true,
+                ..Default::default()
+            }
+        ));
         assert!(fm.focused().is_none());
     }
 
