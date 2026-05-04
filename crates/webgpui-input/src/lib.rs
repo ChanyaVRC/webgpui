@@ -260,13 +260,14 @@ pub enum EventPhase {
 /// If `visitor` returns `true` the propagation stops immediately
 /// (analogous to `stopPropagation`).
 ///
-/// # Panics
-/// Panics if `path` is empty.
+/// Does nothing if `path` is empty.
 pub fn dispatch<F>(path: &[u32], event: &InputEvent, mut visitor: F)
 where
     F: FnMut(u32, EventPhase, &InputEvent) -> bool,
 {
-    assert!(!path.is_empty(), "dispatch: path must not be empty");
+    if path.is_empty() {
+        return;
+    }
 
     let (ancestors, target_slice) = path.split_at(path.len() - 1);
     let target = target_slice[0];
@@ -361,8 +362,17 @@ impl FocusManager {
     }
 
     /// Replaces the entire tab-order list with `order`.
+    ///
+    /// Duplicates in `order` are removed (first occurrence wins).
+    /// If the currently focused node is not present in the new list, focus is cleared.
     pub fn set_focusable_order(&mut self, order: Vec<u32>) {
-        self.focusable = order;
+        let mut seen = std::collections::HashSet::new();
+        self.focusable = order.into_iter().filter(|id| seen.insert(*id)).collect();
+        if let Some(focused) = self.focused {
+            if !self.focusable.contains(&focused) {
+                self.focused = None;
+            }
+        }
     }
 
     /// Returns a slice of all focusable node ids in tab order.
@@ -690,7 +700,36 @@ mod tests {
         assert_eq!(fm.move_focus_forward(), Some(20));
     }
 
-    /// Dispatch on a two-node path (parent + child) fires capture then target only.
+    /// set_focusable_order deduplicates the supplied list.
+    #[test]
+    fn set_focusable_order_deduplicates() {
+        let mut fm = FocusManager::new();
+        fm.set_focusable_order(vec![1, 2, 1, 3, 2]);
+        assert_eq!(fm.focusable_order(), &[1, 2, 3]);
+    }
+
+    /// set_focusable_order clears focus when the focused node is absent from the new list.
+    #[test]
+    fn set_focusable_order_clears_focus_if_absent() {
+        let mut fm = FocusManager::new();
+        fm.register_focusable(1);
+        fm.set_focus(1);
+        fm.set_focusable_order(vec![2, 3]);
+        assert!(fm.focused().is_none());
+    }
+
+    /// dispatch on an empty path is a no-op.
+    #[test]
+    fn dispatch_empty_path_is_noop() {
+        let mut called = false;
+        dispatch(&[], &make_click(), |_, _, _| {
+            called = true;
+            false
+        });
+        assert!(!called);
+    }
+
+    /// Dispatch on a two-node path fires capture on parent, target on child, then bubble on parent.
     #[test]
     fn event_propagation_two_node_path() {
         let path = [0u32, 1u32];
