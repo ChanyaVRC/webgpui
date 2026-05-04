@@ -158,7 +158,9 @@ impl LayoutEngine {
         self.layout_node(nodes, 0, available);
     }
 
-    /// Returns the computed result for a node with the given id, or `None`.
+    /// Returns the computed result for the node at arena **index**, or `None`.
+    ///
+    /// Note: results are keyed by arena index, not by `LayoutNode::id`.
     pub fn result(&self, index: usize) -> Option<LayoutResult> {
         self.results.get(index).copied()
     }

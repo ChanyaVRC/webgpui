@@ -151,6 +151,10 @@ impl NodeTree {
         self.nodes.len()
     }
 
+    /// Returns `true` only if the arena contains no nodes at all.
+    ///
+    /// Note: a freshly-created [`NodeTree`] always contains the root node, so
+    /// this returns `false` in all normal circumstances.
     pub fn is_empty(&self) -> bool {
         self.nodes.is_empty()
     }
