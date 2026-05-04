@@ -52,9 +52,24 @@ pub struct ClearColor {
 }
 
 impl ClearColor {
-    pub const BLACK: Self = Self { r: 0.0, g: 0.0, b: 0.0, a: 1.0 };
-    pub const WHITE: Self = Self { r: 1.0, g: 1.0, b: 1.0, a: 1.0 };
-    pub const TRANSPARENT: Self = Self { r: 0.0, g: 0.0, b: 0.0, a: 0.0 };
+    pub const BLACK: Self = Self {
+        r: 0.0,
+        g: 0.0,
+        b: 0.0,
+        a: 1.0,
+    };
+    pub const WHITE: Self = Self {
+        r: 1.0,
+        g: 1.0,
+        b: 1.0,
+        a: 1.0,
+    };
+    pub const TRANSPARENT: Self = Self {
+        r: 0.0,
+        g: 0.0,
+        b: 0.0,
+        a: 0.0,
+    };
 
     pub fn new(r: f64, g: f64, b: f64, a: f64) -> Self {
         Self { r, g, b, a }
@@ -209,8 +224,7 @@ impl RenderGraph {
 
     fn topological_sort(&self) -> Vec<PassId> {
         let ids: Vec<PassId> = self.passes.keys().copied().collect();
-        let mut in_degree: HashMap<PassId, usize> =
-            ids.iter().map(|&id| (id, 0)).collect();
+        let mut in_degree: HashMap<PassId, usize> = ids.iter().map(|&id| (id, 0)).collect();
         let mut adj: HashMap<PassId, Vec<PassId>> = HashMap::new();
 
         for (&id, pass) in &self.passes {

@@ -121,11 +121,19 @@ impl DrawList {
     // ------------------------------------------------------------------
 
     pub fn fill_rect(&mut self, rect: Rect, color: Color) {
-        self.push(DrawCommand::FillRect { rect, color, blend: BlendMode::Alpha });
+        self.push(DrawCommand::FillRect {
+            rect,
+            color,
+            blend: BlendMode::Alpha,
+        });
     }
 
     pub fn fill_rect_opaque(&mut self, rect: Rect, color: Color) {
-        self.push(DrawCommand::FillRect { rect, color, blend: BlendMode::Opaque });
+        self.push(DrawCommand::FillRect {
+            rect,
+            color,
+            blend: BlendMode::Opaque,
+        });
     }
 
     pub fn fill_rounded_rect(&mut self, rect: Rect, radius: BorderRadius, color: Color) {

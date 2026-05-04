@@ -175,8 +175,7 @@ impl NodeTree {
         self.next_id += 1;
         let new_index = self.nodes.len();
         let mut node = Node::new(new_id, kind);
-        let parent_index = *self.id_to_index.get(&parent_id)
-            .expect("parent not found");
+        let parent_index = *self.id_to_index.get(&parent_id).expect("parent not found");
         node.parent = Some(parent_index);
         self.nodes.push(node);
         self.nodes[parent_index].children.push(new_index);
@@ -191,7 +190,9 @@ impl NodeTree {
         if id == NodeId::ROOT {
             return false;
         }
-        let Some(&idx) = self.id_to_index.get(&id) else { return false };
+        let Some(&idx) = self.id_to_index.get(&id) else {
+            return false;
+        };
 
         // Collect all descendant indices (DFS).
         let mut to_remove: Vec<usize> = Vec::new();
@@ -219,7 +220,9 @@ impl NodeTree {
 
     /// Updates the visual style of a node and marks it dirty.
     pub fn set_style(&mut self, id: NodeId, style: NodeStyle) -> bool {
-        let Some(node) = self.get_mut(id) else { return false };
+        let Some(node) = self.get_mut(id) else {
+            return false;
+        };
         if node.style != style {
             node.style = style;
             node.dirty = true;
@@ -229,7 +232,9 @@ impl NodeTree {
 
     /// Updates the layout style of a node and marks it dirty.
     pub fn set_layout(&mut self, id: NodeId, layout: LayoutStyle) -> bool {
-        let Some(idx) = self.id_to_index.get(&id).copied() else { return false };
+        let Some(idx) = self.id_to_index.get(&id).copied() else {
+            return false;
+        };
         node_set_layout(&mut self.nodes[idx], layout);
         true
     }
@@ -264,7 +269,9 @@ impl NodeTree {
 
     /// Returns children of `id` in order.
     pub fn children_of(&self, id: NodeId) -> Vec<NodeId> {
-        let Some(&idx) = self.id_to_index.get(&id) else { return vec![] };
+        let Some(&idx) = self.id_to_index.get(&id) else {
+            return vec![];
+        };
         self.nodes[idx]
             .children
             .iter()
@@ -360,8 +367,7 @@ impl DirtyTracker {
         if self.full_invalidate {
             Rect::from_origin_size(webgpui_geometry::Point::ZERO, viewport)
         } else {
-            self.dirty_union()
-                .unwrap_or(Rect::ZERO)
+            self.dirty_union().unwrap_or(Rect::ZERO)
         }
     }
 }

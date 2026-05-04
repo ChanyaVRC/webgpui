@@ -88,7 +88,11 @@ pub struct DrawBatch {
 
 impl DrawBatch {
     pub fn new(key: BatchKey) -> Self {
-        Self { key: Some(key), vertices: Vec::new(), indices: Vec::new() }
+        Self {
+            key: Some(key),
+            vertices: Vec::new(),
+            indices: Vec::new(),
+        }
     }
 
     pub fn triangle_count(&self) -> usize {
@@ -104,10 +108,7 @@ impl DrawBatch {
     /// `rect` is in logical pixel space.  `color` is the fill colour.
     pub fn push_rect(&mut self, rect: Rect, color: Color) {
         let base = self.vertices.len() as u32;
-        let (x0, y0, x1, y1) = (
-            rect.min_x(), rect.min_y(),
-            rect.max_x(), rect.max_y(),
-        );
+        let (x0, y0, x1, y1) = (rect.min_x(), rect.min_y(), rect.max_x(), rect.max_y());
         self.vertices.extend_from_slice(&[
             Vertex::new(x0, y0, color), // top-left
             Vertex::new(x1, y0, color), // top-right
@@ -115,24 +116,46 @@ impl DrawBatch {
             Vertex::new(x0, y1, color), // bottom-left
         ]);
         // Two CCW triangles.
-        self.indices.extend_from_slice(&[
-            base,     base + 1, base + 2,
-            base + 2, base + 3, base,
-        ]);
+        self.indices
+            .extend_from_slice(&[base, base + 1, base + 2, base + 2, base + 3, base]);
     }
 
     /// Appends a rectangular border as four quads (top, right, bottom, left).
     pub fn push_border(&mut self, rect: Rect, color: Color, width: f32) {
         let w = width.max(0.0);
-        if w == 0.0 { return; }
+        if w == 0.0 {
+            return;
+        }
         // Top
-        self.push_rect(Rect::new(rect.min_x(), rect.min_y(), rect.size.width, w), color);
+        self.push_rect(
+            Rect::new(rect.min_x(), rect.min_y(), rect.size.width, w),
+            color,
+        );
         // Bottom
-        self.push_rect(Rect::new(rect.min_x(), rect.max_y() - w, rect.size.width, w), color);
+        self.push_rect(
+            Rect::new(rect.min_x(), rect.max_y() - w, rect.size.width, w),
+            color,
+        );
         // Left (exclude corners)
-        self.push_rect(Rect::new(rect.min_x(), rect.min_y() + w, w, rect.size.height - 2.0 * w), color);
+        self.push_rect(
+            Rect::new(
+                rect.min_x(),
+                rect.min_y() + w,
+                w,
+                rect.size.height - 2.0 * w,
+            ),
+            color,
+        );
         // Right
-        self.push_rect(Rect::new(rect.max_x() - w, rect.min_y() + w, w, rect.size.height - 2.0 * w), color);
+        self.push_rect(
+            Rect::new(
+                rect.max_x() - w,
+                rect.min_y() + w,
+                w,
+                rect.size.height - 2.0 * w,
+            ),
+            color,
+        );
     }
 }
 
@@ -148,7 +171,10 @@ pub struct Batcher {
 
 impl Batcher {
     pub fn new() -> Self {
-        Self { batches: Vec::new(), current_z: 0 }
+        Self {
+            batches: Vec::new(),
+            current_z: 0,
+        }
     }
 
     /// Processes a [`DrawList`] and returns an ordered `Vec<DrawBatch>`.
@@ -161,17 +187,27 @@ impl Batcher {
 
         for cmd in draw_list.commands() {
             match cmd {
-                DrawCommand::SetZOrder(z) => { self.current_z = *z; }
+                DrawCommand::SetZOrder(z) => {
+                    self.current_z = *z;
+                }
                 DrawCommand::FillRect { rect, color, blend } => {
                     let key = self.make_key(*blend);
                     self.get_or_create(key).push_rect(*rect, *color);
                 }
-                DrawCommand::FillRoundedRect { rect, color, blend, .. } => {
+                DrawCommand::FillRoundedRect {
+                    rect, color, blend, ..
+                } => {
                     // MVP: render rounded rects as plain rects.
                     let key = self.make_key(*blend);
                     self.get_or_create(key).push_rect(*rect, *color);
                 }
-                DrawCommand::DrawBorder { rect, color, width, blend, .. } => {
+                DrawCommand::DrawBorder {
+                    rect,
+                    color,
+                    width,
+                    blend,
+                    ..
+                } => {
                     let key = self.make_key(*blend);
                     self.get_or_create(key).push_border(*rect, *color, *width);
                 }
@@ -185,7 +221,8 @@ impl Batcher {
         self.batches.sort_by(|a, b| {
             let ka = a.key.unwrap();
             let kb = b.key.unwrap();
-            ka.z_order.cmp(&kb.z_order)
+            ka.z_order
+                .cmp(&kb.z_order)
                 .then_with(|| (ka.blend_mode as u8).cmp(&(kb.blend_mode as u8)))
         });
 

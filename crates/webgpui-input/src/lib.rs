@@ -23,18 +23,75 @@ pub enum MouseButton {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum KeyCode {
     // Printable characters / typing
-    A, B, C, D, E, F, G, H, I, J, K, L, M,
-    N, O, P, Q, R, S, T, U, V, W, X, Y, Z,
-    Digit0, Digit1, Digit2, Digit3, Digit4,
-    Digit5, Digit6, Digit7, Digit8, Digit9,
-    Space, Enter, Tab, Backspace, Escape, Delete,
+    A,
+    B,
+    C,
+    D,
+    E,
+    F,
+    G,
+    H,
+    I,
+    J,
+    K,
+    L,
+    M,
+    N,
+    O,
+    P,
+    Q,
+    R,
+    S,
+    T,
+    U,
+    V,
+    W,
+    X,
+    Y,
+    Z,
+    Digit0,
+    Digit1,
+    Digit2,
+    Digit3,
+    Digit4,
+    Digit5,
+    Digit6,
+    Digit7,
+    Digit8,
+    Digit9,
+    Space,
+    Enter,
+    Tab,
+    Backspace,
+    Escape,
+    Delete,
     // Navigation
-    ArrowLeft, ArrowRight, ArrowUp, ArrowDown,
-    Home, End, PageUp, PageDown,
+    ArrowLeft,
+    ArrowRight,
+    ArrowUp,
+    ArrowDown,
+    Home,
+    End,
+    PageUp,
+    PageDown,
     // Modifiers
-    Shift, Control, Alt, Meta,
+    Shift,
+    Control,
+    Alt,
+    Meta,
     // Function
-    F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12,
+    F1,
+    F2,
+    F3,
+    F4,
+    F5,
+    F6,
+    F7,
+    F8,
+    F9,
+    F10,
+    F11,
+    F12,
     // Misc
     Unknown,
 }
@@ -68,11 +125,24 @@ pub enum InputEvent {
     /// The cursor moved to `position` (in logical pixels).
     MouseMoved { position: Point },
     /// A mouse button was pressed.
-    MousePressed { button: MouseButton, position: Point, modifiers: Modifiers },
+    MousePressed {
+        button: MouseButton,
+        position: Point,
+        modifiers: Modifiers,
+    },
     /// A mouse button was released.
-    MouseReleased { button: MouseButton, position: Point, modifiers: Modifiers },
+    MouseReleased {
+        button: MouseButton,
+        position: Point,
+        modifiers: Modifiers,
+    },
     /// The scroll wheel was moved.  Positive `delta_y` is scroll down.
-    MouseScrolled { position: Point, delta_x: f32, delta_y: f32, modifiers: Modifiers },
+    MouseScrolled {
+        position: Point,
+        delta_x: f32,
+        delta_y: f32,
+        modifiers: Modifiers,
+    },
     /// A keyboard key was pressed.
     KeyPressed { key: KeyCode, modifiers: Modifiers },
     /// A keyboard key was released.
@@ -111,17 +181,29 @@ impl InputState {
             InputEvent::MouseMoved { position } => {
                 self.cursor_position = *position;
             }
-            InputEvent::MousePressed { button, position, modifiers } => {
+            InputEvent::MousePressed {
+                button,
+                position,
+                modifiers,
+            } => {
                 self.cursor_position = *position;
                 self.modifiers = *modifiers;
                 self.pressed_buttons.insert(*button);
             }
-            InputEvent::MouseReleased { button, position, modifiers } => {
+            InputEvent::MouseReleased {
+                button,
+                position,
+                modifiers,
+            } => {
                 self.cursor_position = *position;
                 self.modifiers = *modifiers;
                 self.pressed_buttons.remove(button);
             }
-            InputEvent::MouseScrolled { position, modifiers, .. } => {
+            InputEvent::MouseScrolled {
+                position,
+                modifiers,
+                ..
+            } => {
                 self.cursor_position = *position;
                 self.modifiers = *modifiers;
             }

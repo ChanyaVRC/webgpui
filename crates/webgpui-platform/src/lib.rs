@@ -50,7 +50,12 @@ impl Default for WindowConfig {
 
 impl WindowConfig {
     pub fn new(title: impl Into<String>, width: u32, height: u32) -> Self {
-        Self { title: title.into(), width, height, ..Default::default() }
+        Self {
+            title: title.into(),
+            width,
+            height,
+            ..Default::default()
+        }
     }
 }
 

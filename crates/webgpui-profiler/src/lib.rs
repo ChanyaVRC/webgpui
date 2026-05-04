@@ -101,7 +101,12 @@ impl FrameTimer {
         let p95_idx = ((n as f64 * 0.95) as usize).min(n - 1);
         let p95_ms = sorted[p95_idx];
         let max_ms = sorted[n - 1];
-        Some(FrameStats { avg_ms, p95_ms, max_ms, sample_count: n })
+        Some(FrameStats {
+            avg_ms,
+            p95_ms,
+            max_ms,
+            sample_count: n,
+        })
     }
 
     /// Checks performance thresholds and logs warnings when targets are
@@ -154,7 +159,10 @@ pub struct SpanTimer {
 impl SpanTimer {
     /// Starts timing a named span.
     pub fn start(name: &'static str) -> Self {
-        Self { name, start: Instant::now() }
+        Self {
+            name,
+            start: Instant::now(),
+        }
     }
 
     /// Returns elapsed milliseconds without stopping the timer.
@@ -176,8 +184,8 @@ impl Drop for SpanTimer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::Duration;
     use std::thread;
+    use std::time::Duration;
 
     #[test]
     fn timer_records_samples() {

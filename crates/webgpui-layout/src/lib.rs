@@ -89,7 +89,11 @@ pub struct LayoutNode {
 
 impl LayoutNode {
     pub fn new(id: u32, style: LayoutStyle) -> Self {
-        Self { id, style, children: Vec::new() }
+        Self {
+            id,
+            style,
+            children: Vec::new(),
+        }
     }
 }
 
@@ -130,7 +134,9 @@ pub struct LayoutEngine {
 
 impl LayoutEngine {
     pub fn new() -> Self {
-        Self { results: Vec::new() }
+        Self {
+            results: Vec::new(),
+        }
     }
 
     /// Compute layout for `nodes`, given a viewport of `viewport` size.
@@ -214,8 +220,7 @@ impl LayoutEngine {
                 PositionType::Stack => {
                     self.layout_node(nodes, ci, child_available);
                     let child_result = self.results[ci];
-                    cursor_y = child_result.border_box.max_y()
-                        + nodes[ci].style.margin.bottom;
+                    cursor_y = child_result.border_box.max_y() + nodes[ci].style.margin.bottom;
                     // Add gap after all but the last child.
                     if child_idx + 1 < node.children.len() {
                         cursor_y += nodes[idx].style.gap;
@@ -229,8 +234,7 @@ impl LayoutEngine {
             let children_height = cursor_y - content_box.origin.y;
             let new_h = children_height + padding.vertical();
             self.results[idx].border_box.size.height = new_h.max(0.0);
-            self.results[idx].content_box =
-                self.results[idx].border_box.shrink(padding);
+            self.results[idx].content_box = self.results[idx].border_box.shrink(padding);
         }
     }
 }
@@ -276,12 +280,18 @@ mod tests {
         root.children = vec![1, 2];
         let child1 = LayoutNode {
             id: 1,
-            style: LayoutStyle { height: Some(30.0), ..Default::default() },
+            style: LayoutStyle {
+                height: Some(30.0),
+                ..Default::default()
+            },
             children: vec![],
         };
         let child2 = LayoutNode {
             id: 2,
-            style: LayoutStyle { height: Some(40.0), ..Default::default() },
+            style: LayoutStyle {
+                height: Some(40.0),
+                ..Default::default()
+            },
             children: vec![],
         };
         let nodes = vec![root, child1, child2];

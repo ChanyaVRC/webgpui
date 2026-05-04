@@ -81,7 +81,10 @@ impl DemoUiState {
             Size::new((panel.size.width - 220.0).max(220.0), 54.0),
         );
         let button_rect = Rect::from_origin_size(
-            Point::new(text_rect.origin.x + text_rect.size.width + 14.0, text_rect.origin.y),
+            Point::new(
+                text_rect.origin.x + text_rect.size.width + 14.0,
+                text_rect.origin.y,
+            ),
             Size::new(160.0, 54.0),
         );
 
@@ -221,10 +224,7 @@ impl DemoUiState {
             // Place caret at the left edge of the next slot.
             let slot_cx = text_rect.origin.x + 13.0 + ci as f32 * slot_w + slot_w / 2.0;
             let cx = (slot_cx - FONT_W as f32 * tscale / 2.0 - 1.0).floor();
-            let caret = Rect::from_origin_size(
-                Point::new(cx, ty - 2.0),
-                Size::new(2.0, th + 4.0),
-            );
+            let caret = Rect::from_origin_size(Point::new(cx, ty - 2.0), Size::new(2.0, th + 4.0));
             ctx.fill_rect(caret, Color::WHITE);
         }
     }
@@ -244,7 +244,13 @@ impl DemoUiState {
         let th = text_pixel_height(bscale);
         let tx = (button_rect.origin.x + (button_rect.size.width - tw) / 2.0).floor();
         let ty = (button_rect.origin.y + (button_rect.size.height - th) / 2.0).floor();
-        draw_text(ctx, Point::new(tx, ty), label, bscale, Color::new(0.95, 0.98, 1.0, 1.0));
+        draw_text(
+            ctx,
+            Point::new(tx, ty),
+            label,
+            bscale,
+            Color::new(0.95, 0.98, 1.0, 1.0),
+        );
     }
 
     fn draw_backend_buttons(&self, ctx: &mut DrawContext<'_>, buttons: &[(BackendSelector, Rect)]) {
@@ -288,7 +294,10 @@ impl DemoUiState {
     fn draw_keyboard(&self, ctx: &mut DrawContext<'_>, origin: Point) {
         let keyboard_bg = Rect::from_origin_size(
             Point::new(origin.x - 12.0, origin.y - 12.0),
-            Size::new(15.0 * (KEY_W + KEY_GAP) + 24.0, 5.0 * (KEY_H + KEY_GAP) + 24.0),
+            Size::new(
+                15.0 * (KEY_W + KEY_GAP) + 24.0,
+                5.0 * (KEY_H + KEY_GAP) + 24.0,
+            ),
         );
         ctx.fill_rounded_rect(keyboard_bg, 12.0, Color::new(0.13, 0.14, 0.18, 1.0));
         ctx.draw_border(keyboard_bg, Color::new(0.32, 0.35, 0.42, 1.0), 1.0);
@@ -296,25 +305,37 @@ impl DemoUiState {
         draw_key_row(ctx, origin, ROW1, &self.prev_pressed_keys);
         draw_key_row(
             ctx,
-            Point::new(origin.x + 0.5 * (KEY_W + KEY_GAP), origin.y + KEY_H + KEY_GAP),
+            Point::new(
+                origin.x + 0.5 * (KEY_W + KEY_GAP),
+                origin.y + KEY_H + KEY_GAP,
+            ),
             ROW2,
             &self.prev_pressed_keys,
         );
         draw_key_row(
             ctx,
-            Point::new(origin.x + 0.9 * (KEY_W + KEY_GAP), origin.y + 2.0 * (KEY_H + KEY_GAP)),
+            Point::new(
+                origin.x + 0.9 * (KEY_W + KEY_GAP),
+                origin.y + 2.0 * (KEY_H + KEY_GAP),
+            ),
             ROW3,
             &self.prev_pressed_keys,
         );
         draw_key_row(
             ctx,
-            Point::new(origin.x + 1.2 * (KEY_W + KEY_GAP), origin.y + 3.0 * (KEY_H + KEY_GAP)),
+            Point::new(
+                origin.x + 1.2 * (KEY_W + KEY_GAP),
+                origin.y + 3.0 * (KEY_H + KEY_GAP),
+            ),
             ROW4,
             &self.prev_pressed_keys,
         );
         draw_key_row(
             ctx,
-            Point::new(origin.x + 3.0 * (KEY_W + KEY_GAP), origin.y + 4.0 * (KEY_H + KEY_GAP)),
+            Point::new(
+                origin.x + 3.0 * (KEY_W + KEY_GAP),
+                origin.y + 4.0 * (KEY_H + KEY_GAP),
+            ),
             ROW5,
             &self.prev_pressed_keys,
         );
@@ -328,86 +349,276 @@ struct KeyVisual {
 }
 
 const ROW1: &[KeyVisual] = &[
-    KeyVisual { key: KeyCode::Digit1, width_units: 1.0 },
-    KeyVisual { key: KeyCode::Digit2, width_units: 1.0 },
-    KeyVisual { key: KeyCode::Digit3, width_units: 1.0 },
-    KeyVisual { key: KeyCode::Digit4, width_units: 1.0 },
-    KeyVisual { key: KeyCode::Digit5, width_units: 1.0 },
-    KeyVisual { key: KeyCode::Digit6, width_units: 1.0 },
-    KeyVisual { key: KeyCode::Digit7, width_units: 1.0 },
-    KeyVisual { key: KeyCode::Digit8, width_units: 1.0 },
-    KeyVisual { key: KeyCode::Digit9, width_units: 1.0 },
-    KeyVisual { key: KeyCode::Digit0, width_units: 1.0 },
-    KeyVisual { key: KeyCode::Backspace, width_units: 2.0 },
+    KeyVisual {
+        key: KeyCode::Digit1,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::Digit2,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::Digit3,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::Digit4,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::Digit5,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::Digit6,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::Digit7,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::Digit8,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::Digit9,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::Digit0,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::Backspace,
+        width_units: 2.0,
+    },
 ];
 
 const ROW2: &[KeyVisual] = &[
-    KeyVisual { key: KeyCode::Q, width_units: 1.0 },
-    KeyVisual { key: KeyCode::W, width_units: 1.0 },
-    KeyVisual { key: KeyCode::E, width_units: 1.0 },
-    KeyVisual { key: KeyCode::R, width_units: 1.0 },
-    KeyVisual { key: KeyCode::T, width_units: 1.0 },
-    KeyVisual { key: KeyCode::Y, width_units: 1.0 },
-    KeyVisual { key: KeyCode::U, width_units: 1.0 },
-    KeyVisual { key: KeyCode::I, width_units: 1.0 },
-    KeyVisual { key: KeyCode::O, width_units: 1.0 },
-    KeyVisual { key: KeyCode::P, width_units: 1.0 },
+    KeyVisual {
+        key: KeyCode::Q,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::W,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::E,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::R,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::T,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::Y,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::U,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::I,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::O,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::P,
+        width_units: 1.0,
+    },
 ];
 
 const ROW3: &[KeyVisual] = &[
-    KeyVisual { key: KeyCode::A, width_units: 1.0 },
-    KeyVisual { key: KeyCode::S, width_units: 1.0 },
-    KeyVisual { key: KeyCode::D, width_units: 1.0 },
-    KeyVisual { key: KeyCode::F, width_units: 1.0 },
-    KeyVisual { key: KeyCode::G, width_units: 1.0 },
-    KeyVisual { key: KeyCode::H, width_units: 1.0 },
-    KeyVisual { key: KeyCode::J, width_units: 1.0 },
-    KeyVisual { key: KeyCode::K, width_units: 1.0 },
-    KeyVisual { key: KeyCode::L, width_units: 1.0 },
-    KeyVisual { key: KeyCode::Enter, width_units: 2.2 },
+    KeyVisual {
+        key: KeyCode::A,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::S,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::D,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::F,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::G,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::H,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::J,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::K,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::L,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::Enter,
+        width_units: 2.2,
+    },
 ];
 
 const ROW4: &[KeyVisual] = &[
-    KeyVisual { key: KeyCode::Z, width_units: 1.0 },
-    KeyVisual { key: KeyCode::X, width_units: 1.0 },
-    KeyVisual { key: KeyCode::C, width_units: 1.0 },
-    KeyVisual { key: KeyCode::V, width_units: 1.0 },
-    KeyVisual { key: KeyCode::B, width_units: 1.0 },
-    KeyVisual { key: KeyCode::N, width_units: 1.0 },
-    KeyVisual { key: KeyCode::M, width_units: 1.0 },
-    KeyVisual { key: KeyCode::Space, width_units: 4.6 },
+    KeyVisual {
+        key: KeyCode::Z,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::X,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::C,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::V,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::B,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::N,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::M,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::Space,
+        width_units: 4.6,
+    },
 ];
 
 const ROW5: &[KeyVisual] = &[
-    KeyVisual { key: KeyCode::ArrowLeft, width_units: 1.0 },
-    KeyVisual { key: KeyCode::ArrowDown, width_units: 1.0 },
-    KeyVisual { key: KeyCode::ArrowUp, width_units: 1.0 },
-    KeyVisual { key: KeyCode::ArrowRight, width_units: 1.0 },
+    KeyVisual {
+        key: KeyCode::ArrowLeft,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::ArrowDown,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::ArrowUp,
+        width_units: 1.0,
+    },
+    KeyVisual {
+        key: KeyCode::ArrowRight,
+        width_units: 1.0,
+    },
 ];
 
 const CHAR_KEYS: &[(KeyCode, char)] = &[
-    (KeyCode::A, 'a'), (KeyCode::B, 'b'), (KeyCode::C, 'c'), (KeyCode::D, 'd'),
-    (KeyCode::E, 'e'), (KeyCode::F, 'f'), (KeyCode::G, 'g'), (KeyCode::H, 'h'),
-    (KeyCode::I, 'i'), (KeyCode::J, 'j'), (KeyCode::K, 'k'), (KeyCode::L, 'l'),
-    (KeyCode::M, 'm'), (KeyCode::N, 'n'), (KeyCode::O, 'o'), (KeyCode::P, 'p'),
-    (KeyCode::Q, 'q'), (KeyCode::R, 'r'), (KeyCode::S, 's'), (KeyCode::T, 't'),
-    (KeyCode::U, 'u'), (KeyCode::V, 'v'), (KeyCode::W, 'w'), (KeyCode::X, 'x'),
-    (KeyCode::Y, 'y'), (KeyCode::Z, 'z'),
-    (KeyCode::Digit0, '0'), (KeyCode::Digit1, '1'), (KeyCode::Digit2, '2'),
-    (KeyCode::Digit3, '3'), (KeyCode::Digit4, '4'), (KeyCode::Digit5, '5'),
-    (KeyCode::Digit6, '6'), (KeyCode::Digit7, '7'), (KeyCode::Digit8, '8'),
-    (KeyCode::Digit9, '9'), (KeyCode::Space, ' '),
+    (KeyCode::A, 'a'),
+    (KeyCode::B, 'b'),
+    (KeyCode::C, 'c'),
+    (KeyCode::D, 'd'),
+    (KeyCode::E, 'e'),
+    (KeyCode::F, 'f'),
+    (KeyCode::G, 'g'),
+    (KeyCode::H, 'h'),
+    (KeyCode::I, 'i'),
+    (KeyCode::J, 'j'),
+    (KeyCode::K, 'k'),
+    (KeyCode::L, 'l'),
+    (KeyCode::M, 'm'),
+    (KeyCode::N, 'n'),
+    (KeyCode::O, 'o'),
+    (KeyCode::P, 'p'),
+    (KeyCode::Q, 'q'),
+    (KeyCode::R, 'r'),
+    (KeyCode::S, 's'),
+    (KeyCode::T, 't'),
+    (KeyCode::U, 'u'),
+    (KeyCode::V, 'v'),
+    (KeyCode::W, 'w'),
+    (KeyCode::X, 'x'),
+    (KeyCode::Y, 'y'),
+    (KeyCode::Z, 'z'),
+    (KeyCode::Digit0, '0'),
+    (KeyCode::Digit1, '1'),
+    (KeyCode::Digit2, '2'),
+    (KeyCode::Digit3, '3'),
+    (KeyCode::Digit4, '4'),
+    (KeyCode::Digit5, '5'),
+    (KeyCode::Digit6, '6'),
+    (KeyCode::Digit7, '7'),
+    (KeyCode::Digit8, '8'),
+    (KeyCode::Digit9, '9'),
+    (KeyCode::Space, ' '),
 ];
 
 const VISUAL_KEYS: &[KeyCode] = &[
-    KeyCode::Digit0, KeyCode::Digit1, KeyCode::Digit2, KeyCode::Digit3, KeyCode::Digit4,
-    KeyCode::Digit5, KeyCode::Digit6, KeyCode::Digit7, KeyCode::Digit8, KeyCode::Digit9,
-    KeyCode::A, KeyCode::B, KeyCode::C, KeyCode::D, KeyCode::E, KeyCode::F, KeyCode::G,
-    KeyCode::H, KeyCode::I, KeyCode::J, KeyCode::K, KeyCode::L, KeyCode::M, KeyCode::N,
-    KeyCode::O, KeyCode::P, KeyCode::Q, KeyCode::R, KeyCode::S, KeyCode::T, KeyCode::U,
-    KeyCode::V, KeyCode::W, KeyCode::X, KeyCode::Y, KeyCode::Z,
-    KeyCode::Backspace, KeyCode::Enter, KeyCode::Space,
-    KeyCode::ArrowLeft, KeyCode::ArrowRight, KeyCode::ArrowUp, KeyCode::ArrowDown,
+    KeyCode::Digit0,
+    KeyCode::Digit1,
+    KeyCode::Digit2,
+    KeyCode::Digit3,
+    KeyCode::Digit4,
+    KeyCode::Digit5,
+    KeyCode::Digit6,
+    KeyCode::Digit7,
+    KeyCode::Digit8,
+    KeyCode::Digit9,
+    KeyCode::A,
+    KeyCode::B,
+    KeyCode::C,
+    KeyCode::D,
+    KeyCode::E,
+    KeyCode::F,
+    KeyCode::G,
+    KeyCode::H,
+    KeyCode::I,
+    KeyCode::J,
+    KeyCode::K,
+    KeyCode::L,
+    KeyCode::M,
+    KeyCode::N,
+    KeyCode::O,
+    KeyCode::P,
+    KeyCode::Q,
+    KeyCode::R,
+    KeyCode::S,
+    KeyCode::T,
+    KeyCode::U,
+    KeyCode::V,
+    KeyCode::W,
+    KeyCode::X,
+    KeyCode::Y,
+    KeyCode::Z,
+    KeyCode::Backspace,
+    KeyCode::Enter,
+    KeyCode::Space,
+    KeyCode::ArrowLeft,
+    KeyCode::ArrowRight,
+    KeyCode::ArrowUp,
+    KeyCode::ArrowDown,
 ];
 
 fn main() {
@@ -417,27 +628,25 @@ fn main() {
         .map(|arg| arg[10..].to_string());
 
     let selected_backend = match backend_arg {
-        Some(backend_name) => {
-            match BackendSelector::from_str(&backend_name) {
-                Ok(backend) => {
-                    if backend.is_available() {
-                        backend
-                    } else {
-                        eprintln!(
-                            "Error: backend '{}' requested but not compiled in",
-                            backend.name()
-                        );
-                        print_backend_usage();
-                        std::process::exit(1);
-                    }
-                }
-                Err(e) => {
-                    eprintln!("Error parsing backend: {}", e);
+        Some(backend_name) => match BackendSelector::from_str(&backend_name) {
+            Ok(backend) => {
+                if backend.is_available() {
+                    backend
+                } else {
+                    eprintln!(
+                        "Error: backend '{}' requested but not compiled in",
+                        backend.name()
+                    );
                     print_backend_usage();
                     std::process::exit(1);
                 }
             }
-        }
+            Err(e) => {
+                eprintln!("Error parsing backend: {}", e);
+                print_backend_usage();
+                std::process::exit(1);
+            }
+        },
         None => {
             // Default: try to find first available backend (prefer wgpu)
             BackendSelector::available()
@@ -461,7 +670,10 @@ fn main() {
     let mut state = DemoUiState::new(switcher.clone());
 
     let result = AppBuilder::new()
-        .title(format!("webgpui – demo-basic [{}]", selected_backend.name()))
+        .title(format!(
+            "webgpui – demo-basic [{}]",
+            selected_backend.name()
+        ))
         .size(800, 600)
         .target_fps(Some(60))
         .background(Color::new(0.12, 0.12, 0.14, 1.0))
@@ -496,7 +708,11 @@ fn print_backend_usage() {
 /// Returns `(BackendSelector, Rect)` pairs for the backend buttons in the header.
 /// Laid out right-aligned, vertically centred in the 52 px header bar.
 fn backend_button_rects(viewport_w: f32) -> Vec<(BackendSelector, Rect)> {
-    let all = [BackendSelector::Wgpu, BackendSelector::Cuda, BackendSelector::Cpu];
+    let all = [
+        BackendSelector::Wgpu,
+        BackendSelector::Cuda,
+        BackendSelector::Cpu,
+    ];
     let btn_w = 64.0_f32;
     let btn_h = 32.0_f32;
     let gap = 8.0_f32;
@@ -568,7 +784,13 @@ fn draw_key_row(
         let th = text_pixel_height(1.0);
         let tx = (rect.origin.x + (rect.size.width - tw) / 2.0).max(rect.origin.x + 2.0);
         let ty = (rect.origin.y + (rect.size.height - th) / 2.0).floor();
-        draw_text(ctx, Point::new(tx, ty), label, 1.0, Color::new(0.96, 0.98, 1.0, 1.0));
+        draw_text(
+            ctx,
+            Point::new(tx, ty),
+            label,
+            1.0,
+            Color::new(0.96, 0.98, 1.0, 1.0),
+        );
 
         x += width + KEY_GAP;
     }
@@ -597,16 +819,41 @@ fn tracked_pressed_keys(ctx: &DrawContext<'_>) -> HashSet<KeyCode> {
 
 fn key_name(key: KeyCode) -> &'static str {
     match key {
-        KeyCode::A => "A", KeyCode::B => "B", KeyCode::C => "C", KeyCode::D => "D",
-        KeyCode::E => "E", KeyCode::F => "F", KeyCode::G => "G", KeyCode::H => "H",
-        KeyCode::I => "I", KeyCode::J => "J", KeyCode::K => "K", KeyCode::L => "L",
-        KeyCode::M => "M", KeyCode::N => "N", KeyCode::O => "O", KeyCode::P => "P",
-        KeyCode::Q => "Q", KeyCode::R => "R", KeyCode::S => "S", KeyCode::T => "T",
-        KeyCode::U => "U", KeyCode::V => "V", KeyCode::W => "W", KeyCode::X => "X",
-        KeyCode::Y => "Y", KeyCode::Z => "Z",
-        KeyCode::Digit0 => "0", KeyCode::Digit1 => "1", KeyCode::Digit2 => "2",
-        KeyCode::Digit3 => "3", KeyCode::Digit4 => "4", KeyCode::Digit5 => "5",
-        KeyCode::Digit6 => "6", KeyCode::Digit7 => "7", KeyCode::Digit8 => "8",
+        KeyCode::A => "A",
+        KeyCode::B => "B",
+        KeyCode::C => "C",
+        KeyCode::D => "D",
+        KeyCode::E => "E",
+        KeyCode::F => "F",
+        KeyCode::G => "G",
+        KeyCode::H => "H",
+        KeyCode::I => "I",
+        KeyCode::J => "J",
+        KeyCode::K => "K",
+        KeyCode::L => "L",
+        KeyCode::M => "M",
+        KeyCode::N => "N",
+        KeyCode::O => "O",
+        KeyCode::P => "P",
+        KeyCode::Q => "Q",
+        KeyCode::R => "R",
+        KeyCode::S => "S",
+        KeyCode::T => "T",
+        KeyCode::U => "U",
+        KeyCode::V => "V",
+        KeyCode::W => "W",
+        KeyCode::X => "X",
+        KeyCode::Y => "Y",
+        KeyCode::Z => "Z",
+        KeyCode::Digit0 => "0",
+        KeyCode::Digit1 => "1",
+        KeyCode::Digit2 => "2",
+        KeyCode::Digit3 => "3",
+        KeyCode::Digit4 => "4",
+        KeyCode::Digit5 => "5",
+        KeyCode::Digit6 => "6",
+        KeyCode::Digit7 => "7",
+        KeyCode::Digit8 => "8",
         KeyCode::Digit9 => "9",
         KeyCode::Backspace => "Backspace",
         KeyCode::Enter => "Enter",
@@ -686,49 +933,137 @@ fn draw_text(ctx: &mut DrawContext<'_>, origin: Point, text: &str, scale: f32, c
 
 fn glyph_rows(ch: char) -> [u8; FONT_H] {
     match ch {
-        'A' => [0b01110,0b10001,0b10001,0b11111,0b10001,0b10001,0b10001],
-        'B' => [0b11110,0b10001,0b10001,0b11110,0b10001,0b10001,0b11110],
-        'C' => [0b01111,0b10000,0b10000,0b10000,0b10000,0b10000,0b01111],
-        'D' => [0b11110,0b10001,0b10001,0b10001,0b10001,0b10001,0b11110],
-        'E' => [0b11111,0b10000,0b10000,0b11110,0b10000,0b10000,0b11111],
-        'F' => [0b11111,0b10000,0b10000,0b11110,0b10000,0b10000,0b10000],
-        'G' => [0b01111,0b10000,0b10000,0b10111,0b10001,0b10001,0b01111],
-        'H' => [0b10001,0b10001,0b10001,0b11111,0b10001,0b10001,0b10001],
-        'I' => [0b11111,0b00100,0b00100,0b00100,0b00100,0b00100,0b11111],
-        'J' => [0b00111,0b00010,0b00010,0b00010,0b00010,0b10010,0b01100],
-        'K' => [0b10001,0b10010,0b10100,0b11000,0b10100,0b10010,0b10001],
-        'L' => [0b10000,0b10000,0b10000,0b10000,0b10000,0b10000,0b11111],
-        'M' => [0b10001,0b11011,0b10101,0b10101,0b10001,0b10001,0b10001],
-        'N' => [0b10001,0b11001,0b10101,0b10011,0b10001,0b10001,0b10001],
-        'O' => [0b01110,0b10001,0b10001,0b10001,0b10001,0b10001,0b01110],
-        'P' => [0b11110,0b10001,0b10001,0b11110,0b10000,0b10000,0b10000],
-        'Q' => [0b01110,0b10001,0b10001,0b10001,0b10101,0b10010,0b01101],
-        'R' => [0b11110,0b10001,0b10001,0b11110,0b10100,0b10010,0b10001],
-        'S' => [0b01111,0b10000,0b10000,0b01110,0b00001,0b00001,0b11110],
-        'T' => [0b11111,0b00100,0b00100,0b00100,0b00100,0b00100,0b00100],
-        'U' => [0b10001,0b10001,0b10001,0b10001,0b10001,0b10001,0b01110],
-        'V' => [0b10001,0b10001,0b10001,0b10001,0b10001,0b01010,0b00100],
-        'W' => [0b10001,0b10001,0b10001,0b10101,0b10101,0b10101,0b01010],
-        'X' => [0b10001,0b10001,0b01010,0b00100,0b01010,0b10001,0b10001],
-        'Y' => [0b10001,0b10001,0b01010,0b00100,0b00100,0b00100,0b00100],
-        'Z' => [0b11111,0b00001,0b00010,0b00100,0b01000,0b10000,0b11111],
-        '0' => [0b01110,0b10011,0b10101,0b10101,0b11001,0b10001,0b01110],
-        '1' => [0b00100,0b01100,0b00100,0b00100,0b00100,0b00100,0b01110],
-        '2' => [0b01110,0b10001,0b00001,0b00010,0b00100,0b01000,0b11111],
-        '3' => [0b11110,0b00001,0b00001,0b01110,0b00001,0b00001,0b11110],
-        '4' => [0b00010,0b00110,0b01010,0b10010,0b11111,0b00010,0b00010],
-        '5' => [0b11111,0b10000,0b10000,0b11110,0b00001,0b00001,0b11110],
-        '6' => [0b01110,0b10000,0b10000,0b11110,0b10001,0b10001,0b01110],
-        '7' => [0b11111,0b00001,0b00010,0b00100,0b01000,0b01000,0b01000],
-        '8' => [0b01110,0b10001,0b10001,0b01110,0b10001,0b10001,0b01110],
-        '9' => [0b01110,0b10001,0b10001,0b01111,0b00001,0b00001,0b01110],
-        ':' => [0b00000,0b00100,0b00100,0b00000,0b00100,0b00100,0b00000],
-        '+' => [0b00000,0b00100,0b00100,0b11111,0b00100,0b00100,0b00000],
-        '-' => [0b00000,0b00000,0b00000,0b11111,0b00000,0b00000,0b00000],
-        '<' => [0b00010,0b00100,0b01000,0b10000,0b01000,0b00100,0b00010],
-        '>' => [0b01000,0b00100,0b00010,0b00001,0b00010,0b00100,0b01000],
-        '^' => [0b00100,0b01010,0b10001,0b00000,0b00000,0b00000,0b00000],
-        ' ' => [0b00000,0b00000,0b00000,0b00000,0b00000,0b00000,0b00000],
-        _ => [0b11111,0b10001,0b00100,0b00100,0b00100,0b10001,0b11111],
+        'A' => [
+            0b01110, 0b10001, 0b10001, 0b11111, 0b10001, 0b10001, 0b10001,
+        ],
+        'B' => [
+            0b11110, 0b10001, 0b10001, 0b11110, 0b10001, 0b10001, 0b11110,
+        ],
+        'C' => [
+            0b01111, 0b10000, 0b10000, 0b10000, 0b10000, 0b10000, 0b01111,
+        ],
+        'D' => [
+            0b11110, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b11110,
+        ],
+        'E' => [
+            0b11111, 0b10000, 0b10000, 0b11110, 0b10000, 0b10000, 0b11111,
+        ],
+        'F' => [
+            0b11111, 0b10000, 0b10000, 0b11110, 0b10000, 0b10000, 0b10000,
+        ],
+        'G' => [
+            0b01111, 0b10000, 0b10000, 0b10111, 0b10001, 0b10001, 0b01111,
+        ],
+        'H' => [
+            0b10001, 0b10001, 0b10001, 0b11111, 0b10001, 0b10001, 0b10001,
+        ],
+        'I' => [
+            0b11111, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100, 0b11111,
+        ],
+        'J' => [
+            0b00111, 0b00010, 0b00010, 0b00010, 0b00010, 0b10010, 0b01100,
+        ],
+        'K' => [
+            0b10001, 0b10010, 0b10100, 0b11000, 0b10100, 0b10010, 0b10001,
+        ],
+        'L' => [
+            0b10000, 0b10000, 0b10000, 0b10000, 0b10000, 0b10000, 0b11111,
+        ],
+        'M' => [
+            0b10001, 0b11011, 0b10101, 0b10101, 0b10001, 0b10001, 0b10001,
+        ],
+        'N' => [
+            0b10001, 0b11001, 0b10101, 0b10011, 0b10001, 0b10001, 0b10001,
+        ],
+        'O' => [
+            0b01110, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01110,
+        ],
+        'P' => [
+            0b11110, 0b10001, 0b10001, 0b11110, 0b10000, 0b10000, 0b10000,
+        ],
+        'Q' => [
+            0b01110, 0b10001, 0b10001, 0b10001, 0b10101, 0b10010, 0b01101,
+        ],
+        'R' => [
+            0b11110, 0b10001, 0b10001, 0b11110, 0b10100, 0b10010, 0b10001,
+        ],
+        'S' => [
+            0b01111, 0b10000, 0b10000, 0b01110, 0b00001, 0b00001, 0b11110,
+        ],
+        'T' => [
+            0b11111, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100,
+        ],
+        'U' => [
+            0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01110,
+        ],
+        'V' => [
+            0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01010, 0b00100,
+        ],
+        'W' => [
+            0b10001, 0b10001, 0b10001, 0b10101, 0b10101, 0b10101, 0b01010,
+        ],
+        'X' => [
+            0b10001, 0b10001, 0b01010, 0b00100, 0b01010, 0b10001, 0b10001,
+        ],
+        'Y' => [
+            0b10001, 0b10001, 0b01010, 0b00100, 0b00100, 0b00100, 0b00100,
+        ],
+        'Z' => [
+            0b11111, 0b00001, 0b00010, 0b00100, 0b01000, 0b10000, 0b11111,
+        ],
+        '0' => [
+            0b01110, 0b10011, 0b10101, 0b10101, 0b11001, 0b10001, 0b01110,
+        ],
+        '1' => [
+            0b00100, 0b01100, 0b00100, 0b00100, 0b00100, 0b00100, 0b01110,
+        ],
+        '2' => [
+            0b01110, 0b10001, 0b00001, 0b00010, 0b00100, 0b01000, 0b11111,
+        ],
+        '3' => [
+            0b11110, 0b00001, 0b00001, 0b01110, 0b00001, 0b00001, 0b11110,
+        ],
+        '4' => [
+            0b00010, 0b00110, 0b01010, 0b10010, 0b11111, 0b00010, 0b00010,
+        ],
+        '5' => [
+            0b11111, 0b10000, 0b10000, 0b11110, 0b00001, 0b00001, 0b11110,
+        ],
+        '6' => [
+            0b01110, 0b10000, 0b10000, 0b11110, 0b10001, 0b10001, 0b01110,
+        ],
+        '7' => [
+            0b11111, 0b00001, 0b00010, 0b00100, 0b01000, 0b01000, 0b01000,
+        ],
+        '8' => [
+            0b01110, 0b10001, 0b10001, 0b01110, 0b10001, 0b10001, 0b01110,
+        ],
+        '9' => [
+            0b01110, 0b10001, 0b10001, 0b01111, 0b00001, 0b00001, 0b01110,
+        ],
+        ':' => [
+            0b00000, 0b00100, 0b00100, 0b00000, 0b00100, 0b00100, 0b00000,
+        ],
+        '+' => [
+            0b00000, 0b00100, 0b00100, 0b11111, 0b00100, 0b00100, 0b00000,
+        ],
+        '-' => [
+            0b00000, 0b00000, 0b00000, 0b11111, 0b00000, 0b00000, 0b00000,
+        ],
+        '<' => [
+            0b00010, 0b00100, 0b01000, 0b10000, 0b01000, 0b00100, 0b00010,
+        ],
+        '>' => [
+            0b01000, 0b00100, 0b00010, 0b00001, 0b00010, 0b00100, 0b01000,
+        ],
+        '^' => [
+            0b00100, 0b01010, 0b10001, 0b00000, 0b00000, 0b00000, 0b00000,
+        ],
+        ' ' => [
+            0b00000, 0b00000, 0b00000, 0b00000, 0b00000, 0b00000, 0b00000,
+        ],
+        _ => [
+            0b11111, 0b10001, 0b00100, 0b00100, 0b00100, 0b10001, 0b11111,
+        ],
     }
 }

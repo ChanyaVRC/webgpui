@@ -50,10 +50,7 @@ impl CpuRenderer {
     /// let renderer = CpuRenderer::new(800, 600)?;
     /// ```
     pub fn new(width: u32, height: u32) -> RenderResult<Self> {
-        log::info!(
-            "CPU renderer initialized: {}x{} (headless)",
-            width, height
-        );
+        log::info!("CPU renderer initialized: {}x{} (headless)", width, height);
         Ok(Self {
             surface_width: width,
             surface_height: height,

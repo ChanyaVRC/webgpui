@@ -70,7 +70,10 @@ pub struct Size {
 }
 
 impl Size {
-    pub const ZERO: Self = Self { width: 0.0, height: 0.0 };
+    pub const ZERO: Self = Self {
+        width: 0.0,
+        height: 0.0,
+    };
 
     #[inline]
     pub fn new(width: f32, height: f32) -> Self {
@@ -126,20 +129,25 @@ impl Rect {
     }
 
     #[inline]
-    pub fn min_x(self) -> f32 { self.origin.x }
+    pub fn min_x(self) -> f32 {
+        self.origin.x
+    }
     #[inline]
-    pub fn min_y(self) -> f32 { self.origin.y }
+    pub fn min_y(self) -> f32 {
+        self.origin.y
+    }
     #[inline]
-    pub fn max_x(self) -> f32 { self.origin.x + self.size.width }
+    pub fn max_x(self) -> f32 {
+        self.origin.x + self.size.width
+    }
     #[inline]
-    pub fn max_y(self) -> f32 { self.origin.y + self.size.height }
+    pub fn max_y(self) -> f32 {
+        self.origin.y + self.size.height
+    }
 
     #[inline]
     pub fn contains(self, p: Point) -> bool {
-        p.x >= self.min_x()
-            && p.x <= self.max_x()
-            && p.y >= self.min_y()
-            && p.y <= self.max_y()
+        p.x >= self.min_x() && p.x <= self.max_x() && p.y >= self.min_y() && p.y <= self.max_y()
     }
 
     /// Returns the intersection of two rectangles, or `None` if they don't overlap.
@@ -204,22 +212,41 @@ pub struct Insets {
 }
 
 impl Insets {
-    pub const ZERO: Self = Self { top: 0.0, right: 0.0, bottom: 0.0, left: 0.0 };
+    pub const ZERO: Self = Self {
+        top: 0.0,
+        right: 0.0,
+        bottom: 0.0,
+        left: 0.0,
+    };
 
     #[inline]
     pub fn all(v: f32) -> Self {
-        Self { top: v, right: v, bottom: v, left: v }
+        Self {
+            top: v,
+            right: v,
+            bottom: v,
+            left: v,
+        }
     }
 
     #[inline]
     pub fn new(top: f32, right: f32, bottom: f32, left: f32) -> Self {
-        Self { top, right, bottom, left }
+        Self {
+            top,
+            right,
+            bottom,
+            left,
+        }
     }
 
     #[inline]
-    pub fn horizontal(self) -> f32 { self.left + self.right }
+    pub fn horizontal(self) -> f32 {
+        self.left + self.right
+    }
     #[inline]
-    pub fn vertical(self) -> f32 { self.top + self.bottom }
+    pub fn vertical(self) -> f32 {
+        self.top + self.bottom
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -237,12 +264,42 @@ pub struct Color {
 }
 
 impl Color {
-    pub const TRANSPARENT: Self = Self { r: 0.0, g: 0.0, b: 0.0, a: 0.0 };
-    pub const BLACK:       Self = Self { r: 0.0, g: 0.0, b: 0.0, a: 1.0 };
-    pub const WHITE:       Self = Self { r: 1.0, g: 1.0, b: 1.0, a: 1.0 };
-    pub const RED:         Self = Self { r: 1.0, g: 0.0, b: 0.0, a: 1.0 };
-    pub const GREEN:       Self = Self { r: 0.0, g: 1.0, b: 0.0, a: 1.0 };
-    pub const BLUE:        Self = Self { r: 0.0, g: 0.0, b: 1.0, a: 1.0 };
+    pub const TRANSPARENT: Self = Self {
+        r: 0.0,
+        g: 0.0,
+        b: 0.0,
+        a: 0.0,
+    };
+    pub const BLACK: Self = Self {
+        r: 0.0,
+        g: 0.0,
+        b: 0.0,
+        a: 1.0,
+    };
+    pub const WHITE: Self = Self {
+        r: 1.0,
+        g: 1.0,
+        b: 1.0,
+        a: 1.0,
+    };
+    pub const RED: Self = Self {
+        r: 1.0,
+        g: 0.0,
+        b: 0.0,
+        a: 1.0,
+    };
+    pub const GREEN: Self = Self {
+        r: 0.0,
+        g: 1.0,
+        b: 0.0,
+        a: 1.0,
+    };
+    pub const BLUE: Self = Self {
+        r: 0.0,
+        g: 0.0,
+        b: 1.0,
+        a: 1.0,
+    };
 
     #[inline]
     pub fn new(r: f32, g: f32, b: f32, a: f32) -> Self {

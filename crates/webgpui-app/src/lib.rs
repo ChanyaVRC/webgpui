@@ -18,8 +18,8 @@
 //! ```
 
 use std::sync::{
-    Arc, Mutex,
     atomic::{AtomicBool, Ordering},
+    Arc, Mutex,
 };
 use std::time::{Duration, Instant};
 
@@ -38,8 +38,8 @@ use webgpui_input::{FocusManager, InputEvent, InputState, Modifiers};
 
 // Re-export types that application code commonly needs.
 pub use webgpui_input::{KeyCode, MouseButton};
-pub use webgpui_render::BackendSelector;
 use webgpui_profiler::FrameTimer;
+pub use webgpui_render::BackendSelector;
 use webgpui_render::{DrawList, RenderError, Renderer};
 use webgpui_render_graph::ClearColor;
 use webgpui_render_wgpu::{WgpuContext, WgpuRenderer};
@@ -131,7 +131,12 @@ impl<'a> DrawContext<'a> {
         input: &'a InputState,
         current_backend: BackendSelector,
     ) -> Self {
-        Self { draw_list, viewport, input, current_backend }
+        Self {
+            draw_list,
+            viewport,
+            input,
+            current_backend,
+        }
     }
 
     /// Fills `rect` with a solid `color`.
@@ -141,11 +146,8 @@ impl<'a> DrawContext<'a> {
 
     /// Fills a rectangle with rounded corners.
     pub fn fill_rounded_rect(&mut self, rect: Rect, radius: f32, color: Color) {
-        self.draw_list.fill_rounded_rect(
-            rect,
-            webgpui_geometry::BorderRadius::all(radius),
-            color,
-        );
+        self.draw_list
+            .fill_rounded_rect(rect, webgpui_geometry::BorderRadius::all(radius), color);
     }
 
     /// Draws a rectangular border.
@@ -261,7 +263,9 @@ impl AppBuilder {
     }
 
     pub fn build(self) -> App {
-        App { config: self.config }
+        App {
+            config: self.config,
+        }
     }
 }
 
@@ -287,14 +291,13 @@ impl App {
     {
         let _ = env_logger::try_init();
 
-        let event_loop = EventLoop::new()
-            .map_err(|e| AppError::EventLoop(e.to_string()))?;
+        let event_loop = EventLoop::new().map_err(|e| AppError::EventLoop(e.to_string()))?;
 
         let window_title = self.config.title.clone();
 
         let window = Arc::new(
             WindowBuilder::new()
-            .with_title(&window_title)
+                .with_title(&window_title)
                 .with_inner_size(LogicalSize::new(self.config.width, self.config.height))
                 .with_resizable(self.config.resizable)
                 .build(&event_loop)
@@ -303,7 +306,8 @@ impl App {
 
         let bg = self.config.background;
         let backend_switcher = self.config.backend_switcher;
-        let mut current_backend = backend_switcher.as_ref()
+        let mut current_backend = backend_switcher
+            .as_ref()
             .map(|s| s.current())
             .unwrap_or(BackendSelector::Wgpu);
 
@@ -326,38 +330,39 @@ impl App {
             );
             eprintln!(
                 "[webgpui-app] CPU fallback active: adapter='{}' backend={:?} driver='{}'",
-                ctx.adapter_info.name,
-                ctx.adapter_info.backend,
-                ctx.adapter_info.driver,
+                ctx.adapter_info.name, ctx.adapter_info.backend, ctx.adapter_info.driver,
             );
         }
 
         let mut renderer = WgpuRenderer::new(ctx);
         renderer.render_graph_mut().set_clear_color(ClearColor::new(
-            bg.r as f64, bg.g as f64, bg.b as f64, bg.a as f64,
+            bg.r as f64,
+            bg.g as f64,
+            bg.b as f64,
+            bg.a as f64,
         ));
 
         // Side renderer for non-wgpu backends (CPU, CUDA placeholder).
-        let mut side_renderer: Option<Box<dyn Renderer>> =
-            create_side_renderer(current_backend, self.config.width.max(1), self.config.height.max(1));
+        let mut side_renderer: Option<Box<dyn Renderer>> = create_side_renderer(
+            current_backend,
+            self.config.width.max(1),
+            self.config.height.max(1),
+        );
 
-        let mut draw_list   = DrawList::new();
+        let mut draw_list = DrawList::new();
         let mut input_state = InputState::new();
         let mut frame_timer = FrameTimer::new(120);
-        let _node_tree      = NodeTree::new();
-        let _dirty_tracker  = DirtyTracker::new();
-        let _focus          = FocusManager::new();
-        let mut cursor_pos  = Point::ZERO;
-        let frame_interval = self
-            .config
-            .target_fps
-            .and_then(|fps| {
-                if fps == 0 {
-                    None
-                } else {
-                    Some(Duration::from_secs_f64(1.0 / fps as f64))
-                }
-            });
+        let _node_tree = NodeTree::new();
+        let _dirty_tracker = DirtyTracker::new();
+        let _focus = FocusManager::new();
+        let mut cursor_pos = Point::ZERO;
+        let frame_interval = self.config.target_fps.and_then(|fps| {
+            if fps == 0 {
+                None
+            } else {
+                Some(Duration::from_secs_f64(1.0 / fps as f64))
+            }
+        });
         let mut last_perf_warn_at = Instant::now();
 
         // Track whether we actually entered rendering and whether the close was
@@ -372,160 +377,165 @@ impl App {
         } else {
             event_loop.set_control_flow(ControlFlow::Poll);
         }
-        let run_result = event_loop
-            .run(move |event, elwt| {
-                match event {
-                    Event::WindowEvent { ref event, window_id }
-                        if window_id == window.id() =>
-                    {
-                        match event {
-                            WindowEvent::CloseRequested => {
-                                close_requested_inner.store(true, Ordering::Relaxed);
-                                elwt.exit();
+        let run_result = event_loop.run(move |event, elwt| {
+            match event {
+                Event::WindowEvent {
+                    ref event,
+                    window_id,
+                } if window_id == window.id() => {
+                    match event {
+                        WindowEvent::CloseRequested => {
+                            close_requested_inner.store(true, Ordering::Relaxed);
+                            elwt.exit();
+                        }
+                        WindowEvent::Resized(ps) => {
+                            renderer.resize(ps.width.max(1), ps.height.max(1));
+                            if let Some(ref mut sr) = side_renderer {
+                                sr.resize(ps.width.max(1), ps.height.max(1));
                             }
-                            WindowEvent::Resized(ps) => {
-                                renderer.resize(ps.width.max(1), ps.height.max(1));
-                                if let Some(ref mut sr) = side_renderer {
-                                    sr.resize(ps.width.max(1), ps.height.max(1));
-                                }
-                            }
-                            WindowEvent::RedrawRequested => {
-                                has_rendered_frame_inner.store(true, Ordering::Relaxed);
-                                frame_timer.begin_frame();
+                        }
+                        WindowEvent::RedrawRequested => {
+                            has_rendered_frame_inner.store(true, Ordering::Relaxed);
+                            frame_timer.begin_frame();
 
-                                // Apply any pending backend switch.
-                                if let Some(ref sw) = backend_switcher {
-                                    if let Some(new_backend) = sw.take_pending() {
-                                        current_backend = new_backend;
-                                        let title = format!("{} [{}]", window_title, current_backend.name());
-                                        window.set_title(&title);
-                                        let (w, h) = renderer.surface_size();
-                                        side_renderer = create_side_renderer(current_backend, w, h);
-                                        eprintln!("[webgpui-app] backend switched to: {}", current_backend.name());
-                                    }
-                                }
-
-                                let (sw, sh) = renderer.surface_size();
-                                let viewport = Size::new(sw as f32, sh as f32);
-                                draw_list.clear();
-                                let mut ctx = DrawContext::new(
-                                    &mut draw_list,
-                                    viewport,
-                                    &input_state,
-                                    current_backend,
-                                );
-                                frame_fn(&mut ctx);
-
-                                // Run the active side renderer (validation / side effects).
-                                if let Some(ref mut sr) = side_renderer {
-                                    let _ = sr.render(&draw_list);
-                                }
-
-                                match renderer.render(&draw_list) {
-                                    Ok(()) => {}
-                                    Err(RenderError::SurfaceLost) => {
-                                        let (w, h) = renderer.surface_size();
-                                        renderer.resize(w, h);
-                                    }
-                                    Err(e) => {
-                                        log::error!("[app] render error: {}", e);
-                                    }
-                                }
-
-                                if let Some(ms) = frame_timer.end_frame() {
-                                    if ms > 20.0
-                                        && last_perf_warn_at.elapsed() >= Duration::from_secs(1)
-                                    {
-                                        log::warn!("[app] slow frame: {:.2}ms", ms);
-                                        frame_timer.check_thresholds(16.6, 20.0);
-                                        last_perf_warn_at = Instant::now();
-                                    }
+                            // Apply any pending backend switch.
+                            if let Some(ref sw) = backend_switcher {
+                                if let Some(new_backend) = sw.take_pending() {
+                                    current_backend = new_backend;
+                                    let title =
+                                        format!("{} [{}]", window_title, current_backend.name());
+                                    window.set_title(&title);
+                                    let (w, h) = renderer.surface_size();
+                                    side_renderer = create_side_renderer(current_backend, w, h);
+                                    eprintln!(
+                                        "[webgpui-app] backend switched to: {}",
+                                        current_backend.name()
+                                    );
                                 }
                             }
-                            WindowEvent::CursorMoved { position, .. } => {
-                                let sf = window.scale_factor();
-                                let lp = position.to_logical::<f32>(sf);
-                                cursor_pos = Point::new(lp.x, lp.y);
-                                input_state.apply(&InputEvent::MouseMoved {
+
+                            let (sw, sh) = renderer.surface_size();
+                            let viewport = Size::new(sw as f32, sh as f32);
+                            draw_list.clear();
+                            let mut ctx = DrawContext::new(
+                                &mut draw_list,
+                                viewport,
+                                &input_state,
+                                current_backend,
+                            );
+                            frame_fn(&mut ctx);
+
+                            // Run the active side renderer (validation / side effects).
+                            if let Some(ref mut sr) = side_renderer {
+                                let _ = sr.render(&draw_list);
+                            }
+
+                            match renderer.render(&draw_list) {
+                                Ok(()) => {}
+                                Err(RenderError::SurfaceLost) => {
+                                    let (w, h) = renderer.surface_size();
+                                    renderer.resize(w, h);
+                                }
+                                Err(e) => {
+                                    log::error!("[app] render error: {}", e);
+                                }
+                            }
+
+                            if let Some(ms) = frame_timer.end_frame() {
+                                if ms > 20.0
+                                    && last_perf_warn_at.elapsed() >= Duration::from_secs(1)
+                                {
+                                    log::warn!("[app] slow frame: {:.2}ms", ms);
+                                    frame_timer.check_thresholds(16.6, 20.0);
+                                    last_perf_warn_at = Instant::now();
+                                }
+                            }
+                        }
+                        WindowEvent::CursorMoved { position, .. } => {
+                            let sf = window.scale_factor();
+                            let lp = position.to_logical::<f32>(sf);
+                            cursor_pos = Point::new(lp.x, lp.y);
+                            input_state.apply(&InputEvent::MouseMoved {
+                                position: cursor_pos,
+                            });
+                        }
+                        WindowEvent::MouseInput { state, button, .. } => {
+                            let mb = convert_mouse_button(button);
+                            let ev = match state {
+                                ElementState::Pressed => InputEvent::MousePressed {
+                                    button: mb,
                                     position: cursor_pos,
-                                });
-                            }
-                            WindowEvent::MouseInput { state, button, .. } => {
-                                let mb = convert_mouse_button(button);
-                                let ev = match state {
-                                    ElementState::Pressed => InputEvent::MousePressed {
-                                        button: mb,
-                                        position: cursor_pos,
-                                        modifiers: Modifiers::none(),
-                                    },
-                                    ElementState::Released => InputEvent::MouseReleased {
-                                        button: mb,
-                                        position: cursor_pos,
-                                        modifiers: Modifiers::none(),
-                                    },
-                                };
-                                input_state.apply(&ev);
-                            }
-                            WindowEvent::MouseWheel { delta, .. } => {
-                                let (dx, dy) = match delta {
-                                    MouseScrollDelta::LineDelta(x, y) => {
-                                        (*x * 20.0, *y * 20.0)
-                                    }
-                                    MouseScrollDelta::PixelDelta(p) => {
-                                        let sf = window.scale_factor();
-                                        let lp = p.to_logical::<f32>(sf);
-                                        (lp.x, lp.y)
-                                    }
-                                };
-                                input_state.apply(&InputEvent::MouseScrolled {
-                                    position: cursor_pos,
-                                    delta_x: dx,
-                                    delta_y: dy,
                                     modifiers: Modifiers::none(),
-                                });
-                            }
-                            WindowEvent::KeyboardInput {
-                                event: KeyEvent { logical_key, state, text, .. },
-                                ..
-                            } => {
-                                let key = convert_key(logical_key);
-                                let ev = match state {
-                                    ElementState::Pressed => InputEvent::KeyPressed {
-                                        key,
-                                        modifiers: Modifiers::none(),
-                                    },
-                                    ElementState::Released => InputEvent::KeyReleased {
-                                        key,
-                                        modifiers: Modifiers::none(),
-                                    },
-                                };
-                                input_state.apply(&ev);
-                                if *state == ElementState::Pressed {
-                                    if let Some(s) = text {
-                                        for ch in s.chars() {
-                                            input_state
-                                                .apply(&InputEvent::CharInput { ch });
-                                        }
+                                },
+                                ElementState::Released => InputEvent::MouseReleased {
+                                    button: mb,
+                                    position: cursor_pos,
+                                    modifiers: Modifiers::none(),
+                                },
+                            };
+                            input_state.apply(&ev);
+                        }
+                        WindowEvent::MouseWheel { delta, .. } => {
+                            let (dx, dy) = match delta {
+                                MouseScrollDelta::LineDelta(x, y) => (*x * 20.0, *y * 20.0),
+                                MouseScrollDelta::PixelDelta(p) => {
+                                    let sf = window.scale_factor();
+                                    let lp = p.to_logical::<f32>(sf);
+                                    (lp.x, lp.y)
+                                }
+                            };
+                            input_state.apply(&InputEvent::MouseScrolled {
+                                position: cursor_pos,
+                                delta_x: dx,
+                                delta_y: dy,
+                                modifiers: Modifiers::none(),
+                            });
+                        }
+                        WindowEvent::KeyboardInput {
+                            event:
+                                KeyEvent {
+                                    logical_key,
+                                    state,
+                                    text,
+                                    ..
+                                },
+                            ..
+                        } => {
+                            let key = convert_key(logical_key);
+                            let ev = match state {
+                                ElementState::Pressed => InputEvent::KeyPressed {
+                                    key,
+                                    modifiers: Modifiers::none(),
+                                },
+                                ElementState::Released => InputEvent::KeyReleased {
+                                    key,
+                                    modifiers: Modifiers::none(),
+                                },
+                            };
+                            input_state.apply(&ev);
+                            if *state == ElementState::Pressed {
+                                if let Some(s) = text {
+                                    for ch in s.chars() {
+                                        input_state.apply(&InputEvent::CharInput { ch });
                                     }
                                 }
                             }
-                            _ => {}
                         }
+                        _ => {}
                     }
-                    Event::AboutToWait => {
-                        // Optionally pace redraw to avoid saturating CPU fallback adapters.
-                        if let Some(interval) = frame_interval {
-                            elwt.set_control_flow(ControlFlow::WaitUntil(
-                                Instant::now() + interval,
-                            ));
-                        } else {
-                            elwt.set_control_flow(ControlFlow::Poll);
-                        }
-                        window.request_redraw();
-                    }
-                    _ => {}
                 }
-            });
+                Event::AboutToWait => {
+                    // Optionally pace redraw to avoid saturating CPU fallback adapters.
+                    if let Some(interval) = frame_interval {
+                        elwt.set_control_flow(ControlFlow::WaitUntil(Instant::now() + interval));
+                    } else {
+                        elwt.set_control_flow(ControlFlow::Poll);
+                    }
+                    window.request_redraw();
+                }
+                _ => {}
+            }
+        });
 
         match run_result {
             Ok(()) => Ok(()),
@@ -570,24 +580,42 @@ fn convert_key(key: &Key) -> KeyCode {
     match key {
         Key::Named(named) => convert_named_key(named),
         Key::Character(s) => match s.as_str() {
-            "a" | "A" => KeyCode::A,  "b" | "B" => KeyCode::B,
-            "c" | "C" => KeyCode::C,  "d" | "D" => KeyCode::D,
-            "e" | "E" => KeyCode::E,  "f" | "F" => KeyCode::F,
-            "g" | "G" => KeyCode::G,  "h" | "H" => KeyCode::H,
-            "i" | "I" => KeyCode::I,  "j" | "J" => KeyCode::J,
-            "k" | "K" => KeyCode::K,  "l" | "L" => KeyCode::L,
-            "m" | "M" => KeyCode::M,  "n" | "N" => KeyCode::N,
-            "o" | "O" => KeyCode::O,  "p" | "P" => KeyCode::P,
-            "q" | "Q" => KeyCode::Q,  "r" | "R" => KeyCode::R,
-            "s" | "S" => KeyCode::S,  "t" | "T" => KeyCode::T,
-            "u" | "U" => KeyCode::U,  "v" | "V" => KeyCode::V,
-            "w" | "W" => KeyCode::W,  "x" | "X" => KeyCode::X,
-            "y" | "Y" => KeyCode::Y,  "z" | "Z" => KeyCode::Z,
-            "0" => KeyCode::Digit0, "1" => KeyCode::Digit1,
-            "2" => KeyCode::Digit2, "3" => KeyCode::Digit3,
-            "4" => KeyCode::Digit4, "5" => KeyCode::Digit5,
-            "6" => KeyCode::Digit6, "7" => KeyCode::Digit7,
-            "8" => KeyCode::Digit8, "9" => KeyCode::Digit9,
+            "a" | "A" => KeyCode::A,
+            "b" | "B" => KeyCode::B,
+            "c" | "C" => KeyCode::C,
+            "d" | "D" => KeyCode::D,
+            "e" | "E" => KeyCode::E,
+            "f" | "F" => KeyCode::F,
+            "g" | "G" => KeyCode::G,
+            "h" | "H" => KeyCode::H,
+            "i" | "I" => KeyCode::I,
+            "j" | "J" => KeyCode::J,
+            "k" | "K" => KeyCode::K,
+            "l" | "L" => KeyCode::L,
+            "m" | "M" => KeyCode::M,
+            "n" | "N" => KeyCode::N,
+            "o" | "O" => KeyCode::O,
+            "p" | "P" => KeyCode::P,
+            "q" | "Q" => KeyCode::Q,
+            "r" | "R" => KeyCode::R,
+            "s" | "S" => KeyCode::S,
+            "t" | "T" => KeyCode::T,
+            "u" | "U" => KeyCode::U,
+            "v" | "V" => KeyCode::V,
+            "w" | "W" => KeyCode::W,
+            "x" | "X" => KeyCode::X,
+            "y" | "Y" => KeyCode::Y,
+            "z" | "Z" => KeyCode::Z,
+            "0" => KeyCode::Digit0,
+            "1" => KeyCode::Digit1,
+            "2" => KeyCode::Digit2,
+            "3" => KeyCode::Digit3,
+            "4" => KeyCode::Digit4,
+            "5" => KeyCode::Digit5,
+            "6" => KeyCode::Digit6,
+            "7" => KeyCode::Digit7,
+            "8" => KeyCode::Digit8,
+            "9" => KeyCode::Digit9,
             _ => KeyCode::Unknown,
         },
         _ => KeyCode::Unknown,
@@ -609,30 +637,36 @@ fn create_side_renderer(backend: BackendSelector, w: u32, h: u32) -> Option<Box<
 
 fn convert_named_key(key: &NamedKey) -> KeyCode {
     match key {
-        NamedKey::Space     => KeyCode::Space,
-        NamedKey::Enter     => KeyCode::Enter,
-        NamedKey::Tab       => KeyCode::Tab,
+        NamedKey::Space => KeyCode::Space,
+        NamedKey::Enter => KeyCode::Enter,
+        NamedKey::Tab => KeyCode::Tab,
         NamedKey::Backspace => KeyCode::Backspace,
-        NamedKey::Escape    => KeyCode::Escape,
-        NamedKey::Delete    => KeyCode::Delete,
-        NamedKey::ArrowLeft  => KeyCode::ArrowLeft,
+        NamedKey::Escape => KeyCode::Escape,
+        NamedKey::Delete => KeyCode::Delete,
+        NamedKey::ArrowLeft => KeyCode::ArrowLeft,
         NamedKey::ArrowRight => KeyCode::ArrowRight,
-        NamedKey::ArrowUp    => KeyCode::ArrowUp,
-        NamedKey::ArrowDown  => KeyCode::ArrowDown,
-        NamedKey::Home     => KeyCode::Home,
-        NamedKey::End      => KeyCode::End,
-        NamedKey::PageUp   => KeyCode::PageUp,
+        NamedKey::ArrowUp => KeyCode::ArrowUp,
+        NamedKey::ArrowDown => KeyCode::ArrowDown,
+        NamedKey::Home => KeyCode::Home,
+        NamedKey::End => KeyCode::End,
+        NamedKey::PageUp => KeyCode::PageUp,
         NamedKey::PageDown => KeyCode::PageDown,
-        NamedKey::Shift   => KeyCode::Shift,
+        NamedKey::Shift => KeyCode::Shift,
         NamedKey::Control => KeyCode::Control,
-        NamedKey::Alt     => KeyCode::Alt,
-        NamedKey::Meta    => KeyCode::Meta,
-        NamedKey::F1  => KeyCode::F1,  NamedKey::F2  => KeyCode::F2,
-        NamedKey::F3  => KeyCode::F3,  NamedKey::F4  => KeyCode::F4,
-        NamedKey::F5  => KeyCode::F5,  NamedKey::F6  => KeyCode::F6,
-        NamedKey::F7  => KeyCode::F7,  NamedKey::F8  => KeyCode::F8,
-        NamedKey::F9  => KeyCode::F9,  NamedKey::F10 => KeyCode::F10,
-        NamedKey::F11 => KeyCode::F11, NamedKey::F12 => KeyCode::F12,
+        NamedKey::Alt => KeyCode::Alt,
+        NamedKey::Meta => KeyCode::Meta,
+        NamedKey::F1 => KeyCode::F1,
+        NamedKey::F2 => KeyCode::F2,
+        NamedKey::F3 => KeyCode::F3,
+        NamedKey::F4 => KeyCode::F4,
+        NamedKey::F5 => KeyCode::F5,
+        NamedKey::F6 => KeyCode::F6,
+        NamedKey::F7 => KeyCode::F7,
+        NamedKey::F8 => KeyCode::F8,
+        NamedKey::F9 => KeyCode::F9,
+        NamedKey::F10 => KeyCode::F10,
+        NamedKey::F11 => KeyCode::F11,
+        NamedKey::F12 => KeyCode::F12,
         _ => KeyCode::Unknown,
     }
 }

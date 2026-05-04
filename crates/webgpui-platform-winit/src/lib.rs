@@ -5,7 +5,7 @@ use std::sync::Arc;
 use winit::{
     dpi::{LogicalSize, PhysicalSize},
     event::{
-        DeviceEvent, ElementState, Event, KeyEvent, MouseButton as WinitMouseButton,
+        ElementState, Event, KeyEvent, MouseButton as WinitMouseButton,
         MouseScrollDelta, WindowEvent,
     },
     event_loop::{ControlFlow, EventLoop},
@@ -15,7 +15,10 @@ use winit::{
 
 use webgpui_geometry::{Point, Size};
 use webgpui_input::{InputEvent, KeyCode, Modifiers, MouseButton};
-use webgpui_platform::{EventHandler, Platform, PlatformError, PlatformEvent, PlatformResult, WindowConfig, WindowHandle};
+use webgpui_platform::{
+    EventHandler, Platform, PlatformError, PlatformEvent, PlatformResult, WindowConfig,
+    WindowHandle,
+};
 
 // ---------------------------------------------------------------------------
 // WinitWindowHandle
@@ -78,16 +81,19 @@ impl Platform for WinitPlatform {
             .map_err(|e| PlatformError::WindowCreation(e.to_string()))?;
 
         let window = Arc::new(window);
-        let handle = WinitWindowHandle { window: Arc::clone(&window) };
+        let handle = WinitWindowHandle {
+            window: Arc::clone(&window),
+        };
 
         event_loop.set_control_flow(ControlFlow::Poll);
 
         event_loop
             .run(move |event, elwt| {
                 match event {
-                    Event::WindowEvent { ref event, window_id }
-                        if window_id == window.id() =>
-                    {
+                    Event::WindowEvent {
+                        ref event,
+                        window_id,
+                    } if window_id == window.id() => {
                         match event {
                             WindowEvent::CloseRequested => {
                                 handler.on_event(PlatformEvent::CloseRequested, &handle);
@@ -99,7 +105,9 @@ impl Platform for WinitPlatform {
                             WindowEvent::Resized(ps) => {
                                 let size = Size::new(ps.width as f32, ps.height as f32);
                                 handler.on_event(
-                                    PlatformEvent::Resized { physical_size: size },
+                                    PlatformEvent::Resized {
+                                        physical_size: size,
+                                    },
                                     &handle,
                                 );
                             }
@@ -123,9 +131,6 @@ impl Platform for WinitPlatform {
                             }
                             WindowEvent::MouseInput { state, button, .. } => {
                                 let mb = convert_mouse_button(button);
-                                let cursor = window
-                                    .inner_size()
-                                    .to_logical::<f32>(window.scale_factor());
                                 let pos = Point::ZERO; // position tracked via CursorMoved
                                 let ev = match state {
                                     ElementState::Pressed => InputEvent::MousePressed {
@@ -171,12 +176,14 @@ impl Platform for WinitPlatform {
                             } => {
                                 let key = convert_key(logical_key);
                                 let ev = match state {
-                                    ElementState::Pressed => {
-                                        InputEvent::KeyPressed { key, modifiers: Modifiers::none() }
-                                    }
-                                    ElementState::Released => {
-                                        InputEvent::KeyReleased { key, modifiers: Modifiers::none() }
-                                    }
+                                    ElementState::Pressed => InputEvent::KeyPressed {
+                                        key,
+                                        modifiers: Modifiers::none(),
+                                    },
+                                    ElementState::Released => InputEvent::KeyReleased {
+                                        key,
+                                        modifiers: Modifiers::none(),
+                                    },
                                 };
                                 handler.on_event(PlatformEvent::Input(ev), &handle);
 
@@ -223,24 +230,42 @@ fn convert_key(key: &Key) -> KeyCode {
     match key {
         Key::Named(named) => convert_named_key(named),
         Key::Character(s) => match s.as_str() {
-            "a" | "A" => KeyCode::A, "b" | "B" => KeyCode::B,
-            "c" | "C" => KeyCode::C, "d" | "D" => KeyCode::D,
-            "e" | "E" => KeyCode::E, "f" | "F" => KeyCode::F,
-            "g" | "G" => KeyCode::G, "h" | "H" => KeyCode::H,
-            "i" | "I" => KeyCode::I, "j" | "J" => KeyCode::J,
-            "k" | "K" => KeyCode::K, "l" | "L" => KeyCode::L,
-            "m" | "M" => KeyCode::M, "n" | "N" => KeyCode::N,
-            "o" | "O" => KeyCode::O, "p" | "P" => KeyCode::P,
-            "q" | "Q" => KeyCode::Q, "r" | "R" => KeyCode::R,
-            "s" | "S" => KeyCode::S, "t" | "T" => KeyCode::T,
-            "u" | "U" => KeyCode::U, "v" | "V" => KeyCode::V,
-            "w" | "W" => KeyCode::W, "x" | "X" => KeyCode::X,
-            "y" | "Y" => KeyCode::Y, "z" | "Z" => KeyCode::Z,
-            "0" => KeyCode::Digit0, "1" => KeyCode::Digit1,
-            "2" => KeyCode::Digit2, "3" => KeyCode::Digit3,
-            "4" => KeyCode::Digit4, "5" => KeyCode::Digit5,
-            "6" => KeyCode::Digit6, "7" => KeyCode::Digit7,
-            "8" => KeyCode::Digit8, "9" => KeyCode::Digit9,
+            "a" | "A" => KeyCode::A,
+            "b" | "B" => KeyCode::B,
+            "c" | "C" => KeyCode::C,
+            "d" | "D" => KeyCode::D,
+            "e" | "E" => KeyCode::E,
+            "f" | "F" => KeyCode::F,
+            "g" | "G" => KeyCode::G,
+            "h" | "H" => KeyCode::H,
+            "i" | "I" => KeyCode::I,
+            "j" | "J" => KeyCode::J,
+            "k" | "K" => KeyCode::K,
+            "l" | "L" => KeyCode::L,
+            "m" | "M" => KeyCode::M,
+            "n" | "N" => KeyCode::N,
+            "o" | "O" => KeyCode::O,
+            "p" | "P" => KeyCode::P,
+            "q" | "Q" => KeyCode::Q,
+            "r" | "R" => KeyCode::R,
+            "s" | "S" => KeyCode::S,
+            "t" | "T" => KeyCode::T,
+            "u" | "U" => KeyCode::U,
+            "v" | "V" => KeyCode::V,
+            "w" | "W" => KeyCode::W,
+            "x" | "X" => KeyCode::X,
+            "y" | "Y" => KeyCode::Y,
+            "z" | "Z" => KeyCode::Z,
+            "0" => KeyCode::Digit0,
+            "1" => KeyCode::Digit1,
+            "2" => KeyCode::Digit2,
+            "3" => KeyCode::Digit3,
+            "4" => KeyCode::Digit4,
+            "5" => KeyCode::Digit5,
+            "6" => KeyCode::Digit6,
+            "7" => KeyCode::Digit7,
+            "8" => KeyCode::Digit8,
+            "9" => KeyCode::Digit9,
             _ => KeyCode::Unknown,
         },
         _ => KeyCode::Unknown,
@@ -267,12 +292,18 @@ fn convert_named_key(key: &NamedKey) -> KeyCode {
         NamedKey::Control => KeyCode::Control,
         NamedKey::Alt => KeyCode::Alt,
         NamedKey::Meta => KeyCode::Meta,
-        NamedKey::F1 => KeyCode::F1, NamedKey::F2 => KeyCode::F2,
-        NamedKey::F3 => KeyCode::F3, NamedKey::F4 => KeyCode::F4,
-        NamedKey::F5 => KeyCode::F5, NamedKey::F6 => KeyCode::F6,
-        NamedKey::F7 => KeyCode::F7, NamedKey::F8 => KeyCode::F8,
-        NamedKey::F9 => KeyCode::F9, NamedKey::F10 => KeyCode::F10,
-        NamedKey::F11 => KeyCode::F11, NamedKey::F12 => KeyCode::F12,
+        NamedKey::F1 => KeyCode::F1,
+        NamedKey::F2 => KeyCode::F2,
+        NamedKey::F3 => KeyCode::F3,
+        NamedKey::F4 => KeyCode::F4,
+        NamedKey::F5 => KeyCode::F5,
+        NamedKey::F6 => KeyCode::F6,
+        NamedKey::F7 => KeyCode::F7,
+        NamedKey::F8 => KeyCode::F8,
+        NamedKey::F9 => KeyCode::F9,
+        NamedKey::F10 => KeyCode::F10,
+        NamedKey::F11 => KeyCode::F11,
+        NamedKey::F12 => KeyCode::F12,
         _ => KeyCode::Unknown,
     }
 }

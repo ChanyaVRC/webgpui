@@ -91,11 +91,13 @@ impl WgpuContext {
     ///
     /// `window` must outlive the returned `WgpuContext`.
     pub fn new(
-        window: Arc<impl raw_window_handle::HasWindowHandle
-                     + raw_window_handle::HasDisplayHandle
-                     + Send
-                     + Sync
-                     + 'static>,
+        window: Arc<
+            impl raw_window_handle::HasWindowHandle
+                + raw_window_handle::HasDisplayHandle
+                + Send
+                + Sync
+                + 'static,
+        >,
         width: u32,
         height: u32,
         vsync: bool,
@@ -105,9 +107,7 @@ impl WgpuContext {
             ..Default::default()
         });
 
-        let surface = instance
-            .create_surface(window)
-            .map_err(|e| e.to_string())?;
+        let surface = instance.create_surface(window).map_err(|e| e.to_string())?;
 
         let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::HighPerformance,
@@ -389,7 +389,10 @@ impl WgpuRenderer {
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: clear.r, g: clear.g, b: clear.b, a: clear.a,
+                            r: clear.r,
+                            g: clear.g,
+                            b: clear.b,
+                            a: clear.a,
                         }),
                         store: wgpu::StoreOp::Store,
                     },
@@ -417,7 +420,10 @@ impl WgpuRenderer {
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color {
-                        r: clear.r, g: clear.g, b: clear.b, a: clear.a,
+                        r: clear.r,
+                        g: clear.g,
+                        b: clear.b,
+                        a: clear.a,
                     }),
                     store: wgpu::StoreOp::Store,
                 },
@@ -444,11 +450,18 @@ impl Renderer for WgpuRenderer {
         let h = height.max(1);
         self.ctx.config.width = w;
         self.ctx.config.height = h;
-        self.ctx.surface.configure(&self.ctx.device, &self.ctx.config);
+        self.ctx
+            .surface
+            .configure(&self.ctx.device, &self.ctx.config);
 
         // Update globals.
-        let globals = Globals { viewport_size: [w as f32, h as f32], _pad: [0.0; 2] };
-        self.ctx.queue.write_buffer(&self.globals_buffer, 0, bytemuck::bytes_of(&globals));
+        let globals = Globals {
+            viewport_size: [w as f32, h as f32],
+            _pad: [0.0; 2],
+        };
+        self.ctx
+            .queue
+            .write_buffer(&self.globals_buffer, 0, bytemuck::bytes_of(&globals));
         log::debug!("[wgpu] surface resized to {}x{}", w, h);
     }
 
@@ -470,10 +483,15 @@ impl Renderer for WgpuRenderer {
             }
         };
 
-        let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let mut encoder = self.ctx.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("frame-encoder"),
-        });
+        let view = output
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
+        let mut encoder = self
+            .ctx
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("frame-encoder"),
+            });
 
         // Read clear colour from the render graph.
         let clear = self

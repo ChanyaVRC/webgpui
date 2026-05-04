@@ -1,3 +1,5 @@
+//! CUDA backend crate for webgpui.
+
 // webgpui-render-cuda: CUDA GPU backend implementation
 //
 // This crate provides a CUDA-based GPU renderer implementation

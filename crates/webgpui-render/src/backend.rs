@@ -80,21 +80,33 @@ impl BackendSelector {
         match self {
             BackendSelector::Wgpu => {
                 #[cfg(feature = "backend-wgpu")]
-                { true }
+                {
+                    true
+                }
                 #[cfg(not(feature = "backend-wgpu"))]
-                { false }
+                {
+                    false
+                }
             }
             BackendSelector::Cuda => {
                 #[cfg(feature = "backend-cuda")]
-                { true }
+                {
+                    true
+                }
                 #[cfg(not(feature = "backend-cuda"))]
-                { false }
+                {
+                    false
+                }
             }
             BackendSelector::Cpu => {
                 #[cfg(feature = "backend-cpu")]
-                { true }
+                {
+                    true
+                }
                 #[cfg(not(feature = "backend-cpu"))]
-                { false }
+                {
+                    false
+                }
             }
         }
     }
@@ -221,10 +233,22 @@ mod tests {
 
     #[test]
     fn backend_selector_from_str() {
-        assert_eq!("wgpu".parse::<BackendSelector>().unwrap(), BackendSelector::Wgpu);
-        assert_eq!("cuda".parse::<BackendSelector>().unwrap(), BackendSelector::Cuda);
-        assert_eq!("cpu".parse::<BackendSelector>().unwrap(), BackendSelector::Cpu);
-        assert_eq!("WGPU".parse::<BackendSelector>().unwrap(), BackendSelector::Wgpu);
+        assert_eq!(
+            "wgpu".parse::<BackendSelector>().unwrap(),
+            BackendSelector::Wgpu
+        );
+        assert_eq!(
+            "cuda".parse::<BackendSelector>().unwrap(),
+            BackendSelector::Cuda
+        );
+        assert_eq!(
+            "cpu".parse::<BackendSelector>().unwrap(),
+            BackendSelector::Cpu
+        );
+        assert_eq!(
+            "WGPU".parse::<BackendSelector>().unwrap(),
+            BackendSelector::Wgpu
+        );
         assert!("invalid".parse::<BackendSelector>().is_err());
     }
 }
