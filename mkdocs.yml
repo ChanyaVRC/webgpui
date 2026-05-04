@@ -1,8 +1,8 @@
 site_name: webgpui Docs
 site_description: webgpui design and requirements documentation
-site_url: https://<your-account>.github.io/<your-repo>/
-repo_url: https://github.com/<your-account>/<your-repo>
-repo_name: <your-account>/<your-repo>
+site_url: https://ChanyaVRC.github.io/webgpui/
+repo_url: https://github.com/ChanyaVRC/webgpui
+repo_name: ChanyaVRC/webgpui
 
 theme:
   name: material
