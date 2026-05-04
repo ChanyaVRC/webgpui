@@ -80,3 +80,18 @@ Use the milestone gate to evaluate roadmap completion criteria in CI.
 ```bash
 scripts/ci/check_milestone_gate.sh M1
 ```
+
+## 10. M1 Migration Notes
+
+Behavior changes introduced in M1 (`webgpui-input`):
+
+| API | Old behavior | New behavior |
+| --- | --- | --- |
+| `dispatch(path, ...)` with empty `path` | Panics (`assert!`) | No-op (returns immediately) |
+| `FocusManager::set_focusable_order(order)` | Stores `order` as-is | Deduplicates entries (first occurrence wins); clears `focused` if the focused node is absent from the new list |
+
+New APIs added in M1 (no breaking changes to existing call sites):
+- `EventPhase` enum (`Capture`, `Target`, `Bubble`)
+- `dispatch(path, event, visitor)` free function
+- `FocusManager::register_focusable` / `unregister_focusable` / `set_focusable_order` / `focusable_order`
+- `FocusManager::move_focus_forward` / `move_focus_backward` / `handle_key`

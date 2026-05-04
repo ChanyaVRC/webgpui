@@ -80,3 +80,18 @@ scripts/ci/check_p1_gate.sh .ci/p1-metrics.txt .ci/p1-thresholds.env
 ```bash
 scripts/ci/check_milestone_gate.sh M1
 ```
+
+## 10. M1 移行ノート
+
+M1 で導入した `webgpui-input` の挙動変更:
+
+| API | 旧挙動 | 新挙動 |
+| --- | --- | --- |
+| 空 `path` での `dispatch(path, ...)` | パニック（`assert!`） | ノーオペレーション（即座に return） |
+| `FocusManager::set_focusable_order(order)` | `order` をそのまま格納 | 重複を除去（先出し優先）し、フォーカス中ノードが新リストに含まれない場合はフォーカスをクリア |
+
+M1 で追加した新 API（既存の呼び出し箇所に破壊的変更なし）:
+- `EventPhase` 列挙型（`Capture`、`Target`、`Bubble`）
+- `dispatch(path, event, visitor)` フリー関数
+- `FocusManager::register_focusable` / `unregister_focusable` / `set_focusable_order` / `focusable_order`
+- `FocusManager::move_focus_forward` / `move_focus_backward` / `handle_key`

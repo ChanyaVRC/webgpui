@@ -7,6 +7,12 @@ use webgpui_geometry::{Color, Point, Rect, Size};
 use webgpui_profiler::FrameTimer;
 use webgpui_render::{BackendSelector, DrawCommand, DrawList};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DemoFocus {
+    Textbox,
+    Button,
+}
+
 const KEY_W: f32 = 32.0;
 const KEY_H: f32 = 28.0;
 const KEY_GAP: f32 = 6.0;
@@ -16,7 +22,7 @@ const FONT_H: usize = 7;
 
 struct DemoUiState {
     text_value: String,
-    text_focused: bool,
+    focus: DemoFocus,
     submit_flash: u8,
     frame_index: u64,
     prev_mouse_down: bool,
@@ -30,7 +36,7 @@ impl DemoUiState {
     fn new(switcher: BackendSwitcher) -> Self {
         Self {
             text_value: String::new(),
-            text_focused: true,
+            focus: DemoFocus::Textbox,
             submit_flash: 0,
             frame_index: 0,
             prev_mouse_down: false,
@@ -93,7 +99,7 @@ impl DemoUiState {
         self.handle_interaction(ctx, text_rect, button_rect);
 
         self.draw_textbox(ctx, text_rect);
-        self.draw_button(ctx, button_rect);
+        self.draw_button(ctx, button_rect, self.focus == DemoFocus::Button);
 
         let keyboard_origin = Point::new(panel.origin.x + 22.0, panel.origin.y + 102.0);
         self.draw_keyboard(ctx, keyboard_origin);
@@ -136,17 +142,31 @@ impl DemoUiState {
             }
             if !handled {
                 if text_rect.contains(mouse_pos) {
-                    self.text_focused = true;
+                    self.focus = DemoFocus::Textbox;
                 } else if button_rect.contains(mouse_pos) {
+                    self.focus = DemoFocus::Button;
                     self.submit();
-                } else {
-                    self.text_focused = false;
                 }
             }
         }
 
-        if self.text_focused {
-            self.handle_text_input(ctx);
+        // Tab: cycle focus between textbox and button.
+        if is_new_key_press(ctx, &self.prev_pressed_keys, KeyCode::Tab) {
+            self.focus = match self.focus {
+                DemoFocus::Textbox => DemoFocus::Button,
+                DemoFocus::Button => DemoFocus::Textbox,
+            };
+        }
+
+        match self.focus {
+            DemoFocus::Textbox => self.handle_text_input(ctx),
+            DemoFocus::Button => {
+                if is_new_key_press(ctx, &self.prev_pressed_keys, KeyCode::Enter)
+                    || is_new_key_press(ctx, &self.prev_pressed_keys, KeyCode::Space)
+                {
+                    self.submit();
+                }
+            }
         }
 
         self.log_pressed_key_edges(ctx);
@@ -186,7 +206,7 @@ impl DemoUiState {
     }
 
     fn draw_textbox(&self, ctx: &mut DrawContext<'_>, text_rect: Rect) {
-        let border = if self.text_focused {
+        let border = if self.focus == DemoFocus::Textbox {
             Color::new(0.35, 0.7, 1.0, 1.0)
         } else {
             Color::new(0.45, 0.49, 0.58, 1.0)
@@ -221,7 +241,7 @@ impl DemoUiState {
             draw_char_at(ctx, tx, ty, ch, tscale, Color::new(0.9, 0.96, 1.0, 1.0));
         }
 
-        if self.text_focused && (self.frame_index / 24).is_multiple_of(2) {
+        if self.focus == DemoFocus::Textbox && (self.frame_index / 24).is_multiple_of(2) {
             let ci = self.text_value.len().min(MAX_TEXT_LEN);
             // Place caret at the left edge of the next slot.
             let slot_cx = text_rect.origin.x + 13.0 + ci as f32 * slot_w + slot_w / 2.0;
@@ -231,7 +251,14 @@ impl DemoUiState {
         }
     }
 
-    fn draw_button(&self, ctx: &mut DrawContext<'_>, button_rect: Rect) {
+    fn draw_button(&self, ctx: &mut DrawContext<'_>, button_rect: Rect, focused: bool) {
+        if focused {
+            let ring = Rect::from_origin_size(
+                Point::new(button_rect.origin.x - 3.0, button_rect.origin.y - 3.0),
+                Size::new(button_rect.size.width + 6.0, button_rect.size.height + 6.0),
+            );
+            ctx.draw_border(ring, Color::new(0.35, 0.7, 1.0, 1.0), 2.0);
+        }
         let color = if self.submit_flash > 0 {
             Color::new(0.27, 0.86, 0.53, 1.0)
         } else {
