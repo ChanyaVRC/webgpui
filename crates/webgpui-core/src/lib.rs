@@ -341,8 +341,15 @@ impl DirtyTracker {
         self.full_invalidate || !self.rects.is_empty()
     }
 
-    /// Computes the union of all dirty rects.  Returns `None` if no dirty
-    /// regions exist (and `needs_full_redraw` is false).
+    /// Computes the union of all recorded dirty rects.
+    ///
+    /// Returns `None` in two distinct cases:
+    /// * No rects have been recorded and `needs_full_redraw()` is `false`.
+    /// * `needs_full_redraw()` is `true` — the caller must use the full
+    ///   viewport instead (see [`effective_area`][Self::effective_area]).
+    ///
+    /// Prefer [`effective_area`][Self::effective_area] for the common rendering
+    /// loop, which handles both cases automatically.
     pub fn dirty_union(&self) -> Option<Rect> {
         if self.full_invalidate {
             return None; // Caller should use the full viewport.
