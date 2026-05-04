@@ -226,9 +226,24 @@ mod tests {
     }
 
     #[test]
+    #[cfg(any(
+        feature = "backend-wgpu",
+        feature = "backend-cuda",
+        feature = "backend-cpu"
+    ))]
     fn backend_selector_available() {
         let available = BackendSelector::available();
         assert!(!available.is_empty());
+    }
+
+    #[test]
+    #[cfg(not(any(
+        feature = "backend-wgpu",
+        feature = "backend-cuda",
+        feature = "backend-cpu"
+    )))]
+    fn backend_selector_available_empty_when_no_features() {
+        assert!(BackendSelector::available().is_empty());
     }
 
     #[test]
