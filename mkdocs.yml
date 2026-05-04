@@ -8,48 +8,69 @@ theme:
   name: material
   language: en
 
+extra:
+  alternate:
+    - name: English
+      link: /webgpui/
+      lang: en
+    - name: 日本語
+      link: /webgpui/ja/
+      lang: ja
+
 nav:
-  - Home: index.md
-  - GitHub Pages Guide: github-pages.md
-  - Design Philosophy: design-philosophy.md
-  - Requirements Summary: requirements-summary.md
-  - Contributing Guide: contributing.md
-  - Glossary: glossary.md
-  - Architecture Decision Policy: architecture-decisions.md
-  - Detailed Requirements: requirements.md
-  - Roadmap: roadmap.md
-  - Workspace Architecture: workspace-architecture.md
-  - Rendering Performance Plan: rendering-performance-plan.md
-  - Replacement Strategy: replacement-strategy.md
-  - API Mapping: api-mapping.md
-  - API Swapping Quality Plan: api-swapping-quality-plan.md
-  - CI Gates Guide: ci-gates.md
-  - Metrics Format: metrics-format.md
-  - CUDA Backend Support: cuda-backend.md
-  - Dynamic Backend Switching: dynamic-backend-switching.md
-  - Docs Coverage Review: docs-coverage-review.md
-  - Documentation Map: documentation-map.md
-  - Japanese:
-      - ホーム: ja/index.md
-      - GitHub Pages 公開手順: ja/github-pages.md
-      - 設計思想: ja/design-philosophy.md
-      - 要件サマリー: ja/requirements-summary.md
-      - 開発ガイド: ja/contributing.md
-      - 用語集: ja/glossary.md
-      - アーキテクチャ意思決定ログ方針: ja/architecture-decisions.md
-      - 要件定義（詳細）: ja/requirements.md
-      - ロードマップ: ja/roadmap.md
-      - 構成案（crate分割）: ja/workspace-architecture.md
-      - レンダリング高速化計画: ja/rendering-performance-plan.md
-      - 代替戦略: ja/replacement-strategy.md
-      - APIマッピング: ja/api-mapping.md
-      - APIスワップ品質保証: ja/api-swapping-quality-plan.md
-      - CIゲート運用: ja/ci-gates.md
-      - メトリクス仕様: ja/metrics-format.md
-      - CUDAバックエンド対応: ja/cuda-backend.md
-      - GPU バックエンド動的切り替え: ja/dynamic-backend-switching.md
-      - docs追加検討結果: ja/docs-coverage-review.md
-      - ドキュメントマップ: ja/documentation-map.md
+  - Getting Started:
+      - Home: index.md
+      - Design Philosophy: design-philosophy.md
+      - Contributing Guide: contributing.md
+      - Glossary: glossary.md
+  - Architecture:
+      - Requirements Summary: requirements-summary.md
+      - Detailed Requirements: requirements.md
+      - Workspace Architecture: workspace-architecture.md
+      - Architecture Decision Policy: architecture-decisions.md
+      - Roadmap: roadmap.md
+  - Rendering & Performance:
+      - Rendering Performance Plan: rendering-performance-plan.md
+      - Replacement Strategy: replacement-strategy.md
+      - API Mapping: api-mapping.md
+      - API Swapping Quality Plan: api-swapping-quality-plan.md
+  - Backends:
+      - CUDA Backend Support: cuda-backend.md
+      - Dynamic Backend Switching: dynamic-backend-switching.md
+  - CI & Quality:
+      - CI Gates Guide: ci-gates.md
+      - Metrics Format: metrics-format.md
+      - Docs Coverage Review: docs-coverage-review.md
+  - Reference:
+      - Documentation Map: documentation-map.md
+      - GitHub Pages Guide: github-pages.md
+  - 日本語:
+      - はじめに:
+          - ホーム: ja/index.md
+          - 設計思想: ja/design-philosophy.md
+          - 開発ガイド: ja/contributing.md
+          - 用語集: ja/glossary.md
+      - アーキテクチャ:
+          - 要件サマリー: ja/requirements-summary.md
+          - 要件定義（詳細）: ja/requirements.md
+          - 構成案（crate分割）: ja/workspace-architecture.md
+          - アーキテクチャ意思決定ログ方針: ja/architecture-decisions.md
+          - ロードマップ: ja/roadmap.md
+      - レンダリング & パフォーマンス:
+          - レンダリング高速化計画: ja/rendering-performance-plan.md
+          - 代替戦略: ja/replacement-strategy.md
+          - APIマッピング: ja/api-mapping.md
+          - APIスワップ品質保証: ja/api-swapping-quality-plan.md
+      - バックエンド:
+          - CUDAバックエンド対応: ja/cuda-backend.md
+          - GPU バックエンド動的切り替え: ja/dynamic-backend-switching.md
+      - CI & 品質:
+          - CIゲート運用: ja/ci-gates.md
+          - メトリクス仕様: ja/metrics-format.md
+          - docs追加検討結果: ja/docs-coverage-review.md
+      - リファレンス:
+          - ドキュメントマップ: ja/documentation-map.md
+          - GitHub Pages 公開手順: ja/github-pages.md
 
 markdown_extensions:
   - tables
