@@ -112,7 +112,7 @@ impl DemoUiState {
             let backend_buttons = backend_button_rects(w);
             let mut handled = false;
             for (backend, rect) in &backend_buttons {
-                if rect_contains(*rect, mouse_pos) {
+                if rect.contains(mouse_pos) {
                     handled = true;
                     if *backend == ctx.current_backend {
                         // already active — do nothing
@@ -133,9 +133,9 @@ impl DemoUiState {
                 }
             }
             if !handled {
-                if rect_contains(text_rect, mouse_pos) {
+                if text_rect.contains(mouse_pos) {
                     self.text_focused = true;
-                } else if rect_contains(button_rect, mouse_pos) {
+                } else if button_rect.contains(mouse_pos) {
                     self.submit();
                 } else {
                     self.text_focused = false;
@@ -794,13 +794,6 @@ fn draw_key_row(
 
         x += width + KEY_GAP;
     }
-}
-
-fn rect_contains(rect: Rect, p: Point) -> bool {
-    p.x >= rect.origin.x
-        && p.x <= rect.origin.x + rect.size.width
-        && p.y >= rect.origin.y
-        && p.y <= rect.origin.y + rect.size.height
 }
 
 fn is_new_key_press(ctx: &DrawContext<'_>, previous: &HashSet<KeyCode>, key: KeyCode) -> bool {
