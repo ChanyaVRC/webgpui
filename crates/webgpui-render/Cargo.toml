@@ -1,0 +1,15 @@
+[package]
+name = "webgpui-render"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+webgpui-geometry = { workspace = true }
+thiserror        = { workspace = true }
+
+[features]
+# Feature flags for backend selection (cfg tracking)
+backend-wgpu = []
+backend-cuda = []
+backend-cpu  = []

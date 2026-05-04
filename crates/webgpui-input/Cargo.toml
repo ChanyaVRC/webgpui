@@ -1,0 +1,8 @@
+[package]
+name = "webgpui-input"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+webgpui-geometry = { workspace = true }

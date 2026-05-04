@@ -1,0 +1,24 @@
+# Rust build artifacts
+/target/
+**/*.rs.bk
+
+# Python / docs tooling
+.venv/
+.venv-docs/
+__pycache__/
+*.py[cod]
+
+# MkDocs output
+/site/
+
+# Generated metrics (keep example files)
+/.ci/p0-metrics.txt
+/.ci/p1-metrics.txt
+
+# Logs and temp files
+*.log
+*.tmp
+
+# OS/editor noise
+.DS_Store
+Thumbs.db

@@ -1,0 +1,25 @@
+[package]
+name = "webgpui-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+webgpui-geometry     = { workspace = true }
+webgpui-profiler     = { workspace = true }
+webgpui-input        = { workspace = true }
+webgpui-core         = { workspace = true }
+webgpui-render       = { workspace = true }
+webgpui-render-wgpu  = { workspace = true }
+webgpui-render-graph = { workspace = true }
+webgpui-render-cpu   = { workspace = true, optional = true }
+wgpu                 = { workspace = true }
+winit                = { workspace = true }
+log                  = { workspace = true }
+env_logger           = { workspace = true }
+thiserror            = { workspace = true }
+
+[features]
+backend-wgpu = ["webgpui-render/backend-wgpu"]
+backend-cuda = ["webgpui-render/backend-cuda"]
+backend-cpu  = ["dep:webgpui-render-cpu", "webgpui-render/backend-cpu"]

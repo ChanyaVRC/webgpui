@@ -1,0 +1,22 @@
+[package]
+name = "webgpui-render-wgpu"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+webgpui-geometry     = { workspace = true }
+webgpui-render       = { workspace = true }
+webgpui-batching     = { workspace = true }
+webgpui-render-graph = { workspace = true }
+wgpu                 = { workspace = true }
+bytemuck             = { workspace = true }
+pollster             = { workspace = true }
+log                  = { workspace = true }
+thiserror            = { workspace = true }
+raw-window-handle    = "0.6"
+
+[features]
+default     = []
+backend-cpu = []
+backend-wgpu = []

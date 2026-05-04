@@ -1,0 +1,61 @@
+# メトリクスフォーマット仕様（P0 / P1）
+
+## 1. 共通仕様
+- 形式: `KEY=VALUE`
+- 1行1項目
+- 文字コード: UTF-8
+- 小数は `.` を使用
+
+## 2. P0メトリクス
+ファイル: `.ci/p0-metrics.txt`
+
+必須キー:
+- `AVG_FRAME_MS`
+- `P95_FRAME_MS`
+- `DRAW_CALLS`
+- `COMPAT_AVG_FRAME_MS`
+- `COMPAT_P95_FRAME_MS`
+- `FASTPATH_AVG_FRAME_MS`
+- `FASTPATH_P95_FRAME_MS`
+
+例:
+```text
+AVG_FRAME_MS=14.8
+P95_FRAME_MS=18.9
+DRAW_CALLS=160
+COMPAT_AVG_FRAME_MS=18.0
+COMPAT_P95_FRAME_MS=22.0
+FASTPATH_AVG_FRAME_MS=14.8
+FASTPATH_P95_FRAME_MS=18.9
+```
+
+## 3. P1メトリクス
+ファイル: `.ci/p1-metrics.txt`
+
+必須キー:
+- `DRAW_CALLS_UNBATCHED`
+- `DRAW_CALLS_BATCHED`
+- `SUBMIT_CALLS_BATCHED`
+- `CPU_BUILD_MS_UNBATCHED`
+- `CPU_BUILD_MS_BATCHED`
+- `DRAW_CALL_REDUCTION_RATIO`
+
+例:
+```text
+DRAW_CALLS_UNBATCHED=320
+DRAW_CALLS_BATCHED=96
+SUBMIT_CALLS_BATCHED=3
+CPU_BUILD_MS_UNBATCHED=6.5
+CPU_BUILD_MS_BATCHED=4.9
+DRAW_CALL_REDUCTION_RATIO=0.30
+```
+
+## 4. 値の定義
+- `DRAW_CALL_REDUCTION_RATIO = DRAW_CALLS_BATCHED / DRAW_CALLS_UNBATCHED`
+- `CPU_BUILD_MS_*` は build draw list 区間のCPU計測値
+- `P95_FRAME_MS` は測定フレーム群の95パーセンタイル
+
+## 5. 注意事項
+- 必須キーの欠落はゲート失敗扱い
+- 数値として解釈できない値はゲート失敗扱い
+- 同じキーが複数ある場合、判定スクリプトは最終行を採用する

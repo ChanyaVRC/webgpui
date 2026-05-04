@@ -1,0 +1,50 @@
+[workspace]
+members = [
+    "apps/demo-basic",
+    "crates/webgpui-geometry",
+    "crates/webgpui-profiler",
+    "crates/webgpui-input",
+    "crates/webgpui-platform",
+    "crates/webgpui-platform-winit",
+    "crates/webgpui-layout",
+    "crates/webgpui-core",
+    "crates/webgpui-render",
+    "crates/webgpui-batching",
+    "crates/webgpui-render-graph",
+    "crates/webgpui-render-wgpu",
+    "crates/webgpui-render-cuda",
+    "crates/webgpui-render-cpu",
+    "crates/webgpui-app",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+[workspace.dependencies]
+webgpui-geometry       = { path = "crates/webgpui-geometry" }
+webgpui-profiler       = { path = "crates/webgpui-profiler" }
+webgpui-input          = { path = "crates/webgpui-input" }
+webgpui-platform       = { path = "crates/webgpui-platform" }
+webgpui-platform-winit = { path = "crates/webgpui-platform-winit" }
+webgpui-layout         = { path = "crates/webgpui-layout" }
+webgpui-core           = { path = "crates/webgpui-core" }
+webgpui-render         = { path = "crates/webgpui-render" }
+webgpui-batching       = { path = "crates/webgpui-batching" }
+webgpui-render-graph   = { path = "crates/webgpui-render-graph" }
+webgpui-render-wgpu    = { path = "crates/webgpui-render-wgpu" }
+webgpui-render-cuda    = { path = "crates/webgpui-render-cuda" }
+webgpui-render-cpu     = { path = "crates/webgpui-render-cpu" }
+webgpui-app            = { path = "crates/webgpui-app" }
+
+wgpu       = "0.20"
+winit      = "0.29"
+glam       = "0.27"
+pollster   = "0.3"
+log        = "0.4"
+env_logger = "0.11"
+thiserror  = "1"
+bytemuck   = { version = "1", features = ["derive"] }
+cudarc     = "0.12"

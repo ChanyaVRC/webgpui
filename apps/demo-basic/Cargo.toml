@@ -1,0 +1,20 @@
+[package]
+name = "demo-basic"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "demo-basic"
+path = "src/main.rs"
+
+[dependencies]
+webgpui-app      = { workspace = true }
+webgpui-geometry = { workspace = true }
+webgpui-render   = { workspace = true }
+
+[features]
+default = ["backend-wgpu"]
+backend-wgpu = ["webgpui-render/backend-wgpu", "webgpui-app/backend-wgpu"]
+backend-cuda = ["webgpui-render/backend-cuda", "webgpui-app/backend-cuda"]
+backend-cpu  = ["webgpui-render/backend-cpu",  "webgpui-app/backend-cpu"]

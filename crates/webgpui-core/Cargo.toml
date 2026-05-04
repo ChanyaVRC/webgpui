@@ -1,0 +1,9 @@
+[package]
+name = "webgpui-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+webgpui-geometry = { workspace = true }
+webgpui-layout   = { workspace = true }

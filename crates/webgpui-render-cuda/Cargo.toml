@@ -1,0 +1,24 @@
+[package]
+name = "webgpui-render-cuda"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "CUDA GPU backend implementation for webgpui rendering"
+
+[dependencies]
+webgpui-geometry = { workspace = true }
+webgpui-render = { workspace = true }
+log = { workspace = true }
+thiserror = { workspace = true }
+
+# CUDA dependencies
+# Note: cudarc 0.12+ provides safe CUDA bindings
+# CUDA 12.0+ recommended; CUDA 11.8 minimum support
+cudarc = { version = "0.12", optional = true }
+
+[features]
+default     = []
+backend-cpu = []
+backend-cuda = ["cudarc"]
+
+[dev-dependencies]

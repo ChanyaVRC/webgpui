@@ -1,0 +1,48 @@
+name: p0-gate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  p0-gate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Ensure scripts are executable
+        run: chmod +x scripts/ci/check_p0_gate.sh
+
+      - name: Build benchmark target (if workspace exists)
+        if: ${{ hashFiles('Cargo.toml') != '' }}
+        run: cargo build --workspace
+
+      - name: Collect P0 metrics
+        run: |
+          mkdir -p .ci
+          if [[ -n "${P0_METRICS_COMMAND:-}" ]]; then
+            echo "[p0-gate] running custom metrics command"
+            eval "$P0_METRICS_COMMAND"
+          elif [[ -f Cargo.toml ]]; then
+            echo "[p0-gate] running default demo benchmark command"
+            cargo run -p demo-basic -- --benchmark p0 --output .ci/p0-metrics.txt
+          else
+            echo "[p0-gate] Cargo.toml not found and no P0_METRICS_COMMAND provided"
+            echo "[p0-gate] Create .ci/p0-metrics.txt in KEY=VALUE format before gate"
+            exit 1
+          fi
+
+      - name: Evaluate P0 gate
+        run: scripts/ci/check_p0_gate.sh .ci/p0-metrics.txt .ci/p0-thresholds.env
+
+      - name: Upload metrics artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p0-metrics
+          path: .ci/p0-metrics.txt

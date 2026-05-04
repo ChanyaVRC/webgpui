@@ -1,0 +1,48 @@
+name: p1-gate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  p1-gate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Ensure scripts are executable
+        run: chmod +x scripts/ci/check_p1_gate.sh
+
+      - name: Build benchmark target (if workspace exists)
+        if: ${{ hashFiles('Cargo.toml') != '' }}
+        run: cargo build --workspace
+
+      - name: Collect P1 metrics
+        run: |
+          mkdir -p .ci
+          if [[ -n "${P1_METRICS_COMMAND:-}" ]]; then
+            echo "[p1-gate] running custom metrics command"
+            eval "$P1_METRICS_COMMAND"
+          elif [[ -f Cargo.toml ]]; then
+            echo "[p1-gate] running default demo benchmark command"
+            cargo run -p demo-basic -- --benchmark p1 --output .ci/p1-metrics.txt
+          else
+            echo "[p1-gate] Cargo.toml not found and no P1_METRICS_COMMAND provided"
+            echo "[p1-gate] Create .ci/p1-metrics.txt in KEY=VALUE format before gate"
+            exit 1
+          fi
+
+      - name: Evaluate P1 gate
+        run: scripts/ci/check_p1_gate.sh .ci/p1-metrics.txt .ci/p1-thresholds.env
+
+      - name: Upload metrics artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p1-metrics
+          path: .ci/p1-metrics.txt

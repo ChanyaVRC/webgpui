@@ -1,0 +1,275 @@
+# Rendering Performance Execution Plan
+
+## 1. Goal
+Improve perceived speed with rendering-focused optimization and stabilize frame times.
+
+- Average frame time: <= 16.6ms
+- P95 frame time: <= 20ms
+- Draw calls: <= 200 (major screens)
+- Unchanged frames: redraw can be skipped
+
+## 1.1 Implementation Priority (Performance-First)
+Fix the order below; do not start lower priority items before upper ones are complete.
+
+1. P0: Measurement and rendering hot path
+- Implement CPU/GPU measurement first (no optimization without measurement)
+- Implement `begin_frame_fast` / `submit_batch` / `end_frame_fast` first
+- Acceptance: bottleneck ranges are numerically visible and FastPath runs
+
+2. P1: Draw-call reduction
+- Implement batching and instancing
+- Implement sort strategy to minimize pipeline switches
+- Acceptance: draw calls <= 200 on representative screens
+
+3. P2: Redraw reduction
+- Integrate `mark_dirty_rect` / `commit_dirty`
+- Enable render skip on unchanged frames
+- Acceptance: GPU time continuously decreases on no-update frames
+
+4. P3: Transfer and cache optimization
+- Ring-buffer and transient-buffer reuse
+- Introduce `prewarm_pipeline` / `prewarm_glyph_cache`
+- Acceptance: reduced startup stuttering
+
+5. P4: Parallelization and structural optimization
+- Optimize render graph
+- Separate UI updates from render preparation
+- Acceptance: further p95 stabilization
+
+## 1.2 Deferred Items (Due to Performance Priority)
+- Advanced layout features (full Flex/Grid compatibility)
+- Visual feature expansion (filter/transition/SVG)
+- Developer UX enhancements (advanced inspector)
+
+## 2. Top-Priority Tasks (Phase 1: Measurement)
+1. Add CPU measurement points
+- update
+- layout
+- build draw list
+- encode + submit
+
+2. Add GPU measurement
+- clear pass
+- ui pass
+- overlay pass
+
+3. Aggregate results per second
+- average
+- p95
+- max
+
+## 3. Optimization Tasks (Phase 2: High-Impact)
+1. Batching
+- Sort and aggregate by pipeline / texture / blend state
+- Shift small draw calls toward instancing
+
+2. Transfer reduction
+- Use ring buffers for vertex data
+- Keep static geometry resident on GPU
+
+3. Redraw suppression
+- Introduce dirty rect
+- Omit render pass when there is no change
+
+## 4. Mid-Term Tasks (Phase 3: Structural Optimization)
+1. Introduce render graph
+- Explicit pass dependencies
+- Auto-skip unnecessary passes
+
+2. Data-structure optimization
+- SoA for hot data
+- Allocation reduction via pre-reserve
+
+3. Parallelization
+- Separate UI update and render prep
+- Prepare commands on worker threads
+
+## 5. Validation Method
+1. Baseline measurement
+- Minimal sample
+- Medium-complexity UI sample
+
+2. Per-optimization differential measurement
+- Enable one optimization at a time
+- Store before/after
+
+3. Regression monitoring
+- Warn on significant degradation
+- Continuously record key metrics
+
+## 6. Completion Criteria
+- p95 is within target
+- Frame drops during interaction are visibly reduced
+- Bottlenecks are explainable by measurement logs
+
+## 7. FastPath-Oriented Optimization Policy
+Add performance-focused native APIs separate from compatibility APIs.
+
+1. Low-overhead draw APIs
+- `begin_frame_fast(frame_ctx)`
+- `submit_batch(batch_key, instances)`
+- `end_frame_fast()`
+
+2. Differential-update APIs
+- `mark_dirty_rect(node_id, rect)`
+- `commit_dirty()`
+
+3. Buffer-management APIs
+- `allocate_transient_buffer(bytes)`
+- `write_transient(slice)`
+- `recycle_transient(frame_id)`
+
+4. Cache-control APIs
+- `prewarm_pipeline(pipeline_desc)`
+- `prewarm_glyph_cache(font, charset)`
+- `evict_cache(policy)`
+
+## 8. Compatibility API vs Native API Usage
+1. Compatibility API (`webgpui-compat`)
+- Purpose: minimize migration cost from legacy engines
+- Feature: generality first, includes conversion overhead
+
+2. Native API (`webgpui` FastPath)
+- Purpose: maximize performance
+- Feature: lower-level control and higher caller responsibility
+
+3. Recommended operation
+- Start migration with compatibility APIs
+- Replace bottleneck-only sections with native APIs in stages
+
+## 9. Introduction Steps
+1. Phase A: Add measurement
+- Obtain baseline through compatibility path
+
+2. Phase B: Minimal native API introduction
+- Implement `begin_frame_fast` / `submit_batch` / `end_frame_fast`
+- Verify draw-call and CPU-time differences
+
+3. Phase C: Differential update introduction
+- Connect `mark_dirty_rect` with UI diffs
+- Enable render skip on unchanged frames
+
+4. Phase D: Cache optimization
+- Prewarm pipeline/glyph at startup
+- Verify reduced stuttering through measurement
+
+## 10. Acceptance Criteria (Native API)
+- Improve average frame time by at least 15% on screens where native APIs are applied
+- Maintain visual correctness equivalent to compatibility path
+- No feature degradation when fallback to compatibility path
+
+## 11. Test-Based Quality Assurance (API Swap Equivalence)
+Guarantee unchanged behavior after switching to native APIs via automated tests.
+
+1. Snapshot equivalence test (visual)
+- Run same scenario on `compat` and `fastpath`
+- Compare image output at the same frame number with tolerance
+- Pass criterion: pixel-difference ratio <= 0.5%, key UI regions <= 0.1%
+
+2. Event trace equivalence test (input)
+- Replay fixed click/move/key sequences
+- Compare event order and payloads
+- Pass criterion: 100% order match, payload difference 0
+
+3. State transition equivalence test (UI tree)
+- Validate internal state at mount -> update -> unmount
+- Compare node count, parent-child relations, dirty rects
+- Pass criterion: 100% structure match
+
+4. Property test (random updates)
+- Generate random style/update sequences
+- Validate final states of `compat` and `fastpath` match
+- Pass criterion: 0 failures (minimum 10,000 sequences)
+
+## 12. Regression Prevention Tests (CI)
+1. Required PR jobs
+- `equivalence-visual`
+- `equivalence-events`
+- `equivalence-state`
+- `perf-regression`
+
+2. Performance regression gates
+- Fail if `fastpath` becomes >10% slower than `compat`
+- Fail if p95 frame time worsens by >5% vs baseline
+
+3. Compatibility regression gates
+- Block merge if any MUST-API equivalence test fails
+
+## 13. Implementation Rules (Testability)
+- Expose path switch via `RenderMode::Compat` / `RenderMode::FastPath`
+- Allow fixed random seeds for reproducibility
+- Abstract time dependencies behind `Clock` for deterministic tests
+- Provide deterministic rendering mode for snapshot comparison
+
+## 14. Reference
+- API swap quality details: `api-swapping-quality-plan.md`
+
+## 15. P0 Gate to Introduce in CI First (Minimum Criteria)
+P0 completion is first judged mechanically by automated CI gate.
+
+1. Metrics (FastPath standalone)
+- `AVG_FRAME_MS <= 16.6`
+- `P95_FRAME_MS <= 20.0`
+- `DRAW_CALLS <= 200`
+
+2. Metrics (Compared to Compat)
+- `FASTPATH_AVG_FRAME_MS <= COMPAT_AVG_FRAME_MS * 0.90`
+- `FASTPATH_P95_FRAME_MS <= COMPAT_P95_FRAME_MS * 0.95`
+
+3. Metrics file format
+- Output path: `.ci/p0-metrics.txt`
+- Format: `KEY=VALUE` (one item per line)
+- Required keys:
+	- `AVG_FRAME_MS`
+	- `P95_FRAME_MS`
+	- `DRAW_CALLS`
+	- `COMPAT_AVG_FRAME_MS`
+	- `COMPAT_P95_FRAME_MS`
+	- `FASTPATH_AVG_FRAME_MS`
+	- `FASTPATH_P95_FRAME_MS`
+
+4. CI failure conditions
+- Missing required key
+- Non-numeric value
+- Any threshold violation
+
+5. Related files
+- Workflow: `.github/workflows/p0-gate.yml`
+- Check script: `scripts/ci/check_p0_gate.sh`
+- Thresholds: `.ci/p0-thresholds.env`
+- Operations guide: `docs/ci-gates.md`
+- Metrics spec: `docs/metrics-format.md`
+
+## 16. P1 Gate to Introduce After P0 Completion (Batching Effect)
+P1 completion is mechanically judged by CI based on improvement before/after batching.
+
+1. Metrics (after FastPath + batching)
+- `DRAW_CALLS_BATCHED <= 120`
+- `SUBMIT_CALLS_BATCHED <= 4`
+
+2. Metrics (compared to pre-batching)
+- `DRAW_CALL_REDUCTION_RATIO <= 0.60`
+- `CPU_BUILD_MS_BATCHED <= CPU_BUILD_MS_UNBATCHED * 0.80`
+
+3. Metrics file format
+- Output path: `.ci/p1-metrics.txt`
+- Format: `KEY=VALUE` (one item per line)
+- Required keys:
+	- `DRAW_CALLS_UNBATCHED`
+	- `DRAW_CALLS_BATCHED`
+	- `SUBMIT_CALLS_BATCHED`
+	- `CPU_BUILD_MS_UNBATCHED`
+	- `CPU_BUILD_MS_BATCHED`
+	- `DRAW_CALL_REDUCTION_RATIO`
+
+4. CI failure conditions
+- Missing required key
+- Non-numeric value
+- Any threshold violation
+
+5. Related files
+- Workflow: `.github/workflows/p1-gate.yml`
+- Check script: `scripts/ci/check_p1_gate.sh`
+- Thresholds: `.ci/p1-thresholds.env`
+- Operations guide: `docs/ci-gates.md`
+- Metrics spec: `docs/metrics-format.md`
