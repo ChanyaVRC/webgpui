@@ -394,13 +394,12 @@ impl FocusManager {
         if self.focusable.is_empty() {
             return None;
         }
-        let len = self.focusable.len() as i64;
-        let current_pos = self
-            .focused
-            .and_then(|id| self.focusable.iter().position(|&x| x == id))
-            .map(|p| p as i64)
-            .unwrap_or(-1);
-        let next = ((current_pos + delta).rem_euclid(len)) as usize;
+        let len = self.focusable.len();
+        let next = match self.focused.and_then(|id| self.focusable.iter().position(|&x| x == id)) {
+            Some(pos) => (pos as i64 + delta).rem_euclid(len as i64) as usize,
+            None if delta > 0 => 0,
+            None => len - 1,
+        };
         let next_id = self.focusable[next];
         self.focused = Some(next_id);
         Some(next_id)
@@ -648,5 +647,56 @@ mod tests {
         assert_eq!(fm.focused(), Some(1));
 
         assert!(!fm.handle_key(KeyCode::Enter, Modifiers::none()));
+    }
+
+    /// Shift+Tab from unfocused state moves to the last focusable.
+    #[test]
+    fn focus_tab_backward_from_unfocused_starts_at_last() {
+        let mut fm = FocusManager::new();
+        fm.register_focusable(5);
+        fm.register_focusable(6);
+        fm.register_focusable(7);
+        assert_eq!(fm.move_focus_backward(), Some(7));
+    }
+
+    /// handle_key with an empty focusable list returns true but stays unfocused.
+    #[test]
+    fn handle_key_tab_empty_list() {
+        let mut fm = FocusManager::new();
+        assert!(fm.handle_key(KeyCode::Tab, Modifiers::none()));
+        assert!(fm.focused().is_none());
+        assert!(fm.handle_key(KeyCode::Tab, Modifiers { shift: true, ..Default::default() }));
+        assert!(fm.focused().is_none());
+    }
+
+    /// set_focusable_order replaces the list; focusable_order reflects it.
+    #[test]
+    fn set_focusable_order_replaces_list() {
+        let mut fm = FocusManager::new();
+        fm.register_focusable(1);
+        fm.register_focusable(2);
+        fm.set_focusable_order(vec![30, 20, 10]);
+        assert_eq!(fm.focusable_order(), &[30, 20, 10]);
+        fm.set_focus(30);
+        assert_eq!(fm.move_focus_forward(), Some(20));
+    }
+
+    /// Dispatch on a two-node path (parent + child) fires capture then target only.
+    #[test]
+    fn event_propagation_two_node_path() {
+        let path = [0u32, 1u32];
+        let mut visited: Vec<(u32, EventPhase)> = Vec::new();
+        dispatch(&path, &make_click(), |node, phase, _| {
+            visited.push((node, phase));
+            false
+        });
+        assert_eq!(
+            visited,
+            vec![
+                (0, EventPhase::Capture),
+                (1, EventPhase::Target),
+                (0, EventPhase::Bubble),
+            ]
+        );
     }
 }
