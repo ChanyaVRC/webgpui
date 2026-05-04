@@ -5,8 +5,8 @@ use std::sync::Arc;
 use winit::{
     dpi::{LogicalSize, PhysicalSize},
     event::{
-        ElementState, Event, KeyEvent, MouseButton as WinitMouseButton,
-        MouseScrollDelta, WindowEvent,
+        ElementState, Event, KeyEvent, MouseButton as WinitMouseButton, MouseScrollDelta,
+        WindowEvent,
     },
     event_loop::{ControlFlow, EventLoop},
     keyboard::{Key, NamedKey},
