@@ -6,6 +6,7 @@ This site covers webgpui design principles, requirements, performance plans, and
 - [Design Philosophy](design-philosophy.md)
 - [Requirements Summary](requirements-summary.md)
 - [Detailed Requirements](requirements.md)
+- [Roadmap](roadmap.md)
 - [Workspace Architecture](workspace-architecture.md)
 - [Rendering Performance Plan](rendering-performance-plan.md)
 - [Replacement Strategy](replacement-strategy.md)

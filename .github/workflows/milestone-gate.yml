@@ -1,0 +1,38 @@
+name: milestone-gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      milestone:
+        description: Milestone to evaluate (M0-M4)
+        required: true
+        default: M1
+        type: choice
+        options:
+          - M0
+          - M1
+          - M2
+          - M3
+          - M4
+
+jobs:
+  milestone-gate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Ensure scripts are executable
+        run: |
+          chmod +x scripts/ci/check_milestone_gate.sh
+          chmod +x scripts/ci/check_p0_gate.sh
+          chmod +x scripts/ci/check_p1_gate.sh
+
+      - name: Evaluate milestone completion gate
+        run: scripts/ci/check_milestone_gate.sh "${{ inputs.milestone }}"

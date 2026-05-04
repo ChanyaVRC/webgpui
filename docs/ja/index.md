@@ -6,6 +6,7 @@
 - [設計思想](design-philosophy.md)
 - [要件サマリー](requirements-summary.md)
 - [要件定義（詳細）](requirements.md)
+- [ロードマップ](roadmap.md)
 - [構成案（crate分割）](workspace-architecture.md)
 - [レンダリング高速化計画](rendering-performance-plan.md)
 - [APIマッピング](api-mapping.md)

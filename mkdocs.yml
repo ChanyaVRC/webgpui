@@ -17,6 +17,7 @@ nav:
   - Glossary: glossary.md
   - Architecture Decision Policy: architecture-decisions.md
   - Detailed Requirements: requirements.md
+  - Roadmap: roadmap.md
   - Workspace Architecture: workspace-architecture.md
   - Rendering Performance Plan: rendering-performance-plan.md
   - Replacement Strategy: replacement-strategy.md
@@ -37,6 +38,7 @@ nav:
       - 用語集: ja/glossary.md
       - アーキテクチャ意思決定ログ方針: ja/architecture-decisions.md
       - 要件定義（詳細）: ja/requirements.md
+      - ロードマップ: ja/roadmap.md
       - 構成案（crate分割）: ja/workspace-architecture.md
       - レンダリング高速化計画: ja/rendering-performance-plan.md
       - 代替戦略: ja/replacement-strategy.md

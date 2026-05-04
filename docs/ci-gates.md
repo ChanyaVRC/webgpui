@@ -59,3 +59,24 @@ scripts/ci/check_p1_gate.sh .ci/p1-metrics.txt .ci/p1-thresholds.env
 - Every threshold change must include reasons in PR description
 - Threshold relaxation must include improvement plan and target date
 - Baseline updates should use stable main-branch commits
+
+## 9. Milestone Completion Gate (M0-M4)
+Use the milestone gate to evaluate roadmap completion criteria in CI.
+
+- Workflow: `.github/workflows/milestone-gate.yml`
+- Script: `scripts/ci/check_milestone_gate.sh`
+- Trigger: `workflow_dispatch` (manual run)
+
+### 9.1 Check Items by Milestone
+| Milestone | Required CI checks |
+| --- | --- |
+| M0 | `cargo fmt --all -- --check`, `cargo check --workspace`, `cargo test --workspace --all-targets` |
+| M1 | M0 + `cargo test -p webgpui-input --all-targets`, `cargo test -p webgpui-platform-winit --all-targets` |
+| M2 | M1 + `cargo test -p webgpui-layout --all-targets`, `cargo test -p webgpui-core --all-targets` |
+| M3 | M2 + `cargo test -p webgpui-app --all-targets`, `cargo build -p demo-basic` |
+| M4 | M3 + P0/P1 benchmark metric generation and gate evaluation |
+
+### 9.2 Local Execution
+```bash
+scripts/ci/check_milestone_gate.sh M1
+```
