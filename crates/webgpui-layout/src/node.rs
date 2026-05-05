@@ -5,7 +5,7 @@ use crate::style::LayoutStyle;
 /// A node fed into the layout engine.
 #[derive(Debug)]
 pub struct LayoutNode {
-    pub id: u32,
+    pub id: u64,
     pub style: LayoutStyle,
     /// Indices into the same flat array of layout nodes (children).
     pub children: Vec<usize>,
@@ -21,7 +21,7 @@ pub struct LayoutNode {
 }
 
 impl LayoutNode {
-    pub fn new(id: u32, style: LayoutStyle) -> Self {
+    pub fn new(id: u64, style: LayoutStyle) -> Self {
         Self {
             id,
             style,
