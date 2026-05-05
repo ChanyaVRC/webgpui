@@ -7,7 +7,8 @@
 
 mod widget;
 pub use widget::{
-    Button, CursorMove, Label, ScrollView, TabBar, TextAlign, TextInput, Toolbar, WidgetState,
+    Button, ContextMenu, CursorMove, Dialog, Label, ScrollView, TabBar, TextAlign, TextInput,
+    Toolbar, WidgetState,
 };
 
 use std::collections::HashSet;
