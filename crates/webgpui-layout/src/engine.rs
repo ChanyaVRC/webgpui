@@ -69,6 +69,7 @@ impl LayoutEngine {
     ) {
         let node = &nodes[idx];
         let style = &node.style;
+        let gap = style.gap.max(0.0);
         let margin = style.margin;
         let padding = style.padding;
 
@@ -143,7 +144,6 @@ impl LayoutEngine {
         // --- Phase 1: layout fixed children, collect grow children ---
         let mut main_used: f32 = 0.0; // space consumed by fixed children + margins
         let mut total_grow: f32 = 0.0;
-        let gap = style.gap;
         let child_count = node.children.len();
 
         for (child_ord, &ci) in node.children.iter().enumerate() {
@@ -427,6 +427,52 @@ mod tests {
         assert_eq!(r2.border_box.origin.x, 40.0);
     }
 
+    #[test]
+    fn negative_gap_is_clamped_to_zero() {
+        let mut engine = LayoutEngine::new();
+        let nodes = vec![
+            LayoutNode {
+                id: 0,
+                style: LayoutStyle {
+                    direction: Direction::Row,
+                    height: Some(40.0),
+                    gap: -10.0,
+                    ..Default::default()
+                },
+                children: vec![1, 2],
+                text: String::new(),
+                font_size: 14.0,
+                layer: 0,
+            },
+            LayoutNode {
+                id: 1,
+                style: LayoutStyle {
+                    width: Some(30.0),
+                    ..Default::default()
+                },
+                children: vec![],
+                text: String::new(),
+                font_size: 14.0,
+                layer: 0,
+            },
+            LayoutNode {
+                id: 2,
+                style: LayoutStyle {
+                    width: Some(50.0),
+                    ..Default::default()
+                },
+                children: vec![],
+                text: String::new(),
+                font_size: 14.0,
+                layer: 0,
+            },
+        ];
+        engine.compute(&nodes, viewport());
+        let r2 = engine.result(2).unwrap();
+        // With clamping, -10 behaves as 0 and children do not overlap.
+        assert_eq!(r2.border_box.origin.x, 30.0);
+    }
+
     // ---- flex_grow -------------------------------------------------------
 
     #[test]
@@ -524,6 +570,57 @@ mod tests {
         assert_eq!(r1.border_box.size.width, 40.0);
         assert_eq!(r2.border_box.size.width, 80.0);
         assert_eq!(r2.border_box.origin.x, 40.0);
+    }
+
+    #[test]
+    fn negative_flex_grow_is_treated_as_nongrow() {
+        let mut engine = LayoutEngine::new();
+        // Child 1 has invalid negative flex and should be treated as non-grow.
+        // Child 2 should receive all remaining width.
+        let nodes = vec![
+            LayoutNode {
+                id: 0,
+                style: LayoutStyle {
+                    direction: Direction::Row,
+                    width: Some(100.0),
+                    height: Some(30.0),
+                    ..Default::default()
+                },
+                children: vec![1, 2],
+                text: String::new(),
+                font_size: 14.0,
+                layer: 0,
+            },
+            LayoutNode {
+                id: 1,
+                style: LayoutStyle {
+                    width: Some(30.0),
+                    flex_grow: -1.0,
+                    ..Default::default()
+                },
+                children: vec![],
+                text: String::new(),
+                font_size: 14.0,
+                layer: 0,
+            },
+            LayoutNode {
+                id: 2,
+                style: LayoutStyle {
+                    flex_grow: 1.0,
+                    ..Default::default()
+                },
+                children: vec![],
+                text: String::new(),
+                font_size: 14.0,
+                layer: 0,
+            },
+        ];
+        engine.compute(&nodes, viewport());
+        let r1 = engine.result(1).unwrap();
+        let r2 = engine.result(2).unwrap();
+        assert_eq!(r1.border_box.size.width, 30.0);
+        assert_eq!(r2.border_box.size.width, 70.0);
+        assert_eq!(r2.border_box.origin.x, 30.0);
     }
 
     // ---- margin & padding -----------------------------------------------
