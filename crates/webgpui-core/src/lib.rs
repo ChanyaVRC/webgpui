@@ -6,7 +6,9 @@
 //! skip unchanged subtrees.
 
 mod widget;
-pub use widget::{Button, CursorMove, Label, TextAlign, TextInput, WidgetState};
+pub use widget::{
+    Button, CursorMove, Label, ScrollView, TabBar, TextAlign, TextInput, Toolbar, WidgetState,
+};
 
 use std::collections::HashSet;
 use webgpui_geometry::{BorderRadius, Color, Insets, Rect, Size};
