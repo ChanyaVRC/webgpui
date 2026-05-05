@@ -17,7 +17,7 @@ use wgpu::util::DeviceExt;
 
 use webgpui_batching::{Batcher, DrawBatch, Vertex, VERTEX_SIZE};
 use webgpui_render::{DrawList, RenderError, RenderResult, Renderer};
-use webgpui_render_graph::{ClearColor, RenderGraph};
+use webgpui_render_graph::{ClearColor, PassKind, RenderGraph};
 
 // ---------------------------------------------------------------------------
 // WGSL shader (embedded)
@@ -362,6 +362,7 @@ impl WgpuRenderer {
         view: &wgpu::TextureView,
         batches: &[DrawBatch],
         clear: ClearColor,
+        clear_enabled: bool,
     ) {
         // Pack all vertices / indices into the GPU buffers.
         let mut all_vertices: Vec<Vertex> = Vec::new();
@@ -380,20 +381,26 @@ impl WgpuRenderer {
             batch_ranges.push((v_base, i_start, i_end));
         }
 
+        let load_op = if clear_enabled {
+            wgpu::LoadOp::Clear(wgpu::Color {
+                r: clear.r,
+                g: clear.g,
+                b: clear.b,
+                a: clear.a,
+            })
+        } else {
+            wgpu::LoadOp::Load
+        };
+
         if all_vertices.is_empty() {
-            // Nothing to draw — still clear.
+            // Nothing to draw — issue a pass only to (optionally) clear.
             let _pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("clear-only"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: clear.r,
-                            g: clear.g,
-                            b: clear.b,
-                            a: clear.a,
-                        }),
+                        load: load_op,
                         store: wgpu::StoreOp::Store,
                     },
                 })],
@@ -419,12 +426,7 @@ impl WgpuRenderer {
                 view,
                 resolve_target: None,
                 ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color {
-                        r: clear.r,
-                        g: clear.g,
-                        b: clear.b,
-                        a: clear.a,
-                    }),
+                    load: load_op,
                     store: wgpu::StoreOp::Store,
                 },
             })],
@@ -493,14 +495,28 @@ impl Renderer for WgpuRenderer {
                 label: Some("frame-encoder"),
             });
 
-        // Read clear colour from the render graph.
-        let clear = self
-            .render_graph
-            .pass_by_name("clear")
-            .map(|p| p.clear_color)
-            .unwrap_or(ClearColor::BLACK);
+        // Query enabled passes from the graph in topological order.
+        // Collect the data we need so the mutable borrow ends before render_batches.
+        let (clear_enabled, clear_color, ui_enabled) = {
+            let order = self.render_graph.execution_order();
+            let clear_enabled = order.iter().any(|p| p.kind == PassKind::Clear);
+            let clear_color = order
+                .iter()
+                .find(|p| p.kind == PassKind::Clear)
+                .map(|p| p.clear_color)
+                .unwrap_or(ClearColor::BLACK);
+            let ui_enabled = order.iter().any(|p| p.kind == PassKind::Ui);
+            (clear_enabled, clear_color, ui_enabled)
+        };
 
-        self.render_batches(&mut encoder, &view, &batches, clear);
+        let effective_batches: &[DrawBatch] = if ui_enabled { &batches } else { &[] };
+        self.render_batches(
+            &mut encoder,
+            &view,
+            effective_batches,
+            clear_color,
+            clear_enabled,
+        );
 
         self.ctx.queue.submit(std::iter::once(encoder.finish()));
         output.present();
