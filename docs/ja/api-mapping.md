@@ -179,3 +179,26 @@ SHOULD/LATER API は後のマイルストーンで `compat-full` フラグに収
 
 ### 13.7 凍結ルール
 §13.3 と §13.4 に列挙した型・関数はすべて v0.1 時点で凍結対象とする。変更には M5 で定義する semver ポリシーに従いメジャーバージョンアップが必要。
+
+## 14. `webgpui-batching` クレート — 責務
+
+`webgpui-batching` は描画コマンドを GPU 効率の高いバッチにまとめる責務を持つ。
+GPU 送信パイプラインを所有する `webgpui-render` とは異なり、プラットフォーム固有のコードを含まない。
+レンダラーバックエンドから利用される。
+
+### 14.1 クレートの役割
+- `DrawList` の高レベル描画コマンドを受け取る。
+- コマンドを `BatchKey`（ブレンドモード、テクスチャ、パイプライン、z-order）でグループ化する。
+- アップロード・送信可能なフラット `Vec<DrawBatch>` を生成する。
+
+### 14.2 マイルストーン関与
+
+| マイルストーン | 関与内容 |
+|---|---|
+| M3 | ウィジェットジオメトリ（Button、TextInput、Label）のバッチ生成。 |
+| P2（dirty rect） | dirty rect 外に完全に収まるバッチをカリングし GPU 送信数を削減。 |
+| M9（最適化） | SoA 頂点レイアウトとリングバッファによるバッチ再利用の候補。 |
+
+### 14.3 クレート依存
+- `webgpui-geometry`（Rect、Color、Point）
+- `webgpui-render`（DrawCommand、DrawList）
