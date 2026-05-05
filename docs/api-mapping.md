@@ -117,3 +117,65 @@ This section defines a path that prioritizes performance over compatibility.
 
 ### 12.1 Reference
 - API swap quality plan: `api-swapping-quality-plan.md`
+
+## 13. `webgpui-compat` Crate — Minimum API Definition
+
+This section defines the minimum required API for the `webgpui-compat` crate, which is a prerequisite for M4.
+
+### 13.1 Crate Role
+`webgpui-compat` is a thin translation layer. It accepts legacy-style function calls and delegates to the internal `webgpui-core` / `webgpui-app` / `webgpui-input` crates. It does **not** contain rendering logic.
+
+### 13.2 Module Structure
+```
+webgpui-compat/src/
+  lib.rs       — re-exports all public modules
+  types.rs     — shared types (NodeId, NodeKind, StyleProp, EventType, EventContext, ListenerId, CompatError)
+  node.rs      — node_create, node_append, node_remove, node_insert_before, node_update
+  style.rs     — style_set, style_set_many, style_position, style_size, style_margin,
+                  style_padding, style_background, style_border, style_opacity
+  event.rs     — event_on, event_off, event_dispatch, event_stop_propagation,
+                  event_prevent_default, focus_set
+  app.rs       — app_mount, app_unmount, render_request, render_vsync, viewport_resize
+```
+
+### 13.3 Public Types (MVP-Minimum)
+| Type | Kind | Description |
+|---|---|---|
+| `NodeId` | newtype (`u64`) | Opaque handle for a node. Invalid after `node_remove`. |
+| `NodeKind` | enum | `Container`, `Text`, `Image` |
+| `StyleProp` | enum | One variant per MUST-tier style key |
+| `EventType` | enum | `Click`, `PointerMove`, `PointerDown`, `PointerUp`, `Scroll`, `KeyDown`, `KeyUp`, `Focus`, `FocusLost` |
+| `EventContext` | struct | Carries event payload; exposes `stop_propagation()` and `prevent_default()` |
+| `ListenerId` | newtype (`u64`) | Handle returned by `event_on`; passed to `event_off` |
+| `CompatError` | enum | `InvalidNode`, `InvalidListener`, `StyleParseError(String)`, `InternalError(String)` |
+
+All public functions return `Result<T, CompatError>`.
+
+### 13.4 MUST-Tier API Scope (Initial Implementation Target)
+Only the MUST-flagged rows from §3–§6 are in scope for the initial `webgpui-compat` implementation. SHOULD and LATER rows are deferred.
+
+| Module | Functions |
+|---|---|
+| `node` | `node_create`, `node_append`, `node_remove`, `node_update` |
+| `style` | `style_set`, `style_set_many`, `style_position`, `style_size`, `style_margin`, `style_padding`, `style_background`, `style_border`, `style_opacity` |
+| `event` | `event_on`, `event_stop_propagation`, `focus_set` |
+| `app` | `app_mount`, `node_update`, `render_request`, `render_vsync`, `viewport_resize` |
+
+### 13.5 Crate Dependencies
+```toml
+[dependencies]
+webgpui-core   = { path = "../webgpui-core" }
+webgpui-app    = { path = "../webgpui-app" }
+webgpui-input  = { path = "../webgpui-input" }
+```
+No direct dependency on `webgpui-render` or `webgpui-render-wgpu`.
+
+### 13.6 Feature Flags
+| Flag | Default | Description |
+|---|---|---|
+| (none) | — | MUST-tier APIs are always compiled in. No feature flags at MVP. |
+
+SHOULD/LATER APIs will be gated behind `compat-full` in a later milestone.
+
+### 13.7 Freeze Rule
+All types and functions listed in §13.3 and §13.4 are frozen at v0.1. Changes require a major-version bump per the semver policy defined in M5.
