@@ -594,7 +594,11 @@ mod tests {
 
         assert_eq!(fm.move_focus_forward(), Some(NodeId(2)));
         assert_eq!(fm.move_focus_forward(), Some(NodeId(3)));
-        assert_eq!(fm.move_focus_forward(), Some(NodeId(1)), "should wrap to first");
+        assert_eq!(
+            fm.move_focus_forward(),
+            Some(NodeId(1)),
+            "should wrap to first"
+        );
     }
 
     /// M1-3: Shift+Tab backward traversal wraps around.
@@ -606,7 +610,11 @@ mod tests {
         fm.register_focusable(NodeId(30));
         fm.set_focus(NodeId(10));
 
-        assert_eq!(fm.move_focus_backward(), Some(NodeId(30)), "should wrap to last");
+        assert_eq!(
+            fm.move_focus_backward(),
+            Some(NodeId(30)),
+            "should wrap to last"
+        );
         assert_eq!(fm.move_focus_backward(), Some(NodeId(20)));
         assert_eq!(fm.move_focus_backward(), Some(NodeId(10)));
     }
