@@ -355,6 +355,14 @@ impl ScrollView {
         self.scroll_offset
     }
 
+    pub fn content_size(&self) -> (f32, f32) {
+        self.content_size
+    }
+
+    pub fn viewport_size(&self) -> (f32, f32) {
+        self.viewport_size
+    }
+
     pub fn overflow_x(&self) -> bool {
         self.content_size.0 > self.viewport_size.0
     }
@@ -948,11 +956,17 @@ mod tests {
         let mut sv = ScrollView::new((100.0, 100.0));
         sv.set_content_size((400.0, 400.0));
         sv.scroll_to(200.0, 200.0);
-        // Enlarge viewport so max offset shrinks.
+        // Enlarge viewport so max offset shrinks to 400-350 = 50.
         sv.set_viewport_size((350.0, 350.0));
-        let (ox, oy) = sv.scroll_offset();
-        assert!(ox <= 50.0);
-        assert!(oy <= 50.0);
+        assert_eq!(sv.scroll_offset(), (50.0, 50.0));
+    }
+
+    #[test]
+    fn scrollview_getters_match_setters() {
+        let mut sv = ScrollView::new((200.0, 100.0));
+        sv.set_content_size((400.0, 300.0));
+        assert_eq!(sv.content_size(), (400.0, 300.0));
+        assert_eq!(sv.viewport_size(), (200.0, 100.0));
     }
 
     // ---- Toolbar ---------------------------------------------------------
@@ -1016,6 +1030,14 @@ mod tests {
         let mut tb = TabBar::new(["A", "B"]);
         tb.select(99);
         assert_eq!(tb.selected(), 1);
+    }
+
+    #[test]
+    fn tabbar_select_next_from_middle_does_not_wrap() {
+        let mut tb = TabBar::new(["A", "B", "C"]);
+        tb.select(1);
+        tb.select_next();
+        assert_eq!(tb.selected(), 2);
     }
 
     // ---- Dialog ----------------------------------------------------------
