@@ -715,6 +715,7 @@ const VISUAL_KEYS: &[KeyCode] = &[
     KeyCode::ArrowRight,
     KeyCode::ArrowUp,
     KeyCode::ArrowDown,
+    KeyCode::Tab,
 ];
 
 fn main() {
