@@ -303,3 +303,141 @@ P1 の完了判定は、バッチング適用前後の改善量を CI で機械�
 - 閾値定義: `.ci/p1-thresholds.env`
 - 運用ガイド: `docs/ci-gates.md`
 - メトリクス仕様: `docs/metrics-format.md`
+
+## 17. P2 API仕様 — dirty rect 最適化
+
+### 17.1 設計目標
+- 公開エントリポイントは2つ: `mark_dirty_rect(rect)` と `commit_dirty(viewport) -> DirtyDecision`。
+- `DirtyTracker`（既存、`webgpui-core`）がフレームごとの蓄積を担う。
+- `DirtyDecision`（新規 enum、`webgpui-core`）が当該フレームのレンダリング決定を表す。
+- `RenderGraph` が `DirtyDecision` を受け取り、パスのスキップや scissor rect を設定する。
+- `App::run` のフレームループが蓄積とレンダラーを橋渡しする。
+- 公開 `DrawContext` の描画コマンド API には変更なし；最適化は完全に内部で完結する。
+
+### 17.2 新規型定義
+
+#### `DirtyDecision`（`webgpui-core` に追加）
+```rust
+pub enum DirtyDecision {
+    /// dirty 領域なし。全レンダーパスをスキップする。
+    Skip,
+    /// この画面領域のみ変化。scissor rect 内のみ再描画する。
+    Partial(Rect),
+    /// 全画面再描画が必要（リサイズ・初回フレーム・`mark_all` 呼び出し時）。
+    Full,
+}
+```
+
+#### `RenderOutcome`（`webgpui-render` に追加）
+```rust
+pub enum RenderOutcome {
+    /// GPU コマンドバッファを投入した。
+    Submitted,
+    /// GPU 処理なし；フレームをスキップした。
+    Skipped,
+}
+```
+
+### 17.3 クレートごとの API 変更
+
+**`webgpui-core` — `DirtyTracker`**
+
+既存メソッドは変更なし。以下を追加:
+```rust
+/// `mark()` の利便性エイリアス。フレームコールバックや compat 層での使用を想定。
+pub fn mark_dirty_rect(&mut self, rect: Rect);
+
+/// 蓄積した dirty 状態を消費し、このフレームのレンダリング決定を返す。
+/// 内部状態をクリアする。レンダリング前に1フレームにつき1回だけ呼び出す。
+pub fn commit_dirty(&mut self, viewport: Size) -> DirtyDecision;
+```
+`commit_dirty` のロジック:
+- rect 未記録かつ `full_invalidate == false` → `Skip`
+- `full_invalidate == true` → `Full`、その後クリア
+- rect 記録あり → `Partial(dirty_union())`、その後クリア
+
+**`webgpui-render` — `Renderer` トレイト**
+
+既存 `render()` に加えて追加:
+```rust
+/// GPU scissor rect を使い `area` 内のみ再描画する。
+/// バックエンドが scissor をサポートしない場合は全画面フォールバック。
+fn render_partial(&mut self, draw_list: &DrawList, area: Rect) -> RenderResult<RenderOutcome>;
+```
+既存の `render()` は全画面再描画のままで `RenderOutcome::Submitted` を返す。
+
+**`webgpui-render-graph` — `RenderGraph`**
+
+追加:
+```rust
+/// 実行前にパス設定へ dirty 決定を反映する。
+/// - `Skip`: 全パスを無効化。
+/// - `Partial(rect)`: `ui` パスに scissor rect を設定。clear パスは常に全画面。
+/// - `Full`: 変更なし（全パス設定どおり実行）。
+pub fn apply_dirty_decision(&mut self, decision: &DirtyDecision);
+```
+
+**`webgpui-app` — フレームループ**
+
+現在 `_` 変数の3つをアクティブ化:
+```rust
+// Before: let _dirty_tracker = DirtyTracker::new();
+// After:  let mut dirty_tracker = DirtyTracker::new();
+```
+フレームループ疑似コード:
+```
+on RedrawRequested:
+  let viewport = Size::new(sw as f32, sh as f32);
+  let decision = dirty_tracker.commit_dirty(viewport);
+
+  if matches!(decision, DirtyDecision::Skip) {
+      frame_timer.record_skip();
+      p2_skip_counter += 1;
+      // GPU 処理なし。
+      return;
+  }
+
+  draw_list.clear();
+  frame_fn(&mut ctx);
+  renderer.render_graph_mut().apply_dirty_decision(&decision);
+
+  match decision {
+      DirtyDecision::Partial(area) => renderer.render_partial(&draw_list, area),
+      _                            => renderer.render(&draw_list),
+  };
+  p2_total_counter += 1;
+```
+
+**`webgpui-app` — `DrawContext`**
+
+フレームコールバック内から呼び出すために追加:
+```rust
+/// このフレームで再描画が必要な画面領域を登録する。
+/// アクティブなフレーム外で呼び出しても効果なし。
+pub fn mark_dirty_rect(&mut self, rect: Rect);
+```
+
+### 17.4 `NodeTree` との統合
+
+`NodeTree::flush_dirty()` が dirty な `NodeId` セットを返したとき、フレームループは:
+1. 各ノードの計算済みレイアウト rect（レイアウトパスの出力）を参照する。
+2. 各ノードについて `dirty_tracker.mark_dirty_rect(layout_rect)` を呼び出す。
+
+これにより `DirtyTracker` とノードツリーの変更検知が同期される。  
+注記: この接続は issue #38 で追跡している前提作業である。
+
+### 17.5 メトリクス: `P2_GPU_SKIP_RATIO`
+
+| キー | 定義 | CI 閾値 |
+|---|---|---|
+| `P2_GPU_SKIP_RATIO` | `skipped_frames / total_frames`（直近60フレームのローリング平均） | 完全静止シーンで >= 0.50 |
+| `P2_GPU_SUBMISSIONS` | 60フレーム単位の GPU サブミット回数 | 完全静止シーンで = 0 |
+
+出力先: `.ci/p2-metrics.txt`（P0/P1 と同じ `KEY=VALUE` 形式）。
+
+### 17.6 凍結ルール
+- `DirtyDecision` のバリアントは v0.1 で凍結。バリアント追加は破壊的変更。
+- `mark_dirty_rect` と `commit_dirty` のシグネチャは v0.1 で凍結。
+- `RenderOutcome` のバリアントは v0.1 で凍結。
+- `render_partial` の scissor サポートはバックエンド固有。非サポートのバックエンドは
+  全画面フォールバックし、その旨を文書化しなければならない。
