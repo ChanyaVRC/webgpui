@@ -23,7 +23,12 @@ use webgpui_layout::LayoutStyle;
 pub const FOCUS_RING_WIDTH: f32 = 2.0;
 
 /// Standard focus ring colour (blue accent, consistent across all widgets).
-pub const FOCUS_RING_COLOR: Color = Color { r: 0.35, g: 0.7, b: 1.0, a: 1.0 };
+pub const FOCUS_RING_COLOR: Color = Color {
+    r: 0.35,
+    g: 0.7,
+    b: 1.0,
+    a: 1.0,
+};
 
 /// Standard focus ring colour. Prefer the [`FOCUS_RING_COLOR`] constant for
 /// const contexts; this function exists for backwards compatibility.
