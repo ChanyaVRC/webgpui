@@ -211,6 +211,15 @@ impl TextInput {
         Some((lo, hi))
     }
 
+    /// Enable or disable the text input. Disabled inputs ignore all mutation events.
+    pub fn set_disabled(&mut self, disabled: bool) {
+        if disabled {
+            self.state = WidgetState::Disabled;
+        } else if self.state == WidgetState::Disabled {
+            self.state = WidgetState::Normal;
+        }
+    }
+
     /// Notify focus gain (`true`) or loss (`false`).
     pub fn set_focused(&mut self, focused: bool) {
         if self.state == WidgetState::Disabled {
@@ -228,6 +237,9 @@ impl TextInput {
 
     /// Insert a character at the cursor (replacing the current selection if any).
     pub fn insert_char(&mut self, ch: char) {
+        if self.state == WidgetState::Disabled {
+            return;
+        }
         self.delete_selection();
         self.chars.insert(self.cursor, ch);
         self.cursor += 1;
@@ -236,6 +248,9 @@ impl TextInput {
     /// Delete the character before the cursor (Backspace), or the current
     /// selection. Returns `true` if any content was removed.
     pub fn delete_backward(&mut self) -> bool {
+        if self.state == WidgetState::Disabled {
+            return false;
+        }
         if self.delete_selection() {
             return true;
         }
@@ -250,6 +265,9 @@ impl TextInput {
     /// Delete the character after the cursor (Delete key), or the current
     /// selection. Returns `true` if any content was removed.
     pub fn delete_forward(&mut self) -> bool {
+        if self.state == WidgetState::Disabled {
+            return false;
+        }
         if self.delete_selection() {
             return true;
         }
@@ -264,6 +282,9 @@ impl TextInput {
     /// at the current position (extending or creating a selection). When
     /// `select` is `false` any existing selection is collapsed.
     pub fn move_cursor(&mut self, mv: CursorMove, select: bool) {
+        if self.state == WidgetState::Disabled {
+            return;
+        }
         if select && self.selection_anchor.is_none() {
             self.selection_anchor = Some(self.cursor);
         } else if !select {
@@ -423,6 +444,12 @@ impl ScrollView {
     }
 }
 
+impl Default for ScrollView {
+    fn default() -> Self {
+        Self::new((0.0, 0.0))
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Toolbar
 // ---------------------------------------------------------------------------
@@ -544,7 +571,9 @@ impl TabBar {
 
     /// Jump to the first tab (Home key).
     pub fn select_first(&mut self) {
-        self.selected = 0;
+        if !self.tabs.is_empty() {
+            self.selected = 0;
+        }
     }
 
     /// Jump to the last tab (End key).
@@ -599,6 +628,9 @@ impl Dialog {
 
     /// Move focus to the next focusable child, wrapping from last to first.
     pub fn tab_next(&mut self) -> usize {
+        if !self.open {
+            return self.focused_index;
+        }
         if self.focusable_count > 0 {
             self.focused_index = (self.focused_index + 1) % self.focusable_count;
         }
@@ -607,6 +639,9 @@ impl Dialog {
 
     /// Move focus to the previous focusable child, wrapping from first to last.
     pub fn tab_prev(&mut self) -> usize {
+        if !self.open {
+            return self.focused_index;
+        }
         if self.focusable_count > 0 {
             self.focused_index = if self.focused_index == 0 {
                 self.focusable_count - 1
@@ -1168,5 +1203,55 @@ mod tests {
         m.open_at(0.0, 0.0);
         assert!(m.handle_escape());
         assert!(!m.is_open());
+    }
+
+    // ---- Button::set_focused from Hover (#64) ---
+    #[test]
+    fn button_focused_from_hover() {
+        let mut b = Button::new("OK");
+        b.set_hovered(true);
+        assert_eq!(b.state(), WidgetState::Hover);
+        b.set_focused(true);
+        assert_eq!(b.state(), WidgetState::Focused);
+    }
+
+    // ---- Dialog tab guards (#65) ---
+    #[test]
+    fn dialog_tab_noop_when_closed() {
+        let mut d = Dialog::new(3);
+        // Closed by default — tab operations are no-ops.
+        d.tab_next();
+        d.tab_next();
+        assert_eq!(d.focused_index(), 0);
+        d.tab_prev();
+        assert_eq!(d.focused_index(), 0);
+    }
+
+    // ---- TabBar::select_first empty guard (#68) ---
+    #[test]
+    fn tabbar_select_first_empty() {
+        let mut tb = TabBar::new(std::iter::empty::<&str>());
+        tb.select_first(); // must not panic
+        assert_eq!(tb.selected(), 0);
+    }
+
+    // ---- TextInput Disabled guard (#70) ---
+    #[test]
+    fn textinput_disabled_ignores_input() {
+        let mut t = TextInput::new();
+        t.set_disabled(true);
+        t.insert_char('a');
+        assert_eq!(t.value(), "");
+        assert!(!t.delete_backward());
+        assert!(!t.delete_forward());
+        t.move_cursor(CursorMove::Right, false); // must not panic
+    }
+
+    // ---- ScrollView Default (#72) ---
+    #[test]
+    fn scrollview_default() {
+        let sv = ScrollView::default();
+        assert_eq!(sv.scroll_offset(), (0.0, 0.0));
+        assert_eq!(sv.viewport_size(), (0.0, 0.0));
     }
 }
