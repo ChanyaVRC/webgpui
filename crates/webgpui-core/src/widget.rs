@@ -626,6 +626,17 @@ impl Dialog {
         self.focused_index
     }
 
+    /// Update the number of focusable children. Clamps the current
+    /// focused_index to stay in range.
+    pub fn set_focusable_count(&mut self, count: usize) {
+        self.focusable_count = count;
+        if count > 0 {
+            self.focused_index = self.focused_index.min(count - 1);
+        } else {
+            self.focused_index = 0;
+        }
+    }
+
     /// Move focus to the next focusable child, wrapping from last to first.
     pub fn tab_next(&mut self) -> usize {
         if !self.open {
@@ -679,6 +690,7 @@ pub struct ContextMenu {
     open: bool,
     anchor: (f32, f32),
     items: Vec<String>,
+    selected_item: Option<usize>,
 }
 
 impl ContextMenu {
@@ -687,16 +699,19 @@ impl ContextMenu {
             open: false,
             anchor: (0.0, 0.0),
             items: items.into_iter().map(|s| s.into()).collect(),
+            selected_item: None,
         }
     }
 
     pub fn open_at(&mut self, x: f32, y: f32) {
         self.open = true;
         self.anchor = (x, y);
+        self.selected_item = None;
     }
 
     pub fn close(&mut self) {
         self.open = false;
+        self.selected_item = None;
     }
 
     pub fn is_open(&self) -> bool {
@@ -709,6 +724,45 @@ impl ContextMenu {
 
     pub fn items(&self) -> &[String] {
         &self.items
+    }
+
+    /// Currently keyboard-highlighted item index, if any.
+    pub fn selected_item(&self) -> Option<usize> {
+        self.selected_item
+    }
+
+    /// Move keyboard highlight to the next item (wraps). No-op when closed or empty.
+    pub fn select_next_item(&mut self) {
+        if !self.open || self.items.is_empty() {
+            return;
+        }
+        self.selected_item = Some(match self.selected_item {
+            None => 0,
+            Some(i) => (i + 1) % self.items.len(),
+        });
+    }
+
+    /// Move keyboard highlight to the previous item (wraps). No-op when closed or empty.
+    pub fn select_prev_item(&mut self) {
+        if !self.open || self.items.is_empty() {
+            return;
+        }
+        self.selected_item = Some(match self.selected_item {
+            None => self.items.len() - 1,
+            Some(0) => self.items.len() - 1,
+            Some(i) => i - 1,
+        });
+    }
+
+    /// Activate the currently highlighted item: closes the menu and returns
+    /// its index. Returns `None` if no item is highlighted or menu is closed.
+    pub fn activate_selected(&mut self) -> Option<usize> {
+        if !self.open {
+            return None;
+        }
+        let idx = self.selected_item?;
+        self.close();
+        Some(idx)
     }
 
     /// Called when a pointer event occurs outside the menu. Returns `true` if
@@ -1253,5 +1307,77 @@ mod tests {
         let sv = ScrollView::default();
         assert_eq!(sv.scroll_offset(), (0.0, 0.0));
         assert_eq!(sv.viewport_size(), (0.0, 0.0));
+    }
+
+    // ---- Dialog::set_focusable_count (#66) ---
+    #[test]
+    fn dialog_set_focusable_count_clamps_index() {
+        let mut d = Dialog::new(5);
+        d.open();
+        d.tab_next();
+        d.tab_next(); // focused_index = 2
+        d.set_focusable_count(2);
+        assert_eq!(d.focused_index(), 1); // clamped to count-1
+    }
+
+    #[test]
+    fn dialog_set_focusable_count_zero_resets() {
+        let mut d = Dialog::new(3);
+        d.open();
+        d.tab_next();
+        d.set_focusable_count(0);
+        assert_eq!(d.focused_index(), 0);
+    }
+
+    // ---- ContextMenu keyboard nav (#67) ---
+    #[test]
+    fn contextmenu_select_next_wraps() {
+        let mut m = ContextMenu::new(["A", "B", "C"]);
+        m.open_at(0.0, 0.0);
+        assert_eq!(m.selected_item(), None);
+        m.select_next_item();
+        assert_eq!(m.selected_item(), Some(0));
+        m.select_next_item();
+        assert_eq!(m.selected_item(), Some(1));
+        m.select_next_item();
+        assert_eq!(m.selected_item(), Some(2));
+        m.select_next_item(); // wrap
+        assert_eq!(m.selected_item(), Some(0));
+    }
+
+    #[test]
+    fn contextmenu_select_prev_wraps() {
+        let mut m = ContextMenu::new(["A", "B", "C"]);
+        m.open_at(0.0, 0.0);
+        m.select_prev_item(); // wrap from None → last
+        assert_eq!(m.selected_item(), Some(2));
+    }
+
+    #[test]
+    fn contextmenu_activate_selected_closes() {
+        let mut m = ContextMenu::new(["A", "B", "C"]);
+        m.open_at(0.0, 0.0);
+        m.select_next_item(); // Some(0)
+        m.select_next_item(); // Some(1)
+        let activated = m.activate_selected();
+        assert_eq!(activated, Some(1));
+        assert!(!m.is_open());
+    }
+
+    #[test]
+    fn contextmenu_selection_resets_on_open() {
+        let mut m = ContextMenu::new(["A", "B"]);
+        m.open_at(0.0, 0.0);
+        m.select_next_item();
+        m.close();
+        m.open_at(10.0, 10.0); // reopen
+        assert_eq!(m.selected_item(), None);
+    }
+
+    #[test]
+    fn contextmenu_keyboard_noop_when_closed() {
+        let mut m = ContextMenu::new(["A", "B"]);
+        m.select_next_item(); // closed → no-op
+        assert_eq!(m.selected_item(), None);
     }
 }
