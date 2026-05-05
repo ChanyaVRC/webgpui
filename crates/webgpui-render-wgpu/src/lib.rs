@@ -510,7 +510,13 @@ impl Renderer for WgpuRenderer {
         };
 
         let effective_batches: &[DrawBatch] = if ui_enabled { &batches } else { &[] };
-        self.render_batches(&mut encoder, &view, effective_batches, clear_color, clear_enabled);
+        self.render_batches(
+            &mut encoder,
+            &view,
+            effective_batches,
+            clear_color,
+            clear_enabled,
+        );
 
         self.ctx.queue.submit(std::iter::once(encoder.finish()));
         output.present();
