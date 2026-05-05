@@ -296,7 +296,8 @@ impl NodeTree {
             return false;
         };
         if self.nodes[idx].layout != layout {
-            node_set_layout(&mut self.nodes[idx], layout);
+            self.nodes[idx].layout = layout;
+            self.nodes[idx].dirty = true;
         }
         true
     }
@@ -383,11 +384,6 @@ impl NodeTree {
 
         self.nodes = new_nodes;
     }
-}
-
-fn node_set_layout(node: &mut Node, layout: LayoutStyle) {
-    node.layout = layout;
-    node.dirty = true;
 }
 
 impl Default for NodeTree {
