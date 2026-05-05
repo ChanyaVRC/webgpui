@@ -36,14 +36,47 @@ Exit Criteria:
 - Text rendering for mixed strings at stable positions.
 - Reproducible layout results for predefined fixtures.
 
-### M3: Component and Accessibility Layer (3-4 weeks)
+### M3: Browser UI Component Layer (10-14 weeks total, 4 sub-milestones)
+
+The minimum set of widgets needed to build a functional browser UI.
+Each sub-milestone ships independently and keeps CI green.
+
+#### M3-A: Core Interactive Widgets (3-4 weeks)
 Scope:
-- Build core components: Button, TextInput, List, Panel, Dialog.
-- Add accessibility metadata and keyboard-operable paths.
-- Define component API stability policy.
+- **Button**: 5 interaction states (normal / hover / pressed / focused / disabled), Enter/Space activation.
+- **TextInput**: cursor positioning, selection range, placeholder text, Backspace/Delete handling.
+- **Label**: multiline text rendering, alignment (start / center / end).
 Exit Criteria:
-- Keyboard-only operation for core component demos.
-- Accessibility metadata exported in app-facing structures.
+- Unit tests cover each widget state transition.
+- `demo-basic` extended with a text form (Label + TextInput + Button).
+
+#### M3-B: Structural Widgets (2-3 weeks)
+Scope:
+- **ScrollView**: overflow clipping, scroll offset tracking, optional scrollbar rendering.
+- **Toolbar**: horizontal strip with gap-based item layout.
+- **TabBar + Tab**: selection state, keyboard switching with arrow keys, Home/End.
+Exit Criteria:
+- ScrollView overflow-clipping fixture tests pass.
+- TabBar keyboard traversal tests (left/right arrow, Home/End wrap).
+
+#### M3-C: Overlay and Z-Order (2-3 weeks)
+Scope:
+- **Z-order system**: integer `layer` field on `LayoutNode`; render order sorted by layer.
+- **Dialog**: modal backdrop, focus trap (Tab wraps inside dialog only), close on Escape.
+- **ContextMenu**: position-anchored popup, dismiss on outside-click or Escape.
+Exit Criteria:
+- Dialog focus-trap test: Tab from last focusable item wraps to first.
+- ContextMenu dismiss test: outside-click event closes menu.
+
+#### M3-D: Accessibility and Polish (2-3 weeks)
+Scope:
+- **Role metadata**: ARIA-equivalent `role` field (`button` / `textbox` / `tab` / `dialog` / `menu`).
+- **Focus ring standardization**: consistent 2 px inset ring across all M3 widgets.
+- **Keyboard audit**: every M3 widget fully operable without mouse.
+Exit Criteria:
+- `role` field present in node data structures and accessible at app layer.
+- Keyboard-only navigation of a "form demo" (Label + TextInput + Button + Dialog).
+- `cargo test -p webgpui-app --all-targets` passes.
 
 ### M4: Migration and Replacement Validation (2-4 weeks)
 Scope:
