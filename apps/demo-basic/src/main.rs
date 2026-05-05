@@ -234,6 +234,7 @@ impl DemoUiState {
     }
 
     fn handle_text_input(&mut self, ctx: &DrawContext<'_>) {
+        let shift_held = ctx.input.is_key_pressed(KeyCode::Shift);
         for &(key, ch) in CHAR_KEYS {
             if is_new_key_press(ctx, &self.prev_pressed_keys, key)
                 && self.text_input.chars_count() < MAX_TEXT_LEN
@@ -247,10 +248,10 @@ impl DemoUiState {
         }
 
         if is_new_key_press(ctx, &self.prev_pressed_keys, KeyCode::ArrowLeft) {
-            self.text_input.move_cursor(CursorMove::Left, false);
+            self.text_input.move_cursor(CursorMove::Left, shift_held);
         }
         if is_new_key_press(ctx, &self.prev_pressed_keys, KeyCode::ArrowRight) {
-            self.text_input.move_cursor(CursorMove::Right, false);
+            self.text_input.move_cursor(CursorMove::Right, shift_held);
         }
 
         if is_new_key_press(ctx, &self.prev_pressed_keys, KeyCode::Enter) {
@@ -287,8 +288,13 @@ impl DemoUiState {
             let x = text_rect.origin.x + 13.0 + i as f32 * slot_w;
             let y = text_rect.origin.y + 14.0;
             let slot_rect = Rect::from_origin_size(Point::new(x, y), Size::new(slot_w - 2.0, 26.0));
+            let selected = self.text_input.selection()
+                .map(|(lo, hi)| i >= lo && i < hi)
+                .unwrap_or(false);
             let filled = i < value.len();
-            let color = if filled {
+            let color = if selected {
+                Color::new(0.35, 0.7, 1.0, 0.45)  // selection highlight
+            } else if filled {
                 Color::new(0.33, 0.84, 1.0, 0.2)
             } else {
                 Color::new(0.24, 0.28, 0.35, 1.0)
@@ -732,6 +738,7 @@ const VISUAL_KEYS: &[KeyCode] = &[
     KeyCode::ArrowUp,
     KeyCode::ArrowDown,
     KeyCode::Tab,
+    KeyCode::Shift,
 ];
 
 fn main() {
