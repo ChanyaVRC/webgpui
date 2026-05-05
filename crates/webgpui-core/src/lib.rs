@@ -5,6 +5,9 @@
 //! (layout properties).  Mutation marks nodes dirty so that the renderer can
 //! skip unchanged subtrees.
 
+mod widget;
+pub use widget::{Button, CursorMove, Label, TextAlign, TextInput, WidgetState};
+
 use std::collections::HashSet;
 use webgpui_geometry::{BorderRadius, Color, Insets, Rect, Size};
 use webgpui_layout::LayoutStyle;
