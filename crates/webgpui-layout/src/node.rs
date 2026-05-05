@@ -33,6 +33,19 @@ impl LayoutNode {
     }
 }
 
+impl Default for LayoutNode {
+    fn default() -> Self {
+        Self {
+            id: 0,
+            style: LayoutStyle::default(),
+            children: Vec::new(),
+            text: String::new(),
+            font_size: 14.0,
+            layer: 0,
+        }
+    }
+}
+
 /// Computed layout for a single node.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct LayoutResult {
