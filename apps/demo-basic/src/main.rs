@@ -29,6 +29,8 @@ struct DemoUiState {
     submit_flash: u8,
     frame_index: u64,
     prev_mouse_down: bool,
+    /// Whether the button is currently held down via mouse (mouse-down, not yet released).
+    button_mouse_held: bool,
     prev_pressed_keys: HashSet<KeyCode>,
     switcher: BackendSwitcher,
     notice_frames: u8,
@@ -49,6 +51,7 @@ impl DemoUiState {
             submit_flash: 0,
             frame_index: 0,
             prev_mouse_down: false,
+            button_mouse_held: false,
             prev_pressed_keys: HashSet::new(),
             switcher,
             notice_frames: 0,
@@ -141,6 +144,15 @@ impl DemoUiState {
         // Update button hover state every frame.
         self.button.set_hovered(button_rect.contains(mouse_pos));
 
+        // Mouse-up: release a button held from a previous frame.
+        let mouse_released_edge = !mouse_down && self.prev_mouse_down;
+        if mouse_released_edge && self.button_mouse_held {
+            self.button_mouse_held = false;
+            if self.button.release() {
+                self.submit();
+            }
+        }
+
         if mouse_pressed_edge {
             // Check backend buttons first
             let backend_buttons = backend_button_rects(w);
@@ -172,9 +184,7 @@ impl DemoUiState {
                 } else if button_rect.contains(mouse_pos) {
                     self.set_focus(DemoFocus::Button);
                     self.button.press();
-                    if self.button.release() {
-                        self.submit();
-                    }
+                    self.button_mouse_held = true;
                 }
             }
         }
