@@ -1901,6 +1901,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "webgpui-compat"
+version = "0.1.0"
+dependencies = [
+ "thiserror",
+ "webgpui-core",
+ "webgpui-geometry",
+ "webgpui-input",
+]
+
+[[package]]
 name = "webgpui-core"
 version = "0.1.0"
 dependencies = [
