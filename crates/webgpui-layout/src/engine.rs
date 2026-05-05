@@ -264,6 +264,7 @@ mod tests {
             children: vec![],
             text: String::new(),
             font_size: 14.0,
+            layer: 0,
         }];
         engine.compute(&nodes, viewport());
         let r = engine.result(0).unwrap();
@@ -283,6 +284,7 @@ mod tests {
                 children: vec![1, 2],
                 text: String::new(),
                 font_size: 14.0,
+                layer: 0,
             },
             LayoutNode {
                 id: 1,
@@ -293,6 +295,7 @@ mod tests {
                 children: vec![],
                 text: String::new(),
                 font_size: 14.0,
+                layer: 0,
             },
             LayoutNode {
                 id: 2,
@@ -303,6 +306,7 @@ mod tests {
                 children: vec![],
                 text: String::new(),
                 font_size: 14.0,
+                layer: 0,
             },
         ];
         engine.compute(&nodes, viewport());
@@ -326,6 +330,7 @@ mod tests {
                 children: vec![1, 2],
                 text: String::new(),
                 font_size: 14.0,
+                layer: 0,
             },
             LayoutNode {
                 id: 1,
@@ -336,6 +341,7 @@ mod tests {
                 children: vec![],
                 text: String::new(),
                 font_size: 14.0,
+                layer: 0,
             },
             LayoutNode {
                 id: 2,
@@ -346,6 +352,7 @@ mod tests {
                 children: vec![],
                 text: String::new(),
                 font_size: 14.0,
+                layer: 0,
             },
         ];
         engine.compute(&nodes, viewport());
@@ -374,6 +381,7 @@ mod tests {
                 children: vec![1, 2],
                 text: String::new(),
                 font_size: 14.0,
+                layer: 0,
             },
             LayoutNode {
                 id: 1,
@@ -384,6 +392,7 @@ mod tests {
                 children: vec![],
                 text: String::new(),
                 font_size: 14.0,
+                layer: 0,
             },
             LayoutNode {
                 id: 2,
@@ -394,6 +403,7 @@ mod tests {
                 children: vec![],
                 text: String::new(),
                 font_size: 14.0,
+                layer: 0,
             },
         ];
         engine.compute(&nodes, viewport());
@@ -419,6 +429,7 @@ mod tests {
                 children: vec![1, 2],
                 text: String::new(),
                 font_size: 14.0,
+                layer: 0,
             },
             LayoutNode {
                 id: 1,
@@ -429,6 +440,7 @@ mod tests {
                 children: vec![],
                 text: String::new(),
                 font_size: 14.0,
+                layer: 0,
             },
             LayoutNode {
                 id: 2,
@@ -439,6 +451,7 @@ mod tests {
                 children: vec![],
                 text: String::new(),
                 font_size: 14.0,
+                layer: 0,
             },
         ];
         engine.compute(&nodes, viewport());
@@ -464,6 +477,7 @@ mod tests {
                 children: vec![1, 2],
                 text: String::new(),
                 font_size: 14.0,
+                layer: 0,
             },
             LayoutNode {
                 id: 1,
@@ -474,6 +488,7 @@ mod tests {
                 children: vec![],
                 text: String::new(),
                 font_size: 14.0,
+                layer: 0,
             },
             LayoutNode {
                 id: 2,
@@ -484,6 +499,7 @@ mod tests {
                 children: vec![],
                 text: String::new(),
                 font_size: 14.0,
+                layer: 0,
             },
         ];
         engine.compute(&nodes, viewport());
@@ -511,6 +527,7 @@ mod tests {
                 children: vec![1],
                 text: String::new(),
                 font_size: 14.0,
+                layer: 0,
             },
             LayoutNode {
                 id: 1,
@@ -522,6 +539,7 @@ mod tests {
                 children: vec![],
                 text: String::new(),
                 font_size: 14.0,
+                layer: 0,
             },
         ];
         engine.compute(&nodes, viewport());
@@ -553,6 +571,7 @@ mod tests {
                 children: vec![1, 2],
                 text: String::new(),
                 font_size: 14.0,
+                layer: 0,
             },
             LayoutNode {
                 id: 1,
@@ -560,6 +579,7 @@ mod tests {
                 children: vec![],
                 text: String::new(),
                 font_size: 14.0,
+                layer: 0,
             },
             LayoutNode {
                 id: 2,
@@ -570,6 +590,7 @@ mod tests {
                 children: vec![],
                 text: String::new(),
                 font_size: 14.0,
+                layer: 0,
             },
         ];
         engine.compute(&nodes, viewport());
@@ -634,6 +655,7 @@ mod tests {
                 children: vec![1],
                 text: String::new(),
                 font_size: 14.0,
+                layer: 0,
             },
             LayoutNode {
                 id: 1,
@@ -641,6 +663,7 @@ mod tests {
                 children: vec![],
                 text: "HI".to_string(),
                 font_size: 14.0,
+                layer: 0,
             },
         ];
         engine.compute(&nodes, viewport());
@@ -664,6 +687,7 @@ mod tests {
                 children: vec![1],
                 text: String::new(),
                 font_size: 14.0,
+                layer: 0,
             },
             LayoutNode {
                 id: 1,
@@ -671,6 +695,7 @@ mod tests {
                 children: vec![],
                 text: "ABC".to_string(),
                 font_size: 14.0,
+                layer: 0,
             },
         ];
         engine.compute(&nodes, viewport());
@@ -694,6 +719,7 @@ mod tests {
                 children: vec![1],
                 text: String::new(),
                 font_size: 14.0,
+                layer: 0,
             },
             LayoutNode {
                 id: 1,
@@ -701,6 +727,7 @@ mod tests {
                 children: vec![],
                 text: "OK".to_string(),
                 font_size: 14.0,
+                layer: 0,
             },
         ];
         engine.compute(&nodes, viewport());
@@ -726,6 +753,7 @@ mod tests {
                 children: vec![1, 2],
                 text: String::new(),
                 font_size: 14.0,
+                layer: 0,
             },
             LayoutNode {
                 id: 1,
@@ -736,6 +764,7 @@ mod tests {
                 children: vec![],
                 text: String::new(),
                 font_size: 14.0,
+                layer: 0,
             },
             LayoutNode {
                 id: 2,
@@ -746,6 +775,7 @@ mod tests {
                 children: vec![],
                 text: String::new(),
                 font_size: 14.0,
+                layer: 0,
             },
         ];
         engine.compute(&nodes, viewport());
@@ -777,6 +807,7 @@ mod tests {
                 children: vec![1, 4],
                 text: String::new(),
                 font_size: 14.0,
+                layer: 0,
             },
             LayoutNode {
                 id: 1,
@@ -788,6 +819,7 @@ mod tests {
                 children: vec![2, 3],
                 text: String::new(),
                 font_size: 14.0,
+                layer: 0,
             },
             LayoutNode {
                 id: 2,
@@ -798,6 +830,7 @@ mod tests {
                 children: vec![],
                 text: String::new(),
                 font_size: 14.0,
+                layer: 0,
             },
             LayoutNode {
                 id: 3,
@@ -808,6 +841,7 @@ mod tests {
                 children: vec![],
                 text: String::new(),
                 font_size: 14.0,
+                layer: 0,
             },
             LayoutNode {
                 id: 4,
@@ -818,6 +852,7 @@ mod tests {
                 children: vec![],
                 text: String::new(),
                 font_size: 14.0,
+                layer: 0,
             },
         ];
         engine.compute(&nodes, viewport());

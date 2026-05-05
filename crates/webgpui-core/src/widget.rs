@@ -1,3 +1,5 @@
+use crate::NodeRole;
+
 // ---------------------------------------------------------------------------
 // WidgetState
 // ---------------------------------------------------------------------------
@@ -121,6 +123,10 @@ impl Button {
             return;
         }
         self.state = WidgetState::Pressed;
+    }
+
+    pub fn role() -> NodeRole {
+        NodeRole::Button
     }
 
     /// End a press. Returns `true` if the button was activated (pressed and
@@ -266,6 +272,10 @@ impl TextInput {
         };
     }
 
+    pub fn role() -> NodeRole {
+        NodeRole::TextBox
+    }
+
     /// Deletes the selected range. Returns `true` if anything was deleted.
     fn delete_selection(&mut self) -> bool {
         let Some((lo, hi)) = self.selection() else {
@@ -315,6 +325,375 @@ impl Label {
     }
     pub fn align(&self) -> TextAlign {
         self.align
+    }
+
+    pub fn role() -> NodeRole {
+        NodeRole::None
+    }
+}
+
+// ---------------------------------------------------------------------------
+// ScrollView
+// ---------------------------------------------------------------------------
+
+/// A scrollable viewport that tracks scroll offset and detects content overflow.
+///
+/// The caller is responsible for measuring content and viewport sizes and for
+/// routing scroll events to `scroll_by` / `scroll_to`.
+pub struct ScrollView {
+    scroll_offset: (f32, f32),
+    content_size: (f32, f32),
+    viewport_size: (f32, f32),
+}
+
+impl ScrollView {
+    pub fn new(viewport_size: (f32, f32)) -> Self {
+        Self {
+            scroll_offset: (0.0, 0.0),
+            content_size: (0.0, 0.0),
+            viewport_size,
+        }
+    }
+
+    pub fn set_content_size(&mut self, size: (f32, f32)) {
+        self.content_size = size;
+        self.clamp_offset();
+    }
+
+    pub fn set_viewport_size(&mut self, size: (f32, f32)) {
+        self.viewport_size = size;
+        self.clamp_offset();
+    }
+
+    pub fn scroll_offset(&self) -> (f32, f32) {
+        self.scroll_offset
+    }
+
+    pub fn content_size(&self) -> (f32, f32) {
+        self.content_size
+    }
+
+    pub fn viewport_size(&self) -> (f32, f32) {
+        self.viewport_size
+    }
+
+    pub fn overflow_x(&self) -> bool {
+        self.content_size.0 > self.viewport_size.0
+    }
+
+    pub fn overflow_y(&self) -> bool {
+        self.content_size.1 > self.viewport_size.1
+    }
+
+    /// Scroll by a relative delta. Offset is clamped to `[0, max]`.
+    pub fn scroll_by(&mut self, dx: f32, dy: f32) {
+        self.scroll_to(self.scroll_offset.0 + dx, self.scroll_offset.1 + dy);
+    }
+
+    /// Scroll to an absolute position. Offset is clamped to `[0, max]`.
+    pub fn scroll_to(&mut self, x: f32, y: f32) {
+        self.scroll_offset = (
+            x.clamp(0.0, self.max_offset_x()),
+            y.clamp(0.0, self.max_offset_y()),
+        );
+    }
+
+    fn max_offset_x(&self) -> f32 {
+        (self.content_size.0 - self.viewport_size.0).max(0.0)
+    }
+
+    fn max_offset_y(&self) -> f32 {
+        (self.content_size.1 - self.viewport_size.1).max(0.0)
+    }
+
+    fn clamp_offset(&mut self) {
+        self.scroll_offset = (
+            self.scroll_offset.0.clamp(0.0, self.max_offset_x()),
+            self.scroll_offset.1.clamp(0.0, self.max_offset_y()),
+        );
+    }
+
+    pub fn role() -> NodeRole {
+        NodeRole::None
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Toolbar
+// ---------------------------------------------------------------------------
+
+/// A horizontal strip of labelled items with configurable gap spacing.
+///
+/// Layout (Direction::Row + flex_grow) is handled by the layout engine; this
+/// struct tracks the item list and gap for state-machine purposes.
+pub struct Toolbar {
+    items: Vec<String>,
+    gap: f32,
+}
+
+impl Toolbar {
+    pub fn new() -> Self {
+        Self {
+            items: Vec::new(),
+            gap: 8.0,
+        }
+    }
+
+    pub fn with_gap(mut self, gap: f32) -> Self {
+        self.gap = gap;
+        self
+    }
+
+    pub fn add_item(&mut self, label: impl Into<String>) {
+        self.items.push(label.into());
+    }
+
+    pub fn items(&self) -> &[String] {
+        &self.items
+    }
+
+    pub fn gap(&self) -> f32 {
+        self.gap
+    }
+
+    pub fn len(&self) -> usize {
+        self.items.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.items.is_empty()
+    }
+
+    pub fn role() -> NodeRole {
+        NodeRole::None
+    }
+}
+
+impl Default for Toolbar {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+// ---------------------------------------------------------------------------
+// TabBar
+// ---------------------------------------------------------------------------
+
+/// A tab bar with keyboard-navigable tab selection.
+///
+/// Selection wraps: `select_next` on the last tab goes to the first, and
+/// `select_prev` on the first tab goes to the last.
+pub struct TabBar {
+    tabs: Vec<String>,
+    selected: usize,
+}
+
+impl TabBar {
+    pub fn new(tabs: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        Self {
+            tabs: tabs.into_iter().map(|t| t.into()).collect(),
+            selected: 0,
+        }
+    }
+
+    pub fn selected(&self) -> usize {
+        self.selected
+    }
+
+    pub fn label(&self, index: usize) -> &str {
+        &self.tabs[index]
+    }
+
+    pub fn len(&self) -> usize {
+        self.tabs.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.tabs.is_empty()
+    }
+
+    /// Select by index. Clamps to `[0, len-1]`.
+    pub fn select(&mut self, index: usize) {
+        if !self.tabs.is_empty() {
+            self.selected = index.min(self.tabs.len() - 1);
+        }
+    }
+
+    /// Move to the next tab, wrapping from last to first.
+    pub fn select_next(&mut self) {
+        if !self.tabs.is_empty() {
+            self.selected = (self.selected + 1) % self.tabs.len();
+        }
+    }
+
+    /// Move to the previous tab, wrapping from first to last.
+    pub fn select_prev(&mut self) {
+        if !self.tabs.is_empty() {
+            self.selected = if self.selected == 0 {
+                self.tabs.len() - 1
+            } else {
+                self.selected - 1
+            };
+        }
+    }
+
+    /// Jump to the first tab (Home key).
+    pub fn select_first(&mut self) {
+        self.selected = 0;
+    }
+
+    /// Jump to the last tab (End key).
+    pub fn select_last(&mut self) {
+        self.selected = self.tabs.len().saturating_sub(1);
+    }
+
+    pub fn role() -> NodeRole {
+        NodeRole::Tab
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Dialog
+// ---------------------------------------------------------------------------
+
+/// A modal dialog with a focus trap.
+///
+/// While open, Tab / Shift-Tab cycle only among the dialog's `focusable_count`
+/// children.  Escape closes the dialog.
+pub struct Dialog {
+    open: bool,
+    focusable_count: usize,
+    focused_index: usize,
+}
+
+impl Dialog {
+    pub fn new(focusable_count: usize) -> Self {
+        Self {
+            open: false,
+            focusable_count,
+            focused_index: 0,
+        }
+    }
+
+    pub fn open(&mut self) {
+        self.open = true;
+        self.focused_index = 0;
+    }
+
+    pub fn close(&mut self) {
+        self.open = false;
+    }
+
+    pub fn is_open(&self) -> bool {
+        self.open
+    }
+
+    pub fn focused_index(&self) -> usize {
+        self.focused_index
+    }
+
+    /// Move focus to the next focusable child, wrapping from last to first.
+    pub fn tab_next(&mut self) -> usize {
+        if self.focusable_count > 0 {
+            self.focused_index = (self.focused_index + 1) % self.focusable_count;
+        }
+        self.focused_index
+    }
+
+    /// Move focus to the previous focusable child, wrapping from first to last.
+    pub fn tab_prev(&mut self) -> usize {
+        if self.focusable_count > 0 {
+            self.focused_index = if self.focused_index == 0 {
+                self.focusable_count - 1
+            } else {
+                self.focused_index - 1
+            };
+        }
+        self.focused_index
+    }
+
+    /// Handle the Escape key. Returns `true` if the dialog was open and is now closed.
+    pub fn handle_escape(&mut self) -> bool {
+        if self.open {
+            self.close();
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn role() -> NodeRole {
+        NodeRole::Dialog
+    }
+}
+
+// ---------------------------------------------------------------------------
+// ContextMenu
+// ---------------------------------------------------------------------------
+
+/// A position-anchored popup menu.
+///
+/// Open/close state and anchor position are tracked here.  Hit-testing and
+/// rendering are the caller's responsibility.
+pub struct ContextMenu {
+    open: bool,
+    anchor: (f32, f32),
+    items: Vec<String>,
+}
+
+impl ContextMenu {
+    pub fn new(items: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        Self {
+            open: false,
+            anchor: (0.0, 0.0),
+            items: items.into_iter().map(|s| s.into()).collect(),
+        }
+    }
+
+    pub fn open_at(&mut self, x: f32, y: f32) {
+        self.open = true;
+        self.anchor = (x, y);
+    }
+
+    pub fn close(&mut self) {
+        self.open = false;
+    }
+
+    pub fn is_open(&self) -> bool {
+        self.open
+    }
+
+    pub fn anchor(&self) -> (f32, f32) {
+        self.anchor
+    }
+
+    pub fn items(&self) -> &[String] {
+        &self.items
+    }
+
+    /// Called when a pointer event occurs outside the menu. Returns `true` if
+    /// the menu was open and is now dismissed.
+    pub fn handle_outside_click(&mut self) -> bool {
+        if self.open {
+            self.close();
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Handle the Escape key. Returns `true` if the menu was open and is now closed.
+    pub fn handle_escape(&mut self) -> bool {
+        if self.open {
+            self.close();
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn role() -> NodeRole {
+        NodeRole::Menu
     }
 }
 
@@ -568,5 +947,211 @@ mod tests {
         let mut l = Label::new("Hello");
         l.set_text("World");
         assert_eq!(l.text(), "World");
+    }
+
+    // ---- ScrollView ------------------------------------------------------
+
+    #[test]
+    fn scrollview_no_overflow_when_content_fits() {
+        let mut sv = ScrollView::new((200.0, 100.0));
+        sv.set_content_size((150.0, 80.0));
+        assert!(!sv.overflow_x());
+        assert!(!sv.overflow_y());
+    }
+
+    #[test]
+    fn scrollview_overflow_when_content_exceeds_viewport() {
+        let mut sv = ScrollView::new((200.0, 100.0));
+        sv.set_content_size((400.0, 300.0));
+        assert!(sv.overflow_x());
+        assert!(sv.overflow_y());
+    }
+
+    #[test]
+    fn scrollview_scroll_by_clamped_at_zero() {
+        let mut sv = ScrollView::new((200.0, 100.0));
+        sv.set_content_size((400.0, 300.0));
+        sv.scroll_by(-50.0, -50.0);
+        assert_eq!(sv.scroll_offset(), (0.0, 0.0));
+    }
+
+    #[test]
+    fn scrollview_scroll_by_clamped_at_max() {
+        let mut sv = ScrollView::new((200.0, 100.0));
+        sv.set_content_size((400.0, 300.0));
+        sv.scroll_by(9999.0, 9999.0);
+        assert_eq!(sv.scroll_offset(), (200.0, 200.0));
+    }
+
+    #[test]
+    fn scrollview_scroll_to_absolute() {
+        let mut sv = ScrollView::new((200.0, 100.0));
+        sv.set_content_size((400.0, 300.0));
+        sv.scroll_to(50.0, 75.0);
+        assert_eq!(sv.scroll_offset(), (50.0, 75.0));
+    }
+
+    #[test]
+    fn scrollview_offset_clamped_on_viewport_resize() {
+        let mut sv = ScrollView::new((100.0, 100.0));
+        sv.set_content_size((400.0, 400.0));
+        sv.scroll_to(200.0, 200.0);
+        // Enlarge viewport so max offset shrinks to 400-350 = 50.
+        sv.set_viewport_size((350.0, 350.0));
+        assert_eq!(sv.scroll_offset(), (50.0, 50.0));
+    }
+
+    #[test]
+    fn scrollview_getters_match_setters() {
+        let mut sv = ScrollView::new((200.0, 100.0));
+        sv.set_content_size((400.0, 300.0));
+        assert_eq!(sv.content_size(), (400.0, 300.0));
+        assert_eq!(sv.viewport_size(), (200.0, 100.0));
+    }
+
+    // ---- Toolbar ---------------------------------------------------------
+
+    #[test]
+    fn toolbar_add_items() {
+        let mut tb = Toolbar::new();
+        tb.add_item("File");
+        tb.add_item("Edit");
+        assert_eq!(tb.len(), 2);
+        assert_eq!(tb.items(), &["File", "Edit"]);
+    }
+
+    #[test]
+    fn toolbar_custom_gap() {
+        let tb = Toolbar::new().with_gap(16.0);
+        assert_eq!(tb.gap(), 16.0);
+    }
+
+    #[test]
+    fn toolbar_default_is_empty() {
+        assert!(Toolbar::new().is_empty());
+    }
+
+    // ---- TabBar ----------------------------------------------------------
+
+    #[test]
+    fn tabbar_initial_selection_is_first() {
+        let tb = TabBar::new(["A", "B", "C"]);
+        assert_eq!(tb.selected(), 0);
+        assert_eq!(tb.label(0), "A");
+    }
+
+    #[test]
+    fn tabbar_select_next_wraps() {
+        let mut tb = TabBar::new(["A", "B", "C"]);
+        tb.select(2);
+        tb.select_next(); // wraps to 0
+        assert_eq!(tb.selected(), 0);
+    }
+
+    #[test]
+    fn tabbar_select_prev_wraps() {
+        let mut tb = TabBar::new(["A", "B", "C"]);
+        tb.select_prev(); // wraps from 0 to last
+        assert_eq!(tb.selected(), 2);
+    }
+
+    #[test]
+    fn tabbar_home_end() {
+        let mut tb = TabBar::new(["A", "B", "C"]);
+        tb.select(1);
+        tb.select_last();
+        assert_eq!(tb.selected(), 2);
+        tb.select_first();
+        assert_eq!(tb.selected(), 0);
+    }
+
+    #[test]
+    fn tabbar_select_clamps_to_last() {
+        let mut tb = TabBar::new(["A", "B"]);
+        tb.select(99);
+        assert_eq!(tb.selected(), 1);
+    }
+
+    #[test]
+    fn tabbar_select_next_from_middle_does_not_wrap() {
+        let mut tb = TabBar::new(["A", "B", "C"]);
+        tb.select(1);
+        tb.select_next();
+        assert_eq!(tb.selected(), 2);
+    }
+
+    // ---- Dialog ----------------------------------------------------------
+
+    #[test]
+    fn dialog_opens_with_focus_at_first() {
+        let mut d = Dialog::new(3);
+        d.open();
+        assert!(d.is_open());
+        assert_eq!(d.focused_index(), 0);
+    }
+
+    #[test]
+    fn dialog_tab_next_wraps_to_first() {
+        let mut d = Dialog::new(3);
+        d.open();
+        d.tab_next(); // 1
+        d.tab_next(); // 2
+        d.tab_next(); // wraps → 0
+        assert_eq!(d.focused_index(), 0);
+    }
+
+    #[test]
+    fn dialog_tab_prev_wraps_to_last() {
+        let mut d = Dialog::new(3);
+        d.open();
+        d.tab_prev(); // wraps → 2
+        assert_eq!(d.focused_index(), 2);
+    }
+
+    #[test]
+    fn dialog_escape_closes() {
+        let mut d = Dialog::new(2);
+        d.open();
+        assert!(d.handle_escape());
+        assert!(!d.is_open());
+    }
+
+    #[test]
+    fn dialog_escape_while_closed_returns_false() {
+        let mut d = Dialog::new(2);
+        assert!(!d.handle_escape());
+    }
+
+    // ---- ContextMenu -----------------------------------------------------
+
+    #[test]
+    fn contextmenu_open_at_sets_anchor() {
+        let mut m = ContextMenu::new(["Cut", "Copy", "Paste"]);
+        m.open_at(120.0, 80.0);
+        assert!(m.is_open());
+        assert_eq!(m.anchor(), (120.0, 80.0));
+        assert_eq!(m.items(), &["Cut", "Copy", "Paste"]);
+    }
+
+    #[test]
+    fn contextmenu_outside_click_dismisses() {
+        let mut m = ContextMenu::new(["A"]);
+        m.open_at(0.0, 0.0);
+        assert!(m.handle_outside_click());
+        assert!(!m.is_open());
+    }
+
+    #[test]
+    fn contextmenu_outside_click_when_closed_returns_false() {
+        let mut m = ContextMenu::new(["A"]);
+        assert!(!m.handle_outside_click());
+    }
+
+    #[test]
+    fn contextmenu_escape_dismisses() {
+        let mut m = ContextMenu::new(["A"]);
+        m.open_at(0.0, 0.0);
+        assert!(m.handle_escape());
+        assert!(!m.is_open());
     }
 }

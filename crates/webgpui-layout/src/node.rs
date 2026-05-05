@@ -15,6 +15,9 @@ pub struct LayoutNode {
     pub text: String,
     /// Font size in logical pixels used when measuring `text`.
     pub font_size: f32,
+    /// Z-order layer. Higher values render on top of lower values.
+    /// The render pass sorts nodes by this field before drawing.
+    pub layer: i32,
 }
 
 impl LayoutNode {
@@ -25,6 +28,7 @@ impl LayoutNode {
             children: Vec::new(),
             text: String::new(),
             font_size: 14.0,
+            layer: 0,
         }
     }
 }
