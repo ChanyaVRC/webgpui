@@ -120,11 +120,20 @@ impl RenderPass {
 // ---------------------------------------------------------------------------
 
 /// Manages the set of render passes and their execution order.
+///
+/// Pass ordering is computed via Kahn's topological sort and cached lazily.
+/// `topo_dirty` is set whenever the graph structure changes; `execution_order()`
+/// recomputes `topo_order` when the cache is stale.
+///
+/// Note: `execution_order()` is implemented but not yet called by the renderer —
+/// see issue #54 for the wiring task.
 pub struct RenderGraph {
     passes: HashMap<PassId, RenderPass>,
     next_id: u32,
-    /// Cached topological order (invalidated when passes change).
+    /// Cached result of the last topological sort.  Rebuilt when `topo_dirty` is true.
     topo_order: Vec<PassId>,
+    /// Set to `true` whenever passes are added or dependencies change, triggering
+    /// a re-sort on the next `execution_order()` call.
     topo_dirty: bool,
 }
 
