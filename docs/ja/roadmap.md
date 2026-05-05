@@ -78,6 +78,8 @@
 - キーボードのみで「フォームデモ」（Label + TextInput + Button + Dialog）を操作できる。
 - `cargo test -p webgpui-app --all-targets` が通る。
 
+影響クレート: `webgpui-core`（ウィジェットステートマシン、NodeRole）、`webgpui-app`（DrawContext ウィジェットヘルパー）、`webgpui-batching`（ウィジェットジオメトリのバッチ生成）、`apps/demo-basic`。
+
 ### M4: 移行と置換妥当性の検証（2-4週間）
 前提条件:
 - `webgpui-compat` クレートが存在し、MUST ティア全APIが実装済みであること（api-mapping.md §13 参照）。
@@ -103,6 +105,7 @@
 > - `P2_GPU_SKIP_RATIO` メトリクスを `.ci/` メトリクス形式に追加。
 > - 受入条件: 更新なし画面で GPU 時間が継続低下すること；CIのP2ゲートで検証。
 > - このトラックは M4 と並走し、M4 の完了条件はブロックしない。
+> - 影響クレート: `webgpui-core`（DirtyTracker）、`webgpui-render`（スキップロジック）、`webgpui-render-wgpu`（シザー）、`webgpui-batching`（バッチカリング）、`webgpui-app`（mark_dirty_rect API）。
 
 ### M5: API安定化（2-3週間）
 範囲:

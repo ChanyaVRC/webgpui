@@ -78,6 +78,8 @@ Exit Criteria:
 - Keyboard-only navigation of a "form demo" (Label + TextInput + Button + Dialog).
 - `cargo test -p webgpui-app --all-targets` passes.
 
+Crates affected: `webgpui-core` (widget state machines, NodeRole), `webgpui-app` (DrawContext widget helpers), `webgpui-batching` (batch generation for widget geometry), `apps/demo-basic`.
+
 ### M4: Migration and Replacement Validation (2-4 weeks)
 Prerequisites:
 - `webgpui-compat` crate must exist with all MUST-tier APIs implemented (see api-mapping.md §13).
@@ -104,6 +106,7 @@ Risks:
 > - Acceptance: GPU time continuously decreases on no-update frames; verified via CI P2 gate.
 > - This track runs alongside M4 and does not block M4 exit criteria.
 > - Responsible PR: `perf/p2-dirty-rect-integration`
+> - Crates affected: `webgpui-core` (DirtyTracker), `webgpui-render` (skip logic), `webgpui-render-wgpu` (scissor), `webgpui-batching` (batch culling), `webgpui-app` (mark_dirty_rect API).
 
 ### M5: API Stabilization (2-3 weeks)
 Scope:

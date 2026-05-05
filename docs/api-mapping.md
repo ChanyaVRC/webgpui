@@ -179,3 +179,26 @@ SHOULD/LATER APIs will be gated behind `compat-full` in a later milestone.
 
 ### 13.7 Freeze Rule
 All types and functions listed in §13.3 and §13.4 are frozen at v0.1. Changes require a major-version bump per the semver policy defined in M5.
+
+## 14. `webgpui-batching` Crate — Responsibilities
+
+`webgpui-batching` is responsible for merging draw commands into GPU-efficient batches.
+It is distinct from `webgpui-render` (which owns the GPU submission pipeline) and is used
+by the renderer backends but carries no platform-specific code.
+
+### 14.1 Crate Role
+- Accepts a `DrawList` of high-level draw commands.
+- Groups commands by `BatchKey` (blend mode, texture, pipeline, z-order).
+- Produces a flat `Vec<DrawBatch>` ready for upload and submission.
+
+### 14.2 Milestone Involvement
+
+| Milestone | Involvement |
+|---|---|
+| M3 | Generates batches for widget geometry (Button, TextInput, Label). |
+| P2 (dirty rect) | Culls batches that fall entirely outside the dirty rect, reducing GPU submissions. |
+| M9 (optimization) | Candidate for SoA vertex layout and ring-buffer batch recycling. |
+
+### 14.3 Crate Dependencies
+- `webgpui-geometry` (Rect, Color, Point)
+- `webgpui-render` (DrawCommand, DrawList)
