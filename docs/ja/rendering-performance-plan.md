@@ -410,12 +410,19 @@ on RedrawRequested:
 
 **`webgpui-app` — `DrawContext`**
 
-フレームコールバック内から呼び出すために追加:
+`DrawContext` は PR #38 で `dirty_tracker: &mut DirtyTracker` フィールドが追加済み。
+`mark_dirty_rect` はそのフィールドへの薄いフォワードとして実装する:
+
 ```rust
 /// このフレームで再描画が必要な画面領域を登録する。
 /// アクティブなフレーム外で呼び出しても効果なし。
-pub fn mark_dirty_rect(&mut self, rect: Rect);
+pub fn mark_dirty_rect(&mut self, rect: Rect) {
+    self.dirty_tracker.mark(rect);
+}
 ```
+
+`DrawContext` に新たなフィールドは不要。`DirtyTracker` の可変参照はフレームループで
+`DrawContext` を構築する時点ですでに確立されている。
 
 ### 17.4 `NodeTree` との統合
 

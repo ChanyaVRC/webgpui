@@ -411,12 +411,19 @@ on RedrawRequested:
 
 **`webgpui-app` — `DrawContext`**
 
-Add for use inside frame callbacks:
+`DrawContext` already holds a `dirty_tracker: &mut DirtyTracker` field (wired in PR #38).
+`mark_dirty_rect` is a thin forward to that reference:
+
 ```rust
 /// Marks a screen region as needing redraw this frame.
 /// Has no effect when called outside an active frame.
-pub fn mark_dirty_rect(&mut self, rect: Rect);
+pub fn mark_dirty_rect(&mut self, rect: Rect) {
+    self.dirty_tracker.mark(rect);
+}
 ```
+
+No new fields are required on `DrawContext`; the mutable borrow of `DirtyTracker`
+is already established when the `DrawContext` is constructed in the frame loop.
 
 ### 17.4 Integration with `NodeTree`
 
