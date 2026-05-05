@@ -95,9 +95,20 @@ impl DemoUiState {
             draw_notice(ctx, w, h, &msg, notice_alpha);
         }
 
+        // Keyboard background dimensions (must match draw_keyboard internals).
+        let keyboard_bg_w = 15.0 * (KEY_W + KEY_GAP) + 24.0;
+        let keyboard_bg_h = 5.0 * (KEY_H + KEY_GAP) + 24.0;
+        // Vertical layout: label(22) + label_h(~10) + gap + input_top(46) + input_h(54) +
+        //                  gap(14) + keyboard padding(12) + keyboard content + padding(12)
+        let keyboard_top_offset = 116.0_f32; // panel-relative y of keyboard origin (not bg)
+        let panel_content_h = keyboard_top_offset + keyboard_bg_h; // +12 bg padding already in bg_h
+
         let panel = Rect::from_origin_size(
             Point::new(24.0, 72.0),
-            Size::new((w - 48.0).max(300.0), (h - 96.0).max(420.0)),
+            Size::new(
+                (w - 48.0).max(keyboard_bg_w + 48.0),
+                (h - 96.0).max(panel_content_h + 32.0),
+            ),
         );
         ctx.fill_rounded_rect(panel, 14.0, Color::new(0.18, 0.2, 0.25, 1.0));
         ctx.draw_border(panel, Color::new(0.38, 0.42, 0.5, 1.0), 1.0);
@@ -127,7 +138,12 @@ impl DemoUiState {
         self.draw_textbox(ctx, text_rect);
         self.draw_button(ctx, button_rect);
 
-        let keyboard_origin = Point::new(panel.origin.x + 22.0, panel.origin.y + 102.0);
+        // Center keyboard background horizontally within the panel.
+        let keyboard_bg_left = panel.origin.x + (panel.size.width - keyboard_bg_w) / 2.0;
+        let keyboard_origin = Point::new(
+            keyboard_bg_left + 12.0,
+            panel.origin.y + keyboard_top_offset,
+        );
         self.draw_keyboard(ctx, keyboard_origin);
 
         if self.submit_flash > 0 {
