@@ -140,7 +140,10 @@ impl DemoUiState {
 
         // Center keyboard background horizontally within the panel.
         let keyboard_bg_left = panel.origin.x + (panel.size.width - keyboard_bg_w) / 2.0;
-        let keyboard_origin = Point::new(keyboard_bg_left + 12.0, panel.origin.y + keyboard_top_offset);
+        let keyboard_origin = Point::new(
+            keyboard_bg_left + 12.0,
+            panel.origin.y + keyboard_top_offset,
+        );
         self.draw_keyboard(ctx, keyboard_origin);
 
         if self.submit_flash > 0 {
