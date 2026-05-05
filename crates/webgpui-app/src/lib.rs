@@ -419,6 +419,7 @@ impl App {
                                     window.set_title(&title);
                                     let (w, h) = renderer.surface_size();
                                     side_renderer = create_side_renderer(current_backend, w, h);
+                                    frame_timer.reset();
                                     eprintln!(
                                         "[webgpui-app] backend switched to: {}",
                                         current_backend.name()
