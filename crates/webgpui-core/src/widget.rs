@@ -1,3 +1,5 @@
+use crate::NodeRole;
+
 // ---------------------------------------------------------------------------
 // WidgetState
 // ---------------------------------------------------------------------------
@@ -111,6 +113,10 @@ impl Button {
             return;
         }
         self.state = WidgetState::Pressed;
+    }
+
+    pub fn role() -> NodeRole {
+        NodeRole::Button
     }
 
     /// End a press. Returns `true` if the button was activated (pressed and
@@ -252,6 +258,10 @@ impl TextInput {
         };
     }
 
+    pub fn role() -> NodeRole {
+        NodeRole::TextBox
+    }
+
     /// Deletes the selected range. Returns `true` if anything was deleted.
     fn delete_selection(&mut self) -> bool {
         let Some((lo, hi)) = self.selection() else {
@@ -301,6 +311,10 @@ impl Label {
     }
     pub fn align(&self) -> TextAlign {
         self.align
+    }
+
+    pub fn role() -> NodeRole {
+        NodeRole::None
     }
 }
 
@@ -376,6 +390,10 @@ impl ScrollView {
             self.scroll_offset.1.clamp(0.0, self.max_offset_y()),
         );
     }
+
+    pub fn role() -> NodeRole {
+        NodeRole::None
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -422,6 +440,10 @@ impl Toolbar {
 
     pub fn is_empty(&self) -> bool {
         self.items.is_empty()
+    }
+
+    pub fn role() -> NodeRole {
+        NodeRole::None
     }
 }
 
@@ -501,6 +523,155 @@ impl TabBar {
     /// Jump to the last tab (End key).
     pub fn select_last(&mut self) {
         self.selected = self.tabs.len().saturating_sub(1);
+    }
+
+    pub fn role() -> NodeRole {
+        NodeRole::Tab
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Dialog
+// ---------------------------------------------------------------------------
+
+/// A modal dialog with a focus trap.
+///
+/// While open, Tab / Shift-Tab cycle only among the dialog's `focusable_count`
+/// children.  Escape closes the dialog.
+pub struct Dialog {
+    open: bool,
+    focusable_count: usize,
+    focused_index: usize,
+}
+
+impl Dialog {
+    pub fn new(focusable_count: usize) -> Self {
+        Self {
+            open: false,
+            focusable_count,
+            focused_index: 0,
+        }
+    }
+
+    pub fn open(&mut self) {
+        self.open = true;
+        self.focused_index = 0;
+    }
+
+    pub fn close(&mut self) {
+        self.open = false;
+    }
+
+    pub fn is_open(&self) -> bool {
+        self.open
+    }
+
+    pub fn focused_index(&self) -> usize {
+        self.focused_index
+    }
+
+    /// Move focus to the next focusable child, wrapping from last to first.
+    pub fn tab_next(&mut self) -> usize {
+        if self.focusable_count > 0 {
+            self.focused_index = (self.focused_index + 1) % self.focusable_count;
+        }
+        self.focused_index
+    }
+
+    /// Move focus to the previous focusable child, wrapping from first to last.
+    pub fn tab_prev(&mut self) -> usize {
+        if self.focusable_count > 0 {
+            self.focused_index = if self.focused_index == 0 {
+                self.focusable_count - 1
+            } else {
+                self.focused_index - 1
+            };
+        }
+        self.focused_index
+    }
+
+    /// Handle the Escape key. Returns `true` if the dialog was open and is now closed.
+    pub fn handle_escape(&mut self) -> bool {
+        if self.open {
+            self.close();
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn role() -> NodeRole {
+        NodeRole::Dialog
+    }
+}
+
+// ---------------------------------------------------------------------------
+// ContextMenu
+// ---------------------------------------------------------------------------
+
+/// A position-anchored popup menu.
+///
+/// Open/close state and anchor position are tracked here.  Hit-testing and
+/// rendering are the caller's responsibility.
+pub struct ContextMenu {
+    open: bool,
+    anchor: (f32, f32),
+    items: Vec<String>,
+}
+
+impl ContextMenu {
+    pub fn new(items: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        Self {
+            open: false,
+            anchor: (0.0, 0.0),
+            items: items.into_iter().map(|s| s.into()).collect(),
+        }
+    }
+
+    pub fn open_at(&mut self, x: f32, y: f32) {
+        self.open = true;
+        self.anchor = (x, y);
+    }
+
+    pub fn close(&mut self) {
+        self.open = false;
+    }
+
+    pub fn is_open(&self) -> bool {
+        self.open
+    }
+
+    pub fn anchor(&self) -> (f32, f32) {
+        self.anchor
+    }
+
+    pub fn items(&self) -> &[String] {
+        &self.items
+    }
+
+    /// Called when a pointer event occurs outside the menu. Returns `true` if
+    /// the menu was open and is now dismissed.
+    pub fn handle_outside_click(&mut self) -> bool {
+        if self.open {
+            self.close();
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Handle the Escape key. Returns `true` if the menu was open and is now closed.
+    pub fn handle_escape(&mut self) -> bool {
+        if self.open {
+            self.close();
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn role() -> NodeRole {
+        NodeRole::Menu
     }
 }
 
@@ -845,5 +1016,80 @@ mod tests {
         let mut tb = TabBar::new(["A", "B"]);
         tb.select(99);
         assert_eq!(tb.selected(), 1);
+    }
+
+    // ---- Dialog ----------------------------------------------------------
+
+    #[test]
+    fn dialog_opens_with_focus_at_first() {
+        let mut d = Dialog::new(3);
+        d.open();
+        assert!(d.is_open());
+        assert_eq!(d.focused_index(), 0);
+    }
+
+    #[test]
+    fn dialog_tab_next_wraps_to_first() {
+        let mut d = Dialog::new(3);
+        d.open();
+        d.tab_next(); // 1
+        d.tab_next(); // 2
+        d.tab_next(); // wraps → 0
+        assert_eq!(d.focused_index(), 0);
+    }
+
+    #[test]
+    fn dialog_tab_prev_wraps_to_last() {
+        let mut d = Dialog::new(3);
+        d.open();
+        d.tab_prev(); // wraps → 2
+        assert_eq!(d.focused_index(), 2);
+    }
+
+    #[test]
+    fn dialog_escape_closes() {
+        let mut d = Dialog::new(2);
+        d.open();
+        assert!(d.handle_escape());
+        assert!(!d.is_open());
+    }
+
+    #[test]
+    fn dialog_escape_while_closed_returns_false() {
+        let mut d = Dialog::new(2);
+        assert!(!d.handle_escape());
+    }
+
+    // ---- ContextMenu -----------------------------------------------------
+
+    #[test]
+    fn contextmenu_open_at_sets_anchor() {
+        let mut m = ContextMenu::new(["Cut", "Copy", "Paste"]);
+        m.open_at(120.0, 80.0);
+        assert!(m.is_open());
+        assert_eq!(m.anchor(), (120.0, 80.0));
+        assert_eq!(m.items(), &["Cut", "Copy", "Paste"]);
+    }
+
+    #[test]
+    fn contextmenu_outside_click_dismisses() {
+        let mut m = ContextMenu::new(["A"]);
+        m.open_at(0.0, 0.0);
+        assert!(m.handle_outside_click());
+        assert!(!m.is_open());
+    }
+
+    #[test]
+    fn contextmenu_outside_click_when_closed_returns_false() {
+        let mut m = ContextMenu::new(["A"]);
+        assert!(!m.handle_outside_click());
+    }
+
+    #[test]
+    fn contextmenu_escape_dismisses() {
+        let mut m = ContextMenu::new(["A"]);
+        m.open_at(0.0, 0.0);
+        assert!(m.handle_escape());
+        assert!(!m.is_open());
     }
 }
