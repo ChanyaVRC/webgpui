@@ -37,6 +37,16 @@ impl LayoutEngine {
         if nodes.is_empty() {
             return;
         }
+        // Validate all child indices before traversal to give a clear error.
+        for (i, node) in nodes.iter().enumerate() {
+            for &ci in &node.children {
+                assert!(
+                    ci < nodes.len(),
+                    "LayoutNode at index {i} has child index {ci} which is out of bounds (nodes.len() = {})",
+                    nodes.len()
+                );
+            }
+        }
         let available = Rect::from_origin_size(Point::ZERO, viewport);
         self.layout_node(nodes, 0, available, text_measure);
     }
@@ -66,6 +76,11 @@ impl LayoutEngine {
         if style.position == PositionType::Absolute {
             let w = style.width.unwrap_or(parent_content.size.width);
             let h = style.height.unwrap_or(0.0);
+            debug_assert!(
+                style.height.is_some() || nodes[idx].children.is_empty(),
+                "Absolute node {} has children but no explicit height; it will render with zero height",
+                nodes[idx].id
+            );
             let border = Rect::new(
                 parent_content.origin.x + style.x,
                 parent_content.origin.y + style.y,
@@ -862,5 +877,29 @@ mod tests {
         // Child 4 starts at x=100 (after the column).
         let r4 = engine.result(4).unwrap();
         assert_eq!(r4.border_box.origin.x, 100.0);
+    }
+
+    // ---- LayoutNode Default (#79) ---
+    #[test]
+    fn layout_node_default() {
+        use crate::node::LayoutNode;
+        let n = LayoutNode::default();
+        assert_eq!(n.id, 0);
+        assert!(n.children.is_empty());
+        assert!(n.text.is_empty());
+        assert_eq!(n.layer, 0);
+    }
+
+    // ---- child index validation (#82) ---
+    #[test]
+    #[should_panic(expected = "out of bounds")]
+    fn engine_panics_on_bad_child_index() {
+        let mut engine = LayoutEngine::new();
+        let nodes = vec![LayoutNode {
+            id: 0,
+            children: vec![99], // invalid
+            ..LayoutNode::default()
+        }];
+        engine.compute(&nodes, viewport());
     }
 }
