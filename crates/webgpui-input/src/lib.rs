@@ -1,6 +1,7 @@
 //! Input event types and state tracking for webgpui.
 
 use std::collections::HashSet;
+use webgpui_core::NodeId;
 use webgpui_geometry::Point;
 
 // ---------------------------------------------------------------------------
@@ -261,9 +262,9 @@ pub enum EventPhase {
 /// (analogous to `stopPropagation`).
 ///
 /// Does nothing if `path` is empty.
-pub fn dispatch<F>(path: &[u32], event: &InputEvent, mut visitor: F)
+pub fn dispatch<F>(path: &[NodeId], event: &InputEvent, mut visitor: F)
 where
-    F: FnMut(u32, EventPhase, &InputEvent) -> bool,
+    F: FnMut(NodeId, EventPhase, &InputEvent) -> bool,
 {
     if path.is_empty() {
         return;
@@ -304,9 +305,9 @@ where
 #[derive(Debug, Default)]
 pub struct FocusManager {
     /// The node id of the currently focused widget, if any.
-    focused: Option<u32>,
+    focused: Option<NodeId>,
     /// Ordered list of focusable node ids (tab order).
-    focusable: Vec<u32>,
+    focusable: Vec<NodeId>,
 }
 
 impl FocusManager {
@@ -319,7 +320,7 @@ impl FocusManager {
     // ------------------------------------------------------------------
 
     /// Sets focus to `node_id` unconditionally.
-    pub fn set_focus(&mut self, node_id: u32) {
+    pub fn set_focus(&mut self, node_id: NodeId) {
         self.focused = Some(node_id);
     }
 
@@ -329,12 +330,12 @@ impl FocusManager {
     }
 
     /// Returns the currently focused node id, if any.
-    pub fn focused(&self) -> Option<u32> {
+    pub fn focused(&self) -> Option<NodeId> {
         self.focused
     }
 
     /// Returns `true` if `node_id` is the currently focused node.
-    pub fn is_focused(&self, node_id: u32) -> bool {
+    pub fn is_focused(&self, node_id: NodeId) -> bool {
         self.focused == Some(node_id)
     }
 
@@ -345,7 +346,7 @@ impl FocusManager {
     /// Appends `node_id` to the end of the tab-order list.
     ///
     /// If `node_id` is already registered this is a no-op.
-    pub fn register_focusable(&mut self, node_id: u32) {
+    pub fn register_focusable(&mut self, node_id: NodeId) {
         if !self.focusable.contains(&node_id) {
             self.focusable.push(node_id);
         }
@@ -354,7 +355,7 @@ impl FocusManager {
     /// Removes `node_id` from the tab-order list.
     ///
     /// If the removed node was focused, focus is cleared.
-    pub fn unregister_focusable(&mut self, node_id: u32) {
+    pub fn unregister_focusable(&mut self, node_id: NodeId) {
         self.focusable.retain(|&id| id != node_id);
         if self.focused == Some(node_id) {
             self.focused = None;
@@ -365,7 +366,7 @@ impl FocusManager {
     ///
     /// Duplicates in `order` are removed (first occurrence wins).
     /// If the currently focused node is not present in the new list, focus is cleared.
-    pub fn set_focusable_order(&mut self, order: Vec<u32>) {
+    pub fn set_focusable_order(&mut self, order: Vec<NodeId>) {
         let mut seen = std::collections::HashSet::new();
         self.focusable = order.into_iter().filter(|id| seen.insert(*id)).collect();
         if let Some(focused) = self.focused {
@@ -376,7 +377,7 @@ impl FocusManager {
     }
 
     /// Returns a slice of all focusable node ids in tab order.
-    pub fn focusable_order(&self) -> &[u32] {
+    pub fn focusable_order(&self) -> &[NodeId] {
         &self.focusable
     }
 
@@ -388,7 +389,7 @@ impl FocusManager {
     ///
     /// Wraps around to the first node after the last.
     /// Returns the newly focused node id, or `None` if the list is empty.
-    pub fn move_focus_forward(&mut self) -> Option<u32> {
+    pub fn move_focus_forward(&mut self) -> Option<NodeId> {
         self.step_focus(1)
     }
 
@@ -396,11 +397,11 @@ impl FocusManager {
     ///
     /// Wraps around to the last node before the first.
     /// Returns the newly focused node id, or `None` if the list is empty.
-    pub fn move_focus_backward(&mut self) -> Option<u32> {
+    pub fn move_focus_backward(&mut self) -> Option<NodeId> {
         self.step_focus(-1)
     }
 
-    fn step_focus(&mut self, delta: i64) -> Option<u32> {
+    fn step_focus(&mut self, delta: i64) -> Option<NodeId> {
         if self.focusable.is_empty() {
             return None;
         }
@@ -522,12 +523,12 @@ mod tests {
     /// M1-2: events must arrive in capture → target → bubble order.
     #[test]
     fn event_propagation_capture_target_bubble_order() {
-        let root: u32 = 0;
-        let middle: u32 = 1;
-        let leaf: u32 = 2;
+        let root = NodeId(0);
+        let middle = NodeId(1);
+        let leaf = NodeId(2);
         let path = [root, middle, leaf];
 
-        let mut order: Vec<(u32, EventPhase)> = Vec::new();
+        let mut order: Vec<(NodeId, EventPhase)> = Vec::new();
         dispatch(&path, &make_click(), |node, phase, _| {
             order.push((node, phase));
             false
@@ -548,26 +549,26 @@ mod tests {
     /// Stopping in the capture phase must prevent later phases.
     #[test]
     fn event_propagation_stop_in_capture() {
-        let path = [0u32, 1u32, 2u32];
-        let mut visited: Vec<(u32, EventPhase)> = Vec::new();
+        let path = [NodeId(0), NodeId(1), NodeId(2)];
+        let mut visited: Vec<(NodeId, EventPhase)> = Vec::new();
         dispatch(&path, &make_click(), |node, phase, _| {
             visited.push((node, phase));
             // Stop after root capture.
-            node == 0 && phase == EventPhase::Capture
+            node == NodeId(0) && phase == EventPhase::Capture
         });
-        assert_eq!(visited, vec![(0, EventPhase::Capture)]);
+        assert_eq!(visited, vec![(NodeId(0), EventPhase::Capture)]);
     }
 
     /// Dispatch on a single-node path fires only the Target phase.
     #[test]
     fn event_propagation_single_node_is_target_only() {
-        let path = [99u32];
-        let mut visited: Vec<(u32, EventPhase)> = Vec::new();
+        let path = [NodeId(99)];
+        let mut visited: Vec<(NodeId, EventPhase)> = Vec::new();
         dispatch(&path, &make_click(), |node, phase, _| {
             visited.push((node, phase));
             false
         });
-        assert_eq!(visited, vec![(99, EventPhase::Target)]);
+        assert_eq!(visited, vec![(NodeId(99), EventPhase::Target)]);
     }
 
     // ---- FocusManager ----------------------------------------------------
@@ -576,8 +577,8 @@ mod tests {
     fn focus_manager_basic() {
         let mut fm = FocusManager::new();
         assert!(fm.focused().is_none());
-        fm.set_focus(42);
-        assert!(fm.is_focused(42));
+        fm.set_focus(NodeId(42));
+        assert!(fm.is_focused(NodeId(42)));
         fm.clear_focus();
         assert!(fm.focused().is_none());
     }
@@ -586,46 +587,46 @@ mod tests {
     #[test]
     fn focus_tab_forward_wraps() {
         let mut fm = FocusManager::new();
-        fm.register_focusable(1);
-        fm.register_focusable(2);
-        fm.register_focusable(3);
-        fm.set_focus(1);
+        fm.register_focusable(NodeId(1));
+        fm.register_focusable(NodeId(2));
+        fm.register_focusable(NodeId(3));
+        fm.set_focus(NodeId(1));
 
-        assert_eq!(fm.move_focus_forward(), Some(2));
-        assert_eq!(fm.move_focus_forward(), Some(3));
-        assert_eq!(fm.move_focus_forward(), Some(1), "should wrap to first");
+        assert_eq!(fm.move_focus_forward(), Some(NodeId(2)));
+        assert_eq!(fm.move_focus_forward(), Some(NodeId(3)));
+        assert_eq!(fm.move_focus_forward(), Some(NodeId(1)), "should wrap to first");
     }
 
     /// M1-3: Shift+Tab backward traversal wraps around.
     #[test]
     fn focus_tab_backward_wraps() {
         let mut fm = FocusManager::new();
-        fm.register_focusable(10);
-        fm.register_focusable(20);
-        fm.register_focusable(30);
-        fm.set_focus(10);
+        fm.register_focusable(NodeId(10));
+        fm.register_focusable(NodeId(20));
+        fm.register_focusable(NodeId(30));
+        fm.set_focus(NodeId(10));
 
-        assert_eq!(fm.move_focus_backward(), Some(30), "should wrap to last");
-        assert_eq!(fm.move_focus_backward(), Some(20));
-        assert_eq!(fm.move_focus_backward(), Some(10));
+        assert_eq!(fm.move_focus_backward(), Some(NodeId(30)), "should wrap to last");
+        assert_eq!(fm.move_focus_backward(), Some(NodeId(20)));
+        assert_eq!(fm.move_focus_backward(), Some(NodeId(10)));
     }
 
     /// Tab from unfocused state moves to the first focusable.
     #[test]
     fn focus_tab_from_unfocused_starts_at_first() {
         let mut fm = FocusManager::new();
-        fm.register_focusable(5);
-        fm.register_focusable(6);
-        assert_eq!(fm.move_focus_forward(), Some(5));
+        fm.register_focusable(NodeId(5));
+        fm.register_focusable(NodeId(6));
+        assert_eq!(fm.move_focus_forward(), Some(NodeId(5)));
     }
 
     /// Unregistering the focused node clears focus.
     #[test]
     fn unregister_focused_clears_focus() {
         let mut fm = FocusManager::new();
-        fm.register_focusable(7);
-        fm.set_focus(7);
-        fm.unregister_focusable(7);
+        fm.register_focusable(NodeId(7));
+        fm.set_focus(NodeId(7));
+        fm.unregister_focusable(NodeId(7));
         assert!(fm.focused().is_none());
         assert!(fm.focusable_order().is_empty());
     }
@@ -634,8 +635,8 @@ mod tests {
     #[test]
     fn register_focusable_deduplicates() {
         let mut fm = FocusManager::new();
-        fm.register_focusable(1);
-        fm.register_focusable(1);
+        fm.register_focusable(NodeId(1));
+        fm.register_focusable(NodeId(1));
         assert_eq!(fm.focusable_order().len(), 1);
     }
 
@@ -643,12 +644,12 @@ mod tests {
     #[test]
     fn handle_key_tab_consumed() {
         let mut fm = FocusManager::new();
-        fm.register_focusable(1);
-        fm.register_focusable(2);
-        fm.set_focus(1);
+        fm.register_focusable(NodeId(1));
+        fm.register_focusable(NodeId(2));
+        fm.set_focus(NodeId(1));
 
         assert!(fm.handle_key(KeyCode::Tab, Modifiers::none()));
-        assert_eq!(fm.focused(), Some(2));
+        assert_eq!(fm.focused(), Some(NodeId(2)));
 
         assert!(fm.handle_key(
             KeyCode::Tab,
@@ -657,7 +658,7 @@ mod tests {
                 ..Default::default()
             }
         ));
-        assert_eq!(fm.focused(), Some(1));
+        assert_eq!(fm.focused(), Some(NodeId(1)));
 
         assert!(!fm.handle_key(KeyCode::Enter, Modifiers::none()));
     }
@@ -666,10 +667,10 @@ mod tests {
     #[test]
     fn focus_tab_backward_from_unfocused_starts_at_last() {
         let mut fm = FocusManager::new();
-        fm.register_focusable(5);
-        fm.register_focusable(6);
-        fm.register_focusable(7);
-        assert_eq!(fm.move_focus_backward(), Some(7));
+        fm.register_focusable(NodeId(5));
+        fm.register_focusable(NodeId(6));
+        fm.register_focusable(NodeId(7));
+        assert_eq!(fm.move_focus_backward(), Some(NodeId(7)));
     }
 
     /// handle_key with an empty focusable list returns true but stays unfocused.
@@ -692,29 +693,29 @@ mod tests {
     #[test]
     fn set_focusable_order_replaces_list() {
         let mut fm = FocusManager::new();
-        fm.register_focusable(1);
-        fm.register_focusable(2);
-        fm.set_focusable_order(vec![30, 20, 10]);
-        assert_eq!(fm.focusable_order(), &[30, 20, 10]);
-        fm.set_focus(30);
-        assert_eq!(fm.move_focus_forward(), Some(20));
+        fm.register_focusable(NodeId(1));
+        fm.register_focusable(NodeId(2));
+        fm.set_focusable_order(vec![NodeId(30), NodeId(20), NodeId(10)]);
+        assert_eq!(fm.focusable_order(), &[NodeId(30), NodeId(20), NodeId(10)]);
+        fm.set_focus(NodeId(30));
+        assert_eq!(fm.move_focus_forward(), Some(NodeId(20)));
     }
 
     /// set_focusable_order deduplicates the supplied list.
     #[test]
     fn set_focusable_order_deduplicates() {
         let mut fm = FocusManager::new();
-        fm.set_focusable_order(vec![1, 2, 1, 3, 2]);
-        assert_eq!(fm.focusable_order(), &[1, 2, 3]);
+        fm.set_focusable_order(vec![NodeId(1), NodeId(2), NodeId(1), NodeId(3), NodeId(2)]);
+        assert_eq!(fm.focusable_order(), &[NodeId(1), NodeId(2), NodeId(3)]);
     }
 
     /// set_focusable_order clears focus when the focused node is absent from the new list.
     #[test]
     fn set_focusable_order_clears_focus_if_absent() {
         let mut fm = FocusManager::new();
-        fm.register_focusable(1);
-        fm.set_focus(1);
-        fm.set_focusable_order(vec![2, 3]);
+        fm.register_focusable(NodeId(1));
+        fm.set_focus(NodeId(1));
+        fm.set_focusable_order(vec![NodeId(2), NodeId(3)]);
         assert!(fm.focused().is_none());
     }
 
@@ -732,8 +733,8 @@ mod tests {
     /// Dispatch on a two-node path fires capture on parent, target on child, then bubble on parent.
     #[test]
     fn event_propagation_two_node_path() {
-        let path = [0u32, 1u32];
-        let mut visited: Vec<(u32, EventPhase)> = Vec::new();
+        let path = [NodeId(0), NodeId(1)];
+        let mut visited: Vec<(NodeId, EventPhase)> = Vec::new();
         dispatch(&path, &make_click(), |node, phase, _| {
             visited.push((node, phase));
             false
@@ -741,9 +742,9 @@ mod tests {
         assert_eq!(
             visited,
             vec![
-                (0, EventPhase::Capture),
-                (1, EventPhase::Target),
-                (0, EventPhase::Bubble),
+                (NodeId(0), EventPhase::Capture),
+                (NodeId(1), EventPhase::Target),
+                (NodeId(0), EventPhase::Bubble),
             ]
         );
     }
