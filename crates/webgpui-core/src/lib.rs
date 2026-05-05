@@ -15,11 +15,11 @@ use webgpui_layout::LayoutStyle;
 
 /// A stable, unique identifier for a node in the [`NodeTree`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct NodeId(pub u32);
+pub struct NodeId(pub u64);
 
 impl NodeId {
     pub const ROOT: Self = Self(0);
-    const TOMBSTONE: Self = Self(u32::MAX);
+    const TOMBSTONE: Self = Self(u64::MAX);
 }
 
 impl std::fmt::Display for NodeId {
@@ -132,7 +132,7 @@ pub struct NodeTree {
     /// Maps `NodeId` → arena index.
     id_to_index: std::collections::HashMap<NodeId, usize>,
     /// Next `NodeId` to hand out.
-    next_id: u32,
+    next_id: u64,
 }
 
 impl NodeTree {
@@ -218,7 +218,8 @@ impl NodeTree {
             self.nodes[parent_idx].children.retain(|&c| c != idx);
         }
 
-        // Invalidate id_to_index entries (we don't compact the arena in MVP).
+        // Invalidate id_to_index entries.
+        // The arena is not compacted here; call compact() explicitly when needed.
         for ri in to_remove {
             self.id_to_index.remove(&self.nodes[ri].id);
             // Mark slot as removed by resetting to a placeholder.
@@ -293,6 +294,55 @@ impl NodeTree {
     /// Iterates over all valid nodes in arena order.
     pub fn iter(&self) -> impl Iterator<Item = &Node> {
         self.nodes.iter().filter(|n| !n.is_tombstone())
+    }
+
+    /// Compacts the backing arena by removing tombstone slots.
+    ///
+    /// After many [`remove_node`] calls the arena grows monotonically.
+    /// Call this method to reclaim memory. All live `NodeId`s remain valid;
+    /// only internal arena indices change (they are not part of the public API).
+    pub fn compact(&mut self) {
+        let old_len = self.nodes.len();
+
+        // Build old-index → new-index mapping (None = tombstone).
+        let mut old_to_new: Vec<Option<usize>> = vec![None; old_len];
+        let mut new_len = 0usize;
+        for (i, node) in self.nodes.iter().enumerate() {
+            if !node.is_tombstone() {
+                old_to_new[i] = Some(new_len);
+                new_len += 1;
+            }
+        }
+        if new_len == old_len {
+            return;
+        }
+
+        // Move live nodes into a fresh vec (no Clone required).
+        let old_nodes = std::mem::take(&mut self.nodes);
+        let mut new_nodes: Vec<Node> = Vec::with_capacity(new_len);
+        for (i, node) in old_nodes.into_iter().enumerate() {
+            if old_to_new[i].is_some() {
+                new_nodes.push(node);
+            }
+        }
+
+        // Remap parent / children arena indices.
+        for node in &mut new_nodes {
+            node.parent = node.parent.and_then(|p| old_to_new[p]);
+            node.children = node
+                .children
+                .iter()
+                .filter_map(|&c| old_to_new[c])
+                .collect();
+        }
+
+        // Rebuild the id → index map.
+        self.id_to_index.clear();
+        for (idx, node) in new_nodes.iter().enumerate() {
+            self.id_to_index.insert(node.id, idx);
+        }
+
+        self.nodes = new_nodes;
     }
 }
 
@@ -411,6 +461,25 @@ mod tests {
         let id = tree.add_node(NodeId::ROOT, NodeKind::Container);
         assert!(tree.remove_node(id));
         assert!(tree.get(id).is_none());
+    }
+
+    #[test]
+    fn compact_removes_tombstones() {
+        let mut tree = NodeTree::new();
+        let a = tree.add_node(NodeId::ROOT, NodeKind::Container);
+        let b = tree.add_node(NodeId::ROOT, NodeKind::Container);
+        let c = tree.add_node(a, NodeKind::Text);
+        let len_before = tree.len();
+        tree.remove_node(b);
+        assert_eq!(tree.len(), len_before); // arena still same size
+        tree.compact();
+        assert!(tree.len() < len_before); // tombstone removed
+                                          // live nodes still accessible
+        assert!(tree.get(a).is_some());
+        assert!(tree.get(c).is_some());
+        assert!(tree.get(b).is_none());
+        // c is still a child of a
+        assert!(tree.children_of(a).contains(&c));
     }
 
     #[test]

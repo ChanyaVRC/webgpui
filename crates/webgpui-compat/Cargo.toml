@@ -1,0 +1,12 @@
+[package]
+name = "webgpui-compat"
+description = "Legacy WebUI engine compatibility layer for webgpui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+webgpui-core     = { workspace = true }
+webgpui-geometry = { workspace = true }
+webgpui-input    = { workspace = true }
+thiserror = "1"
