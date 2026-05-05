@@ -229,17 +229,19 @@ impl NodeTree {
     // ------------------------------------------------------------------
 
     /// Adds a new child node under `parent_id` and returns its `NodeId`.
-    pub fn add_node(&mut self, parent_id: NodeId, kind: NodeKind) -> NodeId {
+    ///
+    /// Returns `None` if `parent_id` does not exist in the tree.
+    pub fn add_node(&mut self, parent_id: NodeId, kind: NodeKind) -> Option<NodeId> {
+        let parent_index = *self.id_to_index.get(&parent_id)?;
         let new_id = NodeId(self.next_id);
         self.next_id += 1;
         let new_index = self.nodes.len();
         let mut node = Node::new(new_id, kind);
-        let parent_index = *self.id_to_index.get(&parent_id).expect("parent not found");
         node.parent = Some(parent_index);
         self.nodes.push(node);
         self.nodes[parent_index].children.push(new_index);
         self.id_to_index.insert(new_id, new_index);
-        new_id
+        Some(new_id)
     }
 
     /// Removes a node and its entire subtree from the tree.
@@ -500,14 +502,14 @@ mod tests {
     #[test]
     fn add_and_find_node() {
         let mut tree = NodeTree::new();
-        let id = tree.add_node(NodeId::ROOT, NodeKind::Container);
+        let id = tree.add_node(NodeId::ROOT, NodeKind::Container).unwrap();
         assert!(tree.get(id).is_some());
     }
 
     #[test]
     fn remove_node() {
         let mut tree = NodeTree::new();
-        let id = tree.add_node(NodeId::ROOT, NodeKind::Container);
+        let id = tree.add_node(NodeId::ROOT, NodeKind::Container).unwrap();
         assert!(tree.remove_node(id));
         assert!(tree.get(id).is_none());
     }
@@ -515,9 +517,9 @@ mod tests {
     #[test]
     fn compact_removes_tombstones() {
         let mut tree = NodeTree::new();
-        let a = tree.add_node(NodeId::ROOT, NodeKind::Container);
-        let b = tree.add_node(NodeId::ROOT, NodeKind::Container);
-        let c = tree.add_node(a, NodeKind::Text);
+        let a = tree.add_node(NodeId::ROOT, NodeKind::Container).unwrap();
+        let b = tree.add_node(NodeId::ROOT, NodeKind::Container).unwrap();
+        let c = tree.add_node(a, NodeKind::Text).unwrap();
         // Four live nodes: root + a + b + c
         assert_eq!(tree.len(), 4);
         tree.remove_node(b);
@@ -553,7 +555,7 @@ mod tests {
     #[test]
     fn set_role_readable_via_get() {
         let mut tree = NodeTree::new();
-        let id = tree.add_node(NodeId::ROOT, NodeKind::Container);
+        let id = tree.add_node(NodeId::ROOT, NodeKind::Container).unwrap();
         assert!(tree.set_role(id, NodeRole::Button));
         assert_eq!(tree.get(id).unwrap().role, NodeRole::Button);
     }
@@ -573,7 +575,7 @@ mod tests {
     fn len_excludes_tombstones() {
         let mut tree = NodeTree::new();
         assert_eq!(tree.len(), 1); // root only
-        let a = tree.add_node(NodeId::ROOT, NodeKind::Container);
+        let a = tree.add_node(NodeId::ROOT, NodeKind::Container).unwrap();
         assert_eq!(tree.len(), 2);
         tree.remove_node(a);
         assert_eq!(tree.len(), 1); // tombstone not counted
@@ -583,7 +585,7 @@ mod tests {
     #[test]
     fn mark_all_dirty_skips_tombstones() {
         let mut tree = NodeTree::new();
-        let a = tree.add_node(NodeId::ROOT, NodeKind::Container);
+        let a = tree.add_node(NodeId::ROOT, NodeKind::Container).unwrap();
         tree.remove_node(a);
         // Should not panic or include tombstone in dirty set.
         tree.mark_all_dirty();
@@ -612,6 +614,17 @@ mod tests {
         assert!(tree.set_role(NodeId::ROOT, NodeRole::None));
         let dirty = tree.flush_dirty();
         assert!(!dirty.contains(&NodeId::ROOT));
+    }
+
+    #[test]
+    fn add_node_returns_none_for_missing_parent() {
+        let mut tree = NodeTree::new();
+        let fake_id = NodeId(9999);
+        let result = tree.add_node(fake_id, NodeKind::Container);
+        assert!(result.is_none());
+        // next_id must not have been consumed
+        let real = tree.add_node(NodeId::ROOT, NodeKind::Container).unwrap();
+        assert_eq!(real.0, 1); // first real allocation still gets id=1
     }
 
     // ---- Focus ring ------------------------------------------------------
