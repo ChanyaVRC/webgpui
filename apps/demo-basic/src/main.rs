@@ -236,7 +236,7 @@ impl DemoUiState {
     fn handle_text_input(&mut self, ctx: &DrawContext<'_>) {
         for &(key, ch) in CHAR_KEYS {
             if is_new_key_press(ctx, &self.prev_pressed_keys, key)
-                && self.text_input.value().len() < MAX_TEXT_LEN
+                && self.text_input.chars_count() < MAX_TEXT_LEN
             {
                 self.text_input.insert_char(ch);
             }

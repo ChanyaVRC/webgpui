@@ -194,6 +194,11 @@ impl TextInput {
         self.chars.iter().collect()
     }
 
+    /// Returns the number of characters in the current value.
+    pub fn chars_count(&self) -> usize {
+        self.chars.len()
+    }
+
     /// Returns the ordered selection range `(lo, hi)` if any chars are selected.
     /// Returns `None` when `anchor == cursor` (collapsed caret).
     pub fn selection(&self) -> Option<(usize, usize)> {
@@ -800,6 +805,16 @@ mod tests {
         t.insert_char('i');
         assert_eq!(t.value(), "hi");
         assert_eq!(t.cursor(), 2);
+    }
+
+    #[test]
+    fn textinput_chars_count_is_character_based() {
+        let mut t = TextInput::new();
+        t.insert_char('é');
+        t.insert_char('🙂');
+        assert_eq!(t.chars_count(), 2);
+        // `value().len()` is byte-based and larger for multibyte characters.
+        assert!(t.value().len() > t.chars_count());
     }
 
     #[test]
