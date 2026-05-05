@@ -67,5 +67,21 @@
 
 ## 8. 完了条件
 - MUST API すべてに同等性テストが存在
-- 主要 3 シナリオで Compat/FastPath 同等性が成立
+- 全 4 ベースラインシナリオ（§4）で Compat/FastPath 同等性が成立
 - 2 週間連続で回帰ゼロ
+- M4 クローズ前に以下のすべてを満たすこと:
+
+| チェック | 受入基準 |
+|---|---|
+| MUST ティア API カバレッジ | api-mapping.md §3〜§6 の全 MUST 行に同等性テストが存在 |
+| ビジュアル同等性 | Basic Shapes・Interactive Panel シナリオでピクセル差分率 <= 0.5% |
+| イベントトレース同等性 | Interactive Panel シナリオで capture/bubble 順序が 100% 一致 |
+| ステートツリー同等性 | Dynamic List 更新後のノード構造と dirty-rect 状態が 100% 一致 |
+| 性能ゲート | Stress Batch シナリオで FastPath の avg フレーム時間が Compat より >= 10% 優れる |
+| フォールバック一貫性 | Interactive Panel で FastPath -> Compat 切り替え後に機能劣化なし |
+| CI ゲート | `ci/compat-gate` ジョブがグリーン；失敗時はマージをブロック |
+
+## 9. マイルストーン紐づけ
+- M4 完了条件: §8 の CI ゲートが存在してグリーンであることが M4 クローズの必要条件。
+- M4 並走 P2 トラック: 同等性テストは dirty-rect スキップ挙動（zero-dirty フレームでの state_tree_equivalence）もカバーすること。
+- M5: M4 で特定した API の deprecated 化に伴い、対応する同等性テストの削除または更新を同一 PR で行うこと。

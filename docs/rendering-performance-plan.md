@@ -98,9 +98,39 @@ Fix the order below; do not start lower priority items before upper ones are com
 - Continuously record key metrics
 
 ## 6. Completion Criteria
-- p95 is within target
-- Frame drops during interaction are visibly reduced
-- Bottlenecks are explainable by measurement logs
+
+### P0 Completion
+- CPU measurement points (update / layout / draw-list / encode+submit) emit values every frame.
+- GPU measurement points (clear / ui / overlay pass) emit values every frame.
+- `begin_frame_fast` / `submit_batch` / `end_frame_fast` run without panic on representative scenes.
+- CI P0 gate is green (see ci-gates.md).
+
+### P1 Completion
+- Draw calls <= 200 on representative screens.
+- Pipeline-sort batching verified: draw call count reduces by >= 30% vs unbatched baseline.
+- CI P1 gate is green.
+
+### P2 Completion (M4 Parallel Track)
+- `mark_dirty_rect` / `commit_dirty` integrated into render pipeline (`webgpui-render`).
+- Render pass skipped on frames with no dirty regions; verified by GPU query (submission count = 0).
+- `P2_GPU_SKIP_RATIO` metric added to `.ci/` metrics format and reported per frame.
+- GPU time on static (no-update) scenes shows measurable and continuous decrease.
+- CI P2 gate added and green.
+
+### P3 Completion
+- Per-frame heap allocation count = 0 on steady-state frames (measured via `dhat` or custom hook).
+- Startup stutter eliminated: no single frame > 50ms at launch.
+- `prewarm_pipeline` and `prewarm_glyph_cache` APIs available and used in `demo-basic`.
+
+### P4 Completion
+- Render graph auto-skips passes with no dirty inputs; zero GPU submissions on fully-static frames.
+- UI update and render command encoding are on separate threads; no measurable increase in frame-time variance.
+- p95 frame time <= 20ms on a scene with >= 500 nodes.
+
+### Overall Completion
+- p95 is within target (<= 20ms) on all representative screens.
+- Frame drops during interaction are visibly reduced (no visible stutter in manual testing).
+- All bottlenecks are explainable by measurement logs (no unexplained spikes).
 
 ## 7. FastPath-Oriented Optimization Policy
 Add performance-focused native APIs separate from compatibility APIs.
