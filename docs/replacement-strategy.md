@@ -62,9 +62,57 @@ Replace the existing WebUI engine incrementally with `webgpui`, while preventing
 - Mitigation: isolate bottlenecks with profiler and split optimization targets by screen
 
 ## 8. Immediate Actions
-- Define minimal API set for `webgpui-compat`
+- Define minimal API set for `webgpui-compat` (→ completed in api-mapping.md §13)
 - Migrate one screen in `apps/demo-migration`
 - Create comparative benchmarks for legacy/new
 
 ## 9. Frozen Reference Documents
 - API mapping table (frozen v0.1): `api-mapping.md`
+
+## 10. M4 Execution Plan
+
+### 10.1 `apps/demo-migration` Structure
+```
+apps/demo-migration/
+  Cargo.toml
+  src/
+    main.rs          — app entry point; selects scene via CLI arg
+    scenes/
+      mod.rs
+      screen_a.rs    — Screen A: container + text + event (simplest)
+      screen_b.rs    — Screen B: list + dynamic update + keyboard nav
+    metrics.rs       — records migration cost (line count, unsupported API count)
+    compare.rs       — runs legacy and new side by side; outputs frame-time delta
+```
+Both `screen_a` and `screen_b` must build against `webgpui-compat` only; no direct `webgpui-core` calls.
+
+### 10.2 Visual Regression Testing
+Tool: `insta` (snapshot testing) or a custom PNG diff harness.
+- Each scene renders N frames offline; the first stable frame is saved as the reference snapshot.
+- On CI, the scene re-renders and diffs against the reference (pixel diff threshold: <= 1%).
+- Snapshots stored in `apps/demo-migration/snapshots/`.
+- Known acceptable differences (e.g., font antialiasing) documented in `KNOWN_DIFFS.md` alongside snapshots.
+
+### 10.3 Comparative Benchmark
+Run with `--benchmark compare` flag:
+1. Render Scene A and B with the legacy engine for 300 frames; record avg/p95/draw-calls.
+2. Render the same scenes with `webgpui-compat` for 300 frames; record same metrics.
+3. Output a Markdown table to stdout and to `migration-report.md`.
+
+Acceptance: new engine avg frame time <= legacy, p95 <= legacy, draw-calls <= legacy.
+
+### 10.4 Migration Cost Measurement
+Tracked in `metrics.rs`:
+- Lines of app code changed (manual count in PR description)
+- Number of MUST-tier API call sites converted
+- Number of `UNIMPLEMENTED` stubs remaining (unsupported API count)
+
+These values are reported in the M4 completion PR description.
+
+### 10.5 Equivalence Test Scenarios (Reference to api-swapping-quality-plan.md §4)
+| Scenario | Coverage |
+|---|---|
+| Basic Shapes | container + rect + opacity + 3 resizes |
+| Interactive Panel | hover / click / key + focus movement |
+| Dynamic List | append/remove/update + frequent dirty-rect |
+| Stress Batch | large count of same-style elements + draw-call verification |
