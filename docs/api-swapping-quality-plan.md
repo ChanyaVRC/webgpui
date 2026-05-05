@@ -67,5 +67,21 @@ Store the following for each test run:
 
 ## 8. Completion Criteria
 - Equivalence tests exist for all MUST APIs
-- Compat/FastPath equivalence holds on 3 major scenarios
+- Compat/FastPath equivalence holds on all 4 baseline scenarios (§4)
 - Zero regressions for two consecutive weeks
+- All criteria below must be met before M4 is closed:
+
+| Check | Acceptance |
+|---|---|
+| MUST-tier API coverage | Equivalence test exists for every MUST row in api-mapping.md §3–§6 |
+| Visual equivalence | Pixel diff ratio <= 0.5% on Basic Shapes and Interactive Panel scenarios |
+| Event trace equivalence | 100% match on capture/bubble order for Interactive Panel scenario |
+| State tree equivalence | 100% match on node structure and dirty-rect state after Dynamic List updates |
+| Performance gate | FastPath avg frame time >= 10% better than Compat on Stress Batch scenario |
+| Fallback consistency | No functional degradation after FastPath -> Compat switch in Interactive Panel |
+| CI gate | `ci/compat-gate` job is green; merge blocked on any failure |
+
+## 9. Milestone Linkage
+- M4 entry condition: §8 CI gate must exist and be green before M4 is declared complete.
+- M4 parallel P2 track: equivalence tests must also cover dirty-rect skip behavior (state_tree_equivalence for zero-dirty frames).
+- M5: any API deprecation identified during M4 must have corresponding equivalence test removal or update in the same PR.
