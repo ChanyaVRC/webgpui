@@ -117,3 +117,65 @@ compat::app_mount(root)?;
 
 ### 12.1 参照
 - APIスワップ品質保証計画: `api-swapping-quality-plan.md`
+
+## 13. `webgpui-compat` クレート — 最小API定義
+
+このセクションは、M4の前提条件となる `webgpui-compat` クレートの最小必須 API を定義する。
+
+### 13.1 クレートの役割
+`webgpui-compat` はレガシースタイルの関数呼び出しを受け取り、内部の `webgpui-core` / `webgpui-app` / `webgpui-input` クレートへ委譲する薄い変換レイヤーである。描画ロジックは含まない。
+
+### 13.2 モジュール構成
+```
+webgpui-compat/src/
+  lib.rs       — 全公開モジュールを re-export
+  types.rs     — 共有型（NodeId, NodeKind, StyleProp, EventType, EventContext, ListenerId, CompatError）
+  node.rs      — node_create, node_append, node_remove, node_insert_before, node_update
+  style.rs     — style_set, style_set_many, style_position, style_size, style_margin,
+                  style_padding, style_background, style_border, style_opacity
+  event.rs     — event_on, event_off, event_dispatch, event_stop_propagation,
+                  event_prevent_default, focus_set
+  app.rs       — app_mount, app_unmount, render_request, render_vsync, viewport_resize
+```
+
+### 13.3 公開型（MVP最小）
+| 型 | 種別 | 説明 |
+|---|---|---|
+| `NodeId` | newtype（`u64`）| ノードの不透明ハンドル。`node_remove` 後は無効 |
+| `NodeKind` | enum | `Container`, `Text`, `Image` |
+| `StyleProp` | enum | MUSTティアのスタイルキー各1バリアント |
+| `EventType` | enum | `Click`, `PointerMove`, `PointerDown`, `PointerUp`, `Scroll`, `KeyDown`, `KeyUp`, `Focus`, `FocusLost` |
+| `EventContext` | struct | イベントペイロードを保持。`stop_propagation()` と `prevent_default()` を公開 |
+| `ListenerId` | newtype（`u64`）| `event_on` が返すハンドル。`event_off` に渡す |
+| `CompatError` | enum | `InvalidNode`, `InvalidListener`, `StyleParseError(String)`, `InternalError(String)` |
+
+全公開関数は `Result<T, CompatError>` を返す。
+
+### 13.4 MUSTティアAPIスコープ（初期実装対象）
+`webgpui-compat` の初期実装対象は §3〜§6 の MUST フラグ行のみ。SHOULD と LATER は後回し。
+
+| モジュール | 関数 |
+|---|---|
+| `node` | `node_create`, `node_append`, `node_remove`, `node_update` |
+| `style` | `style_set`, `style_set_many`, `style_position`, `style_size`, `style_margin`, `style_padding`, `style_background`, `style_border`, `style_opacity` |
+| `event` | `event_on`, `event_stop_propagation`, `focus_set` |
+| `app` | `app_mount`, `node_update`, `render_request`, `render_vsync`, `viewport_resize` |
+
+### 13.5 クレート依存関係
+```toml
+[dependencies]
+webgpui-core   = { path = "../webgpui-core" }
+webgpui-app    = { path = "../webgpui-app" }
+webgpui-input  = { path = "../webgpui-input" }
+```
+`webgpui-render` や `webgpui-render-wgpu` への直接依存は持たない。
+
+### 13.6 フィーチャーフラグ
+| フラグ | デフォルト | 説明 |
+|---|---|---|
+| （なし）| — | MUSTティア API は常時コンパイル対象。MVP 時点ではフラグなし。 |
+
+SHOULD/LATER API は後のマイルストーンで `compat-full` フラグに収める。
+
+### 13.7 凍結ルール
+§13.3 と §13.4 に列挙した型・関数はすべて v0.1 時点で凍結対象とする。変更には M5 で定義する semver ポリシーに従いメジャーバージョンアップが必要。

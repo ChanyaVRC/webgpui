@@ -73,7 +73,7 @@ Use the milestone gate to evaluate roadmap completion criteria in CI.
 | M0 | `cargo fmt --all -- --check`, `cargo check --workspace`, `cargo test --workspace --all-targets` |
 | M1 | M0 + `cargo test -p webgpui-input --all-targets`, `cargo test -p webgpui-platform-winit --all-targets` |
 | M2 | M1 + `cargo test -p webgpui-layout --all-targets`, `cargo test -p webgpui-core --all-targets` |
-| M3 | M2 + `cargo test -p webgpui-app --all-targets`, `cargo build -p demo-basic` |
+| M3 | M2 + `cargo test -p webgpui-app --all-targets`, `cargo build -p demo-basic`, `cargo run -p demo-basic -- --smoke-test form` |
 | M4 | M3 + P0/P1 benchmark metric generation and gate evaluation |
 
 ### 9.2 Local Execution
@@ -114,3 +114,37 @@ New APIs added in M2:
 - `DefaultTextMeasure` struct (pixel-font baseline, `FONT_W=5 FONT_H=7`)
 - `LayoutNode::text`, `LayoutNode::font_size`
 - `LayoutEngine::compute_with`
+
+## 12. M3 Component Layer Plan
+
+M3 splits into four sub-milestones delivered in order.
+The milestone gate (`scripts/ci/check_milestone_gate.sh M3`) is declared complete only after M3-D.
+
+### Sub-milestone gate summary
+
+| Sub-milestone | Incremental gate check |
+| --- | --- |
+| M3-A | `cargo test -p webgpui-core --all-targets` (widget state machine tests) |
+| M3-B | `cargo test -p webgpui-app --all-targets` (scroll + tab layout tests) |
+| M3-C | `cargo test -p webgpui-app --all-targets` (dialog focus trap, menu dismiss tests) |
+| M3-D | `cargo run -p demo-basic -- --smoke-test form` (keyboard-only form demo) |
+
+### New APIs planned in M3
+
+M3-A:
+- Widget state enum (`WidgetState`: Normal / Hover / Pressed / Focused / Disabled)
+- `TextInput`: cursor index, selection range, placeholder
+- `Label`: alignment enum (`TextAlign`: Start / Center / End)
+
+M3-B:
+- `ScrollView`: scroll offset `(f32, f32)`, overflow mode
+- `TabBar` + `Tab`: selected index, arrow-key traversal
+
+M3-C:
+- `LayoutNode::layer: i32` (default `0`; higher values render on top)
+- `Dialog`: modal flag, focus-trap scope
+- `ContextMenu`: anchor point, dismiss callback
+
+M3-D:
+- `NodeRole` enum (`Button` / `TextBox` / `Tab` / `Dialog` / `Menu` / `None`)
+- Focus ring style: standardized 2 px inset across all widgets

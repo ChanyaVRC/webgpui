@@ -73,7 +73,7 @@ scripts/ci/check_p1_gate.sh .ci/p1-metrics.txt .ci/p1-thresholds.env
 | M0 | `cargo fmt --all -- --check`, `cargo check --workspace`, `cargo test --workspace --all-targets` |
 | M1 | M0 + `cargo test -p webgpui-input --all-targets`, `cargo test -p webgpui-platform-winit --all-targets` |
 | M2 | M1 + `cargo test -p webgpui-layout --all-targets`, `cargo test -p webgpui-core --all-targets` |
-| M3 | M2 + `cargo test -p webgpui-app --all-targets`, `cargo build -p demo-basic` |
+| M3 | M2 + `cargo test -p webgpui-app --all-targets`, `cargo build -p demo-basic`, `cargo run -p demo-basic -- --smoke-test form` |
 | M4 | M3 + P0/P1 ベンチマークメトリクス生成とゲート評価 |
 
 ### 9.2 ローカル実行
@@ -114,3 +114,37 @@ M2 で追加した新 API:
 - `DefaultTextMeasure` 構造体（ピクセルフォント基準、`FONT_W=5 FONT_H=7`）
 - `LayoutNode::text`、`LayoutNode::font_size`
 - `LayoutEngine::compute_with`
+
+## 12. M3 コンポーネント層計画
+
+M3 は 4 つのサブマイルストーンで順番に実装する。
+マイルストーンゲート（`scripts/ci/check_milestone_gate.sh M3`）は M3-D 完了後に確定とする。
+
+### サブマイルストーン別ゲートチェック
+
+| サブマイルストーン | 追加ゲートチェック |
+| --- | --- |
+| M3-A | `cargo test -p webgpui-core --all-targets`（ウィジェット状態マシンテスト） |
+| M3-B | `cargo test -p webgpui-app --all-targets`（スクロール・タブレイアウトテスト） |
+| M3-C | `cargo test -p webgpui-app --all-targets`（ダイアログフォーカストラップ、メニュー閉鎖テスト） |
+| M3-D | `cargo run -p demo-basic -- --smoke-test form`（キーボードのみのフォームデモ） |
+
+### M3 で追加予定の新 API
+
+M3-A:
+- ウィジェット状態列挙型（`WidgetState`: Normal / Hover / Pressed / Focused / Disabled）
+- `TextInput`: カーソルインデックス、選択範囲、プレースホルダー
+- `Label`: 揃え列挙型（`TextAlign`: Start / Center / End）
+
+M3-B:
+- `ScrollView`: スクロールオフセット `(f32, f32)`、オーバーフローモード
+- `TabBar` + `Tab`: 選択インデックス、矢印キートラバーサル
+
+M3-C:
+- `LayoutNode::layer: i32`（デフォルト `0`、値が大きいほど手前に描画）
+- `Dialog`: モーダルフラグ、フォーカストラップスコープ
+- `ContextMenu`: アンカーポイント、閉鎖コールバック
+
+M3-D:
+- `NodeRole` 列挙型（`Button` / `TextBox` / `Tab` / `Dialog` / `Menu` / `None`）
+- フォーカスリングスタイル: 全ウィジェットで 2 px インセットに統一

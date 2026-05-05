@@ -98,9 +98,39 @@ Fix the order below; do not start lower priority items before upper ones are com
 - Continuously record key metrics
 
 ## 6. Completion Criteria
-- p95 is within target
-- Frame drops during interaction are visibly reduced
-- Bottlenecks are explainable by measurement logs
+
+### P0 Completion
+- CPU measurement points (update / layout / draw-list / encode+submit) emit values every frame.
+- GPU measurement points (clear / ui / overlay pass) emit values every frame.
+- `begin_frame_fast` / `submit_batch` / `end_frame_fast` run without panic on representative scenes.
+- CI P0 gate is green (see ci-gates.md).
+
+### P1 Completion
+- Draw calls <= 200 on representative screens.
+- Pipeline-sort batching verified: draw call count reduces by >= 30% vs unbatched baseline.
+- CI P1 gate is green.
+
+### P2 Completion (M4 Parallel Track)
+- `mark_dirty_rect` / `commit_dirty` integrated into render pipeline (`webgpui-render`).
+- Render pass skipped on frames with no dirty regions; verified by GPU query (submission count = 0).
+- `P2_GPU_SKIP_RATIO` metric added to `.ci/` metrics format and reported per frame.
+- GPU time on static (no-update) scenes shows measurable and continuous decrease.
+- CI P2 gate added and green.
+
+### P3 Completion
+- Per-frame heap allocation count = 0 on steady-state frames (measured via `dhat` or custom hook).
+- Startup stutter eliminated: no single frame > 50ms at launch.
+- `prewarm_pipeline` and `prewarm_glyph_cache` APIs available and used in `demo-basic`.
+
+### P4 Completion
+- Render graph auto-skips passes with no dirty inputs; zero GPU submissions on fully-static frames.
+- UI update and render command encoding are on separate threads; no measurable increase in frame-time variance.
+- p95 frame time <= 20ms on a scene with >= 500 nodes.
+
+### Overall Completion
+- p95 is within target (<= 20ms) on all representative screens.
+- Frame drops during interaction are visibly reduced (no visible stutter in manual testing).
+- All bottlenecks are explainable by measurement logs (no unexplained spikes).
 
 ## 7. FastPath-Oriented Optimization Policy
 Add performance-focused native APIs separate from compatibility APIs.
@@ -273,3 +303,142 @@ P1 completion is mechanically judged by CI based on improvement before/after bat
 - Thresholds: `.ci/p1-thresholds.env`
 - Operations guide: `docs/ci-gates.md`
 - Metrics spec: `docs/metrics-format.md`
+
+## 17. P2 API Specification — Dirty Rect Optimization
+
+### 17.1 Design Goals
+- Two public entry points: `mark_dirty_rect(rect)` and `commit_dirty(viewport) -> DirtyDecision`.
+- `DirtyTracker` (already in `webgpui-core`) handles per-frame accumulation.
+- `DirtyDecision` (new enum in `webgpui-core`) encodes the render decision for the current frame.
+- `RenderGraph` consumes `DirtyDecision` to skip passes or apply a scissor rect.
+- The `App::run` frame loop bridges accumulation to the renderer.
+- No changes to the public `DrawContext` draw-command API; optimization is fully internal.
+
+### 17.2 New Types
+
+#### `DirtyDecision` (in `webgpui-core`)
+```rust
+pub enum DirtyDecision {
+    /// No dirty regions this frame. Skip all render passes entirely.
+    Skip,
+    /// Only this screen region changed. Re-render within the scissor rect.
+    Partial(Rect),
+    /// Full redraw required (resize, first frame, or `mark_all` called).
+    Full,
+}
+```
+
+#### `RenderOutcome` (in `webgpui-render`)
+```rust
+pub enum RenderOutcome {
+    /// GPU command buffer was submitted.
+    Submitted,
+    /// No GPU work performed; frame was skipped.
+    Skipped,
+}
+```
+
+### 17.3 API Changes per Crate
+
+**`webgpui-core` — `DirtyTracker`**
+
+Existing methods are unchanged. Add:
+```rust
+/// Ergonomic alias for `mark()`; preferred in frame callbacks and compat layer.
+pub fn mark_dirty_rect(&mut self, rect: Rect);
+
+/// Consumes accumulated dirty state and returns the render decision for this frame.
+/// Clears internal state. Must be called exactly once per frame, before rendering.
+pub fn commit_dirty(&mut self, viewport: Size) -> DirtyDecision;
+```
+`commit_dirty` logic:
+- No rects recorded and `full_invalidate == false` → `Skip`
+- `full_invalidate == true` → `Full`, then clear
+- Rects recorded → `Partial(dirty_union())`, then clear
+
+**`webgpui-render` — `Renderer` trait**
+
+Add alongside the existing `render()` method:
+```rust
+/// Re-render only within `area` using a GPU scissor rect.
+/// Falls back to full render if the backend does not support scissor.
+fn render_partial(&mut self, draw_list: &DrawList, area: Rect) -> RenderResult<RenderOutcome>;
+```
+The existing `render()` continues to mean a full redraw and returns `RenderOutcome::Submitted`.
+
+**`webgpui-render-graph` — `RenderGraph`**
+
+Add:
+```rust
+/// Applies the dirty decision to pass configuration before execution.
+/// - `Skip`: disables all passes.
+/// - `Partial(rect)`: sets a scissor rect on the `ui` pass; clears pass is
+///   always full (background must not be clipped).
+/// - `Full`: no change (all passes run as configured).
+pub fn apply_dirty_decision(&mut self, decision: &DirtyDecision);
+```
+
+**`webgpui-app` — Frame loop**
+
+The three currently unused variables become active:
+```rust
+// Before: let _dirty_tracker = DirtyTracker::new();
+// After:  let mut dirty_tracker = DirtyTracker::new();
+```
+Frame loop pseudocode:
+```
+on RedrawRequested:
+  let viewport = Size::new(sw as f32, sh as f32);
+  let decision = dirty_tracker.commit_dirty(viewport);
+
+  if matches!(decision, DirtyDecision::Skip) {
+      frame_timer.record_skip();
+      p2_skip_counter += 1;
+      // No GPU work.
+      return;
+  }
+
+  draw_list.clear();
+  frame_fn(&mut ctx);
+  renderer.render_graph_mut().apply_dirty_decision(&decision);
+
+  match decision {
+      DirtyDecision::Partial(area) => renderer.render_partial(&draw_list, area),
+      _                            => renderer.render(&draw_list),
+  };
+  p2_total_counter += 1;
+```
+
+**`webgpui-app` — `DrawContext`**
+
+Add for use inside frame callbacks:
+```rust
+/// Marks a screen region as needing redraw this frame.
+/// Has no effect when called outside an active frame.
+pub fn mark_dirty_rect(&mut self, rect: Rect);
+```
+
+### 17.4 Integration with `NodeTree`
+
+When `NodeTree::flush_dirty()` returns dirty `NodeId`s, the frame loop:
+1. Looks up each node's computed layout rect (output of the layout pass).
+2. Calls `dirty_tracker.mark_dirty_rect(layout_rect)` for each.
+
+This keeps `DirtyTracker` in sync with node-tree change detection.  
+Note: this connection is the prerequisite addressed in issue #38.
+
+### 17.5 Metric: `P2_GPU_SKIP_RATIO`
+
+| Key | Definition | CI threshold |
+|---|---|---|
+| `P2_GPU_SKIP_RATIO` | `skipped_frames / total_frames` (rolling 60-frame window) | >= 0.50 on fully-static scene |
+| `P2_GPU_SUBMISSIONS` | raw GPU submission count per 60-frame window | = 0 on fully-static scene |
+
+Output path: `.ci/p2-metrics.txt` (same `KEY=VALUE` format as P0/P1).
+
+### 17.6 Freeze Rule
+- `DirtyDecision` variants are frozen at v0.1. Adding a variant is a breaking change.
+- `mark_dirty_rect` and `commit_dirty` signatures are frozen at v0.1.
+- `RenderOutcome` variants are frozen at v0.1.
+- Scissor-rect support in `render_partial` is backend-specific; backends that do not
+  support it must fall back to full render and document the limitation.
