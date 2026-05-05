@@ -51,6 +51,9 @@ pub enum CursorMove {
 pub struct Button {
     state: WidgetState,
     label: String,
+    /// Whether the button currently holds keyboard focus.
+    /// Tracked separately from `state` so that `release()` can restore it.
+    focused: bool,
 }
 
 impl Button {
@@ -58,6 +61,7 @@ impl Button {
         Self {
             state: WidgetState::Normal,
             label: label.into(),
+            focused: false,
         }
     }
 
@@ -83,11 +87,16 @@ impl Button {
             return;
         }
         if hovered {
-            if matches!(self.state, WidgetState::Normal | WidgetState::Focused) {
+            if self.state == WidgetState::Normal {
                 self.state = WidgetState::Hover;
             }
+            // Focused and Pressed states take priority over Hover.
         } else if self.state == WidgetState::Hover {
-            self.state = WidgetState::Normal;
+            self.state = if self.focused {
+                WidgetState::Focused
+            } else {
+                WidgetState::Normal
+            };
         }
     }
 
@@ -96,8 +105,9 @@ impl Button {
         if self.state == WidgetState::Disabled {
             return;
         }
+        self.focused = focused;
         if focused {
-            if self.state == WidgetState::Normal {
+            if matches!(self.state, WidgetState::Normal | WidgetState::Hover) {
                 self.state = WidgetState::Focused;
             }
         } else if matches!(self.state, WidgetState::Focused | WidgetState::Pressed) {
@@ -120,7 +130,11 @@ impl Button {
             return false;
         }
         let activated = self.state == WidgetState::Pressed;
-        self.state = WidgetState::Normal;
+        self.state = if self.focused {
+            WidgetState::Focused
+        } else {
+            WidgetState::Normal
+        };
         activated
     }
 }
@@ -334,7 +348,33 @@ mod tests {
         b.press();
         assert_eq!(b.state(), WidgetState::Pressed);
         assert!(b.release());
+        // Not focused, so returns to Normal.
         assert_eq!(b.state(), WidgetState::Normal);
+    }
+
+    #[test]
+    fn button_focused_press_release_stays_focused() {
+        let mut b = Button::new("OK");
+        b.set_focused(true);
+        assert_eq!(b.state(), WidgetState::Focused);
+        b.press();
+        assert_eq!(b.state(), WidgetState::Pressed);
+        assert!(b.release());
+        // Keyboard focus is preserved after release.
+        assert_eq!(b.state(), WidgetState::Focused);
+    }
+
+    #[test]
+    fn button_hover_does_not_clobber_focused() {
+        let mut b = Button::new("OK");
+        b.set_focused(true);
+        assert_eq!(b.state(), WidgetState::Focused);
+        // Hovering a focused button must not drop the focus ring.
+        b.set_hovered(true);
+        assert_eq!(b.state(), WidgetState::Focused);
+        // Un-hovering must restore Focused, not Normal.
+        b.set_hovered(false);
+        assert_eq!(b.state(), WidgetState::Focused);
     }
 
     #[test]
