@@ -1930,6 +1930,7 @@ dependencies = [
 name = "webgpui-input"
 version = "0.1.0"
 dependencies = [
+ "webgpui-core",
  "webgpui-geometry",
 ]
 
