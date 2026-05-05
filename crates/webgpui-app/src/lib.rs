@@ -122,6 +122,12 @@ pub struct DrawContext<'a> {
     pub input: &'a InputState,
     /// The currently active rendering backend.
     pub current_backend: BackendSelector,
+    /// The application node tree.
+    pub node_tree: &'a mut NodeTree,
+    /// Dirty-region tracker for the current frame.
+    pub dirty: &'a mut DirtyTracker,
+    /// Focus state manager.
+    pub focus: &'a mut FocusManager,
 }
 
 impl<'a> DrawContext<'a> {
@@ -130,12 +136,18 @@ impl<'a> DrawContext<'a> {
         viewport: Size,
         input: &'a InputState,
         current_backend: BackendSelector,
+        node_tree: &'a mut NodeTree,
+        dirty: &'a mut DirtyTracker,
+        focus: &'a mut FocusManager,
     ) -> Self {
         Self {
             draw_list,
             viewport,
             input,
             current_backend,
+            node_tree,
+            dirty,
+            focus,
         }
     }
 
@@ -352,9 +364,9 @@ impl App {
         let mut draw_list = DrawList::new();
         let mut input_state = InputState::new();
         let mut frame_timer = FrameTimer::new(120);
-        let _node_tree = NodeTree::new();
-        let _dirty_tracker = DirtyTracker::new();
-        let _focus = FocusManager::new();
+        let mut node_tree = NodeTree::new();
+        let mut dirty_tracker = DirtyTracker::new();
+        let mut focus = FocusManager::new();
         let mut cursor_pos = Point::ZERO;
         let frame_interval = self.config.target_fps.and_then(|fps| {
             if fps == 0 {
@@ -422,6 +434,9 @@ impl App {
                                 viewport,
                                 &input_state,
                                 current_backend,
+                                &mut node_tree,
+                                &mut dirty_tracker,
+                                &mut focus,
                             );
                             frame_fn(&mut ctx);
 
