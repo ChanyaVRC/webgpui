@@ -15,6 +15,7 @@ members = [
     "crates/webgpui-render-cuda",
     "crates/webgpui-render-cpu",
     "crates/webgpui-app",
+    "crates/webgpui-compat",
 ]
 resolver = "2"
 
@@ -38,6 +39,7 @@ webgpui-render-wgpu    = { path = "crates/webgpui-render-wgpu" }
 webgpui-render-cuda    = { path = "crates/webgpui-render-cuda" }
 webgpui-render-cpu     = { path = "crates/webgpui-render-cpu" }
 webgpui-app            = { path = "crates/webgpui-app" }
+webgpui-compat         = { path = "crates/webgpui-compat" }
 
 wgpu       = "0.20"
 winit      = "0.29"
