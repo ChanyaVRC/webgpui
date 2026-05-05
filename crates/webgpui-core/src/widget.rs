@@ -1,3 +1,5 @@
+use crate::NodeRole;
+
 // ---------------------------------------------------------------------------
 // WidgetState
 // ---------------------------------------------------------------------------
@@ -111,6 +113,10 @@ impl Button {
             return;
         }
         self.state = WidgetState::Pressed;
+    }
+
+    pub fn role() -> NodeRole {
+        NodeRole::Button
     }
 
     /// End a press. Returns `true` if the button was activated (pressed and
@@ -252,6 +258,10 @@ impl TextInput {
         };
     }
 
+    pub fn role() -> NodeRole {
+        NodeRole::TextBox
+    }
+
     /// Deletes the selected range. Returns `true` if anything was deleted.
     fn delete_selection(&mut self) -> bool {
         let Some((lo, hi)) = self.selection() else {
@@ -301,6 +311,10 @@ impl Label {
     }
     pub fn align(&self) -> TextAlign {
         self.align
+    }
+
+    pub fn role() -> NodeRole {
+        NodeRole::None
     }
 }
 
@@ -376,6 +390,10 @@ impl ScrollView {
             self.scroll_offset.1.clamp(0.0, self.max_offset_y()),
         );
     }
+
+    pub fn role() -> NodeRole {
+        NodeRole::None
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -422,6 +440,10 @@ impl Toolbar {
 
     pub fn is_empty(&self) -> bool {
         self.items.is_empty()
+    }
+
+    pub fn role() -> NodeRole {
+        NodeRole::None
     }
 }
 
@@ -502,6 +524,10 @@ impl TabBar {
     pub fn select_last(&mut self) {
         self.selected = self.tabs.len().saturating_sub(1);
     }
+
+    pub fn role() -> NodeRole {
+        NodeRole::Tab
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -573,6 +599,10 @@ impl Dialog {
             false
         }
     }
+
+    pub fn role() -> NodeRole {
+        NodeRole::Dialog
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -638,6 +668,10 @@ impl ContextMenu {
         } else {
             false
         }
+    }
+
+    pub fn role() -> NodeRole {
+        NodeRole::Menu
     }
 }
 

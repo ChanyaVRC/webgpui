@@ -16,6 +16,38 @@ use webgpui_geometry::{BorderRadius, Color, Insets, Rect, Size};
 use webgpui_layout::LayoutStyle;
 
 // ---------------------------------------------------------------------------
+// Focus ring
+// ---------------------------------------------------------------------------
+
+/// Standard focus ring stroke width in logical pixels.
+pub const FOCUS_RING_WIDTH: f32 = 2.0;
+
+/// Standard focus ring colour (blue accent, consistent across all widgets).
+pub fn focus_ring_color() -> Color {
+    Color::new(0.35, 0.7, 1.0, 1.0)
+}
+
+// ---------------------------------------------------------------------------
+// NodeRole
+// ---------------------------------------------------------------------------
+
+/// Accessibility role for a [`Node`].
+///
+/// Assigned when widgets are wired into the node tree.  Consumers (screen
+/// readers, keyboard managers) use this to understand widget semantics without
+/// inspecting visual properties.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum NodeRole {
+    #[default]
+    None,
+    Button,
+    TextBox,
+    Tab,
+    Dialog,
+    Menu,
+}
+
+// ---------------------------------------------------------------------------
 // NodeId
 // ---------------------------------------------------------------------------
 
@@ -98,6 +130,8 @@ pub struct Node {
     pub kind: NodeKind,
     pub style: NodeStyle,
     pub layout: LayoutStyle,
+    /// Accessibility role.
+    pub role: NodeRole,
     /// Indices of child nodes in the same [`NodeTree`] arena.
     children: Vec<usize>,
     /// Index of the parent node; `None` for the root.
@@ -113,6 +147,7 @@ impl Node {
             kind,
             style: NodeStyle::default(),
             layout: LayoutStyle::default(),
+            role: NodeRole::None,
             children: Vec::new(),
             parent: None,
             dirty: true,
@@ -243,6 +278,15 @@ impl NodeTree {
             node.style = style;
             node.dirty = true;
         }
+        true
+    }
+
+    /// Sets the accessibility role of a node.
+    pub fn set_role(&mut self, id: NodeId, role: NodeRole) -> bool {
+        let Some(node) = self.get_mut(id) else {
+            return false;
+        };
+        node.role = role;
         true
     }
 
@@ -483,5 +527,38 @@ mod tests {
         assert!(tracker.is_dirty());
         tracker.clear();
         assert!(!tracker.is_dirty());
+    }
+
+    // ---- NodeRole --------------------------------------------------------
+
+    #[test]
+    fn node_default_role_is_none() {
+        let tree = NodeTree::new();
+        assert_eq!(tree.get(NodeId::ROOT).unwrap().role, NodeRole::None);
+    }
+
+    #[test]
+    fn set_role_readable_via_get() {
+        let mut tree = NodeTree::new();
+        let id = tree.add_node(NodeId::ROOT, NodeKind::Container);
+        assert!(tree.set_role(id, NodeRole::Button));
+        assert_eq!(tree.get(id).unwrap().role, NodeRole::Button);
+    }
+
+    #[test]
+    fn widget_roles_match_expected() {
+        assert_eq!(Button::role(), NodeRole::Button);
+        assert_eq!(TextInput::role(), NodeRole::TextBox);
+        assert_eq!(TabBar::role(), NodeRole::Tab);
+        assert_eq!(Dialog::role(), NodeRole::Dialog);
+        assert_eq!(ContextMenu::role(), NodeRole::Menu);
+        assert_eq!(Label::role(), NodeRole::None);
+    }
+
+    // ---- Focus ring ------------------------------------------------------
+
+    #[test]
+    fn focus_ring_width_is_two() {
+        assert_eq!(FOCUS_RING_WIDTH, 2.0);
     }
 }
