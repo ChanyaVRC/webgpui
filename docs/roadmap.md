@@ -59,12 +59,6 @@ Exit Criteria:
 - Performance target met per requirements summary.
 - Compat/FastPath equivalence tests pass for all MUST-tier APIs (see api-swapping-quality-plan.md §8).
 Crates affected: `webgpui-compat` (new), `webgpui-app`, `webgpui-core`, `webgpui-input`, `apps/demo-migration` (new).
-PR Breakdown:
-1. `feat/compat-crate-skeleton` — Add `webgpui-compat` crate, public types, module structure, empty stubs.
-2. `feat/compat-must-apis` — Implement all MUST-tier node/style/event/app functions; unit tests per function.
-3. `feat/demo-migration-app` — Add `apps/demo-migration`; reproduce at least 2 representative screens via compat API.
-4. `test/compat-equivalence-suite` — Add Compat/FastPath equivalence tests for all MUST-tier APIs against 4 baseline scenarios.
-5. `ci/compat-gate` — Add CI gate that blocks merge when equivalence tests fail.
 Risks:
 - Text rendering position differs between compat and legacy due to different shaping backends. Mitigation: allow ±2px tolerance in visual snapshots; document known differences.
 - Event timing differences (capture/bubble order). Mitigation: event-trace tests lock exact order; compat layer absorbs differences explicitly.
@@ -90,11 +84,6 @@ Exit Criteria:
 - `CHANGELOG.md` created with M0–M5 entries.
 - Zero `#[allow(missing_docs)]` suppressions on public items in affected crates.
 Crates affected: `webgpui-app`, `webgpui-core`, `webgpui-compat`, `webgpui-input`.
-PR Breakdown:
-1. `docs/semver-policy` — Add `docs/semver-policy.md`; update contributing guide.
-2. `docs/api-rustdoc-must` — Add rustdoc + examples for all MUST-tier public APIs.
-3. `chore/changelog-init` — Create `CHANGELOG.md`; backfill M0–M4 entries.
-4. `refactor/deprecate-candidates` — Annotate APIs identified during M4 as deprecated.
 Risks:
 - API surface larger than anticipated. Mitigation: scope to MUST-tier only; SHOULD/LATER deferred.
 
@@ -108,11 +97,6 @@ Exit Criteria:
 - Simple SVG icons (flat paths, no text) render without visual regression (pixel diff <= 1%).
 - Filter pass excluded from binary when `filters` feature is disabled.
 Crates affected: `webgpui-core` (NodeKind), `webgpui-render` (texture pipeline), `webgpui-render-wgpu` (GPU upload), `webgpui-render-graph` (filter pass), `webgpui-app` (image API).
-PR Breakdown:
-1. `feat/image-node-core` — Add `NodeKind::Image`, texture handle in core; GPU upload in render-wgpu.
-2. `feat/svg-rasterize` — Integrate `resvg`; rasterize SVG to texture; cache by path+size.
-3. `feat/filter-pass` — Add blur + color-matrix pass to render-graph; gate behind `filters` feature.
-4. `test/visual-regression-images` — Snapshot tests for image and SVG nodes.
 Risks:
 - SVG rasterization is CPU-bound and may cause frame spikes. Mitigation: rasterize off-frame on background thread; cache result.
 - Crate version conflicts (`image` vs `resvg`). Mitigation: pin versions in workspace `Cargo.toml`.
@@ -129,11 +113,6 @@ Exit Criteria:
 - No frame-time regression (>5%) on scenes with zero active animations.
 - Animation tick always marks dirty; no frame is skipped while an animation is active.
 Crates affected: `webgpui-app` (animation API, timeline), `webgpui-core` (dirty integration).
-PR Breakdown:
-1. `feat/animation-timeline` — `Animation` builder, timeline manager, tick integration in app loop.
-2. `feat/easing-functions` — Linear, ease-in/out, cubic bezier; unit tests with f32 epsilon checks.
-3. `feat/style-transitions` — Implicit transitions on `style_set` when transition config present.
-4. `test/animation-visual` — Snapshot tests for fade and slide; regression test for no-animation frames.
 Risks:
 - Sub-frame timing precision on Windows (winit event loop granularity). Mitigation: use elapsed-time-based interpolation, not frame-count-based.
 
@@ -148,11 +127,6 @@ Exit Criteria:
 - Inspector overlay reflects correct computed style for all MUST-tier style properties.
 - Binary size delta with `dev-tools` disabled: < 1 KB increase vs no-flag baseline.
 Crates affected: `webgpui-profiler` (overlay render), `webgpui-app` (inspector API), `webgpui-core` (data read), `webgpui-render` (overlay pass).
-PR Breakdown:
-1. `feat/perf-overlay` — FPS + frame-time + draw-call overlay; `dev-tools` feature gate.
-2. `feat/node-inspector-overlay` — Hovered node inspector; computed style display.
-3. `feat/dirty-rect-visualizer` — Dirty region color overlay; toggle via `Profiler::set_dirty_overlay(bool)`.
-4. `test/devtools-no-cost` — CI check: binary size with/without `dev-tools`; assert size delta < threshold.
 Risks:
 - Inspector overlay rendering adds a second render pass. Mitigation: batch with existing profiler overlay pass.
 
@@ -173,13 +147,6 @@ Exit Criteria:
 - p95 frame time <= 20ms on a scene with >= 500 nodes.
 - Render pass auto-skip verified: zero GPU submissions on frames with no dirty regions.
 Crates affected: `webgpui-render-wgpu` (ring buffer, transient pool, prewarm), `webgpui-render-graph` (dependency graph, auto-skip), `webgpui-core` (SoA), `webgpui-app` (prewarm API).
-PR Breakdown:
-1. `perf/p3-ring-buffer` — Ring buffer for vertex/index in render-wgpu; measure allocation delta.
-2. `perf/p3-transient-pool` — Transient buffer pool; replace ad-hoc allocations.
-3. `perf/p3-prewarm` — `prewarm_pipeline` and `prewarm_glyph_cache` API + implementation.
-4. `perf/p4-render-graph-deps` — Explicit pass dependencies; auto-skip pass.
-5. `perf/p4-parallel-encode` — Decouple UI update from render command encoding onto worker thread.
-6. `refactor/core-soa` — SoA layout for position/size/dirty fields in `webgpui-core`.
 Risks:
 - Worker thread render encoding: wgpu `Surface` is not `Send` on all platforms. Mitigation: encode `CommandBuffer` (which is `Send`) on worker; submit on main thread.
 - SoA refactor is a large structural change. Mitigation: dedicated PR with comprehensive snapshot + perf before/after.
@@ -198,12 +165,6 @@ Exit Criteria:
 - Frame time target (avg <= 16.6ms, p95 <= 20ms) achieved in Chrome DevTools.
 - `wasm32` build check is green in CI.
 Crates affected: `webgpui-platform` (trait), new `webgpui-platform-web`, `webgpui-render-wgpu` (WebGPU/WebGL2), `webgpui-core`, `webgpui-input`, `webgpui-app`, new `apps/demo-web`.
-PR Breakdown:
-1. `refactor/platform-trait` — Extract `PlatformBackend` trait; keep winit impl unchanged.
-2. `feat/platform-web` — New `webgpui-platform-web`; `web-sys` event bridge; canvas resize handling.
-3. `feat/wgpu-webgpu-webgl2` — Conditional wgpu backend selection (`webgpu` vs `webgl` features).
-4. `feat/demo-web` — New `apps/demo-web`; `trunk` configuration; basic scene in browser.
-5. `ci/wasm32-build-check` — CI job: compile + headless browser test.
 Risks:
 - `std::time::Instant` unavailable on `wasm32`. Mitigation: gate with `cfg(target_arch = "wasm32")`; use `web-sys` `performance.now()`.
 - wgpu WebGPU browser support varies. Mitigation: `webgl` fallback as CI default; `webgpu` opt-in via feature flag.
