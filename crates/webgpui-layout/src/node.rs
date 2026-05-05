@@ -5,7 +5,7 @@ use crate::style::LayoutStyle;
 /// A node fed into the layout engine.
 #[derive(Debug)]
 pub struct LayoutNode {
-    pub id: u32,
+    pub id: u64,
     pub style: LayoutStyle,
     /// Indices into the same flat array of layout nodes (children).
     pub children: Vec<usize>,
@@ -21,7 +21,7 @@ pub struct LayoutNode {
 }
 
 impl LayoutNode {
-    pub fn new(id: u32, style: LayoutStyle) -> Self {
+    pub fn new(id: u64, style: LayoutStyle) -> Self {
         Self {
             id,
             style,
@@ -53,6 +53,10 @@ pub struct LayoutResult {
     pub border_box: Rect,
     /// Inner content area (border_box minus padding).
     pub content_box: Rect,
+    /// Z-order layer, copied from the corresponding [`LayoutNode::layer`].
+    /// Higher values should render on top. The caller is responsible for
+    /// sorting draw calls by this field.
+    pub layer: i32,
 }
 
 impl LayoutResult {
@@ -60,6 +64,7 @@ impl LayoutResult {
         Self {
             border_box: border,
             content_box: border.shrink(padding),
+            layer: 0,
         }
     }
 
@@ -67,6 +72,7 @@ impl LayoutResult {
         Self {
             border_box: Rect::ZERO,
             content_box: Rect::ZERO,
+            layer: 0,
         }
     }
 }

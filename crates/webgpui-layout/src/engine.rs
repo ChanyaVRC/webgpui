@@ -56,6 +56,15 @@ impl LayoutEngine {
         self.results.get(index).copied()
     }
 
+    /// Returns node indices sorted by their computed layer (ascending).
+    /// Render in this order to achieve correct Z-ordering: lower layers
+    /// draw first and are occluded by higher layers.
+    pub fn sorted_indices(&self) -> Vec<usize> {
+        let mut indices: Vec<usize> = (0..self.results.len()).collect();
+        indices.sort_by_key(|&i| self.results[i].layer);
+        indices
+    }
+
     // ------------------------------------------------------------------
     // Internal layout
     // ------------------------------------------------------------------
@@ -89,6 +98,7 @@ impl LayoutEngine {
                 h,
             );
             self.results[idx] = LayoutResult::from_border(border, padding);
+            self.results[idx].layer = nodes[idx].layer;
             let content = self.results[idx].content_box;
             for &ci in &nodes[idx].children {
                 self.layout_node(nodes, ci, content, tm);
@@ -118,6 +128,7 @@ impl LayoutEngine {
             dir.size(main, cross),
         );
         self.results[idx] = LayoutResult::from_border(border, padding);
+        self.results[idx].layer = nodes[idx].layer;
 
         // --- Text auto-size (leaf node with content) ---
         if !node.text.is_empty() && node.children.is_empty() {
@@ -998,5 +1009,49 @@ mod tests {
             ..LayoutNode::default()
         }];
         engine.compute(&nodes, viewport());
+    }
+
+    #[test]
+    fn layer_copied_to_result() {
+        let mut engine = LayoutEngine::new();
+        let nodes = vec![LayoutNode {
+            id: 0,
+            layer: 5,
+            ..LayoutNode::default()
+        }];
+        engine.compute(&nodes, viewport());
+        assert_eq!(engine.result(0).unwrap().layer, 5);
+    }
+
+    #[test]
+    fn sorted_indices_by_layer() {
+        let mut engine = LayoutEngine::new();
+        let nodes = vec![
+            LayoutNode {
+                id: 0,
+                style: LayoutStyle {
+                    width: Some(100.0),
+                    height: Some(100.0),
+                    ..Default::default()
+                },
+                children: vec![1, 2],
+                layer: 0,
+                ..LayoutNode::default()
+            },
+            LayoutNode {
+                id: 1,
+                layer: 10,
+                ..LayoutNode::default()
+            },
+            LayoutNode {
+                id: 2,
+                layer: 1,
+                ..LayoutNode::default()
+            },
+        ];
+        engine.compute(&nodes, viewport());
+        let order = engine.sorted_indices();
+        // layer 0 < layer 1 < layer 10 → indices 0, 2, 1
+        assert_eq!(order, vec![0, 2, 1]);
     }
 }
