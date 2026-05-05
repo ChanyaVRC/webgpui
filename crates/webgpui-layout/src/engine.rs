@@ -558,7 +558,7 @@ mod tests {
     }
 
     #[test]
-    fn negative_flex_grow_is_clamped_to_zero() {
+    fn negative_flex_grow_is_treated_as_nongrow() {
         let mut engine = LayoutEngine::new();
         // Child 1 has invalid negative flex and should be treated as non-grow.
         // Child 2 should receive all remaining width.
