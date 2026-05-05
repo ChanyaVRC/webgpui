@@ -11,6 +11,7 @@ path = "src/main.rs"
 [dependencies]
 webgpui-app      = { workspace = true }
 webgpui-batching = { workspace = true }
+webgpui-core     = { workspace = true }
 webgpui-geometry = { workspace = true }
 webgpui-profiler = { workspace = true }
 webgpui-render   = { workspace = true }

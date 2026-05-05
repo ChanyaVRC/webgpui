@@ -449,6 +449,7 @@ version = "0.1.0"
 dependencies = [
  "webgpui-app",
  "webgpui-batching",
+ "webgpui-core",
  "webgpui-geometry",
  "webgpui-profiler",
  "webgpui-render",

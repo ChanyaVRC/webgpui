@@ -3,6 +3,7 @@ use std::str::FromStr;
 
 use webgpui_app::{AppBuilder, BackendSwitcher, DrawContext, KeyCode, MouseButton};
 use webgpui_batching::{BatchKey, Batcher, BlendModeKey, DrawBatch};
+use webgpui_core::{Button, CursorMove, Label, TextInput, WidgetState};
 use webgpui_geometry::{Color, Point, Rect, Size};
 use webgpui_profiler::FrameTimer;
 use webgpui_render::{BackendSelector, DrawCommand, DrawList};
@@ -21,11 +22,15 @@ const FONT_W: usize = 5;
 const FONT_H: usize = 7;
 
 struct DemoUiState {
-    text_value: String,
+    label: Label,
+    text_input: TextInput,
+    button: Button,
     focus: DemoFocus,
     submit_flash: u8,
     frame_index: u64,
     prev_mouse_down: bool,
+    /// Whether the button is currently held down via mouse (mouse-down, not yet released).
+    button_mouse_held: bool,
     prev_pressed_keys: HashSet<KeyCode>,
     switcher: BackendSwitcher,
     notice_frames: u8,
@@ -34,17 +39,30 @@ struct DemoUiState {
 
 impl DemoUiState {
     fn new(switcher: BackendSwitcher) -> Self {
+        let mut text_input = TextInput::new().with_placeholder("Type here");
+        text_input.set_focused(true);
+        let mut button = Button::new("Submit");
+        button.set_focused(false);
         Self {
-            text_value: String::new(),
+            label: Label::new("Name"),
+            text_input,
+            button,
             focus: DemoFocus::Textbox,
             submit_flash: 0,
             frame_index: 0,
             prev_mouse_down: false,
+            button_mouse_held: false,
             prev_pressed_keys: HashSet::new(),
             switcher,
             notice_frames: 0,
             notice_text: String::new(),
         }
+    }
+
+    fn set_focus(&mut self, focus: DemoFocus) {
+        self.focus = focus;
+        self.text_input.set_focused(focus == DemoFocus::Textbox);
+        self.button.set_focused(focus == DemoFocus::Button);
     }
 
     fn draw_frame(&mut self, ctx: &mut DrawContext<'_>) {
@@ -84,8 +102,9 @@ impl DemoUiState {
         ctx.fill_rounded_rect(panel, 14.0, Color::new(0.18, 0.2, 0.25, 1.0));
         ctx.draw_border(panel, Color::new(0.38, 0.42, 0.5, 1.0), 1.0);
 
+        let label_origin = Point::new(panel.origin.x + 22.0, panel.origin.y + 22.0);
         let text_rect = Rect::from_origin_size(
-            Point::new(panel.origin.x + 22.0, panel.origin.y + 22.0),
+            Point::new(panel.origin.x + 22.0, panel.origin.y + 46.0),
             Size::new((panel.size.width - 220.0).max(220.0), 54.0),
         );
         let button_rect = Rect::from_origin_size(
@@ -98,8 +117,15 @@ impl DemoUiState {
 
         self.handle_interaction(ctx, text_rect, button_rect);
 
+        draw_text(
+            ctx,
+            label_origin,
+            self.label.text(),
+            1.5,
+            Color::new(0.65, 0.72, 0.85, 1.0),
+        );
         self.draw_textbox(ctx, text_rect);
-        self.draw_button(ctx, button_rect, self.focus == DemoFocus::Button);
+        self.draw_button(ctx, button_rect);
 
         let keyboard_origin = Point::new(panel.origin.x + 22.0, panel.origin.y + 102.0);
         self.draw_keyboard(ctx, keyboard_origin);
@@ -114,6 +140,18 @@ impl DemoUiState {
         let mouse_down = ctx.input.is_button_pressed(MouseButton::Left);
         let mouse_pressed_edge = mouse_down && !self.prev_mouse_down;
         let w = ctx.viewport.width;
+
+        // Update button hover state every frame.
+        self.button.set_hovered(button_rect.contains(mouse_pos));
+
+        // Mouse-up: release a button held from a previous frame.
+        let mouse_released_edge = !mouse_down && self.prev_mouse_down;
+        if mouse_released_edge && self.button_mouse_held {
+            self.button_mouse_held = false;
+            if self.button.release() {
+                self.submit();
+            }
+        }
 
         if mouse_pressed_edge {
             // Check backend buttons first
@@ -142,20 +180,22 @@ impl DemoUiState {
             }
             if !handled {
                 if text_rect.contains(mouse_pos) {
-                    self.focus = DemoFocus::Textbox;
+                    self.set_focus(DemoFocus::Textbox);
                 } else if button_rect.contains(mouse_pos) {
-                    self.focus = DemoFocus::Button;
-                    self.submit();
+                    self.set_focus(DemoFocus::Button);
+                    self.button.press();
+                    self.button_mouse_held = true;
                 }
             }
         }
 
         // Tab: cycle focus between textbox and button.
         if is_new_key_press(ctx, &self.prev_pressed_keys, KeyCode::Tab) {
-            self.focus = match self.focus {
+            let next = match self.focus {
                 DemoFocus::Textbox => DemoFocus::Button,
                 DemoFocus::Button => DemoFocus::Textbox,
             };
+            self.set_focus(next);
         }
 
         match self.focus {
@@ -164,7 +204,10 @@ impl DemoUiState {
                 if is_new_key_press(ctx, &self.prev_pressed_keys, KeyCode::Enter)
                     || is_new_key_press(ctx, &self.prev_pressed_keys, KeyCode::Space)
                 {
-                    self.submit();
+                    self.button.press();
+                    if self.button.release() {
+                        self.submit();
+                    }
                 }
             }
         }
@@ -177,14 +220,21 @@ impl DemoUiState {
     fn handle_text_input(&mut self, ctx: &DrawContext<'_>) {
         for &(key, ch) in CHAR_KEYS {
             if is_new_key_press(ctx, &self.prev_pressed_keys, key)
-                && self.text_value.len() < MAX_TEXT_LEN
+                && self.text_input.value().len() < MAX_TEXT_LEN
             {
-                self.text_value.push(ch);
+                self.text_input.insert_char(ch);
             }
         }
 
         if is_new_key_press(ctx, &self.prev_pressed_keys, KeyCode::Backspace) {
-            self.text_value.pop();
+            self.text_input.delete_backward();
+        }
+
+        if is_new_key_press(ctx, &self.prev_pressed_keys, KeyCode::ArrowLeft) {
+            self.text_input.move_cursor(CursorMove::Left, false);
+        }
+        if is_new_key_press(ctx, &self.prev_pressed_keys, KeyCode::ArrowRight) {
+            self.text_input.move_cursor(CursorMove::Right, false);
         }
 
         if is_new_key_press(ctx, &self.prev_pressed_keys, KeyCode::Enter) {
@@ -194,7 +244,7 @@ impl DemoUiState {
 
     fn submit(&mut self) {
         self.submit_flash = 18;
-        eprintln!("[demo-basic] submit text='{}'", self.text_value);
+        eprintln!("[demo-basic] submit text='{}'", self.text_input.value());
     }
 
     fn log_pressed_key_edges(&self, ctx: &DrawContext<'_>) {
@@ -206,7 +256,8 @@ impl DemoUiState {
     }
 
     fn draw_textbox(&self, ctx: &mut DrawContext<'_>, text_rect: Rect) {
-        let border = if self.focus == DemoFocus::Textbox {
+        let focused = matches!(self.text_input.state(), WidgetState::Focused);
+        let border = if focused {
             Color::new(0.35, 0.7, 1.0, 1.0)
         } else {
             Color::new(0.45, 0.49, 0.58, 1.0)
@@ -214,12 +265,13 @@ impl DemoUiState {
         ctx.fill_rounded_rect(text_rect, 10.0, Color::new(0.09, 0.1, 0.14, 1.0));
         ctx.draw_border(text_rect, border, 2.0);
 
+        let value = self.text_input.value();
         let slot_w = ((text_rect.size.width - 26.0) / MAX_TEXT_LEN as f32).max(4.0);
         for i in 0..MAX_TEXT_LEN {
             let x = text_rect.origin.x + 13.0 + i as f32 * slot_w;
             let y = text_rect.origin.y + 14.0;
             let slot_rect = Rect::from_origin_size(Point::new(x, y), Size::new(slot_w - 2.0, 26.0));
-            let filled = i < self.text_value.len();
+            let filled = i < value.len();
             let color = if filled {
                 Color::new(0.33, 0.84, 1.0, 0.2)
             } else {
@@ -232,7 +284,20 @@ impl DemoUiState {
         let tscale = 2.0_f32;
         let th = text_pixel_height(tscale);
         let ty = (text_rect.origin.y + (text_rect.size.height - th) / 2.0).floor();
-        for (i, ch) in self.text_value.chars().enumerate() {
+        if value.is_empty() && !focused {
+            // Show placeholder text left-aligned when the field is empty and unfocused.
+            let placeholder = self.text_input.placeholder();
+            if !placeholder.is_empty() {
+                draw_text(
+                    ctx,
+                    Point::new(text_rect.origin.x + 13.0, ty),
+                    placeholder,
+                    tscale,
+                    Color::new(0.45, 0.5, 0.6, 1.0),
+                );
+            }
+        }
+        for (i, ch) in value.chars().enumerate() {
             if i >= MAX_TEXT_LEN {
                 break;
             }
@@ -241,9 +306,8 @@ impl DemoUiState {
             draw_char_at(ctx, tx, ty, ch, tscale, Color::new(0.9, 0.96, 1.0, 1.0));
         }
 
-        if self.focus == DemoFocus::Textbox && (self.frame_index / 24).is_multiple_of(2) {
-            let ci = self.text_value.len().min(MAX_TEXT_LEN);
-            // Place caret at the left edge of the next slot.
+        if focused && (self.frame_index / 24).is_multiple_of(2) {
+            let ci = self.text_input.cursor().min(MAX_TEXT_LEN);
             let slot_cx = text_rect.origin.x + 13.0 + ci as f32 * slot_w + slot_w / 2.0;
             let cx = (slot_cx - FONT_W as f32 * tscale / 2.0 - 1.0).floor();
             let caret = Rect::from_origin_size(Point::new(cx, ty - 2.0), Size::new(2.0, th + 4.0));
@@ -251,8 +315,9 @@ impl DemoUiState {
         }
     }
 
-    fn draw_button(&self, ctx: &mut DrawContext<'_>, button_rect: Rect, focused: bool) {
-        if focused {
+    fn draw_button(&self, ctx: &mut DrawContext<'_>, button_rect: Rect) {
+        let btn_state = self.button.state();
+        if matches!(btn_state, WidgetState::Focused | WidgetState::Pressed) {
             let ring = Rect::from_origin_size(
                 Point::new(button_rect.origin.x - 3.0, button_rect.origin.y - 3.0),
                 Size::new(button_rect.size.width + 6.0, button_rect.size.height + 6.0),
@@ -261,6 +326,8 @@ impl DemoUiState {
         }
         let color = if self.submit_flash > 0 {
             Color::new(0.27, 0.86, 0.53, 1.0)
+        } else if btn_state == WidgetState::Hover {
+            Color::new(0.32, 0.6, 1.0, 1.0)
         } else {
             Color::new(0.24, 0.5, 0.9, 1.0)
         };
@@ -653,6 +720,30 @@ const VISUAL_KEYS: &[KeyCode] = &[
 fn main() {
     let args: Vec<String> = std::env::args().collect();
 
+    // Smoke-test mode: verify widget state machines headlessly and exit.
+    if args.iter().any(|a| a == "--smoke-test") {
+        let subtest = args
+            .windows(2)
+            .find(|w| w[0] == "--smoke-test")
+            .map(|w| w[1].as_str())
+            .unwrap_or("");
+        match subtest {
+            "form" => {
+                if run_smoke_test_form() {
+                    eprintln!("[smoke-test] form: PASS");
+                    return;
+                } else {
+                    eprintln!("[smoke-test] form: FAIL");
+                    std::process::exit(1);
+                }
+            }
+            other => {
+                eprintln!("[smoke-test] unknown subtest: {}", other);
+                std::process::exit(1);
+            }
+        }
+    }
+
     // In benchmark mode, run headless measurements and exit without opening a window.
     let benchmark_mode = args
         .windows(2)
@@ -738,6 +829,59 @@ fn main() {
         eprintln!("demo-basic failed: {err}");
         std::process::exit(1);
     }
+}
+
+/// Headless form smoke test. Returns `true` if all assertions pass.
+fn run_smoke_test_form() -> bool {
+    // Label renders a static field name.
+    let label = Label::new("Name");
+    if label.text() != "Name" {
+        eprintln!("[smoke-test] label text wrong: {:?}", label.text());
+        return false;
+    }
+
+    // Type into TextInput, then use cursor movement and selection.
+    let mut input = TextInput::new().with_placeholder("Type here");
+    input.set_focused(true);
+    for ch in "hello".chars() {
+        input.insert_char(ch);
+    }
+    if input.value() != "hello" || input.cursor() != 5 {
+        eprintln!("[smoke-test] input value/cursor wrong after insert");
+        return false;
+    }
+
+    // Shift-select the first char ('h') and replace with 'H'.
+    input.move_cursor(CursorMove::Home, false);
+    input.move_cursor(CursorMove::Right, true);
+    if input.selection() != Some((0, 1)) {
+        eprintln!("[smoke-test] selection wrong: {:?}", input.selection());
+        return false;
+    }
+    input.insert_char('H');
+    if input.value() != "Hello" {
+        eprintln!(
+            "[smoke-test] value wrong after replace: {:?}",
+            input.value()
+        );
+        return false;
+    }
+
+    // Tab to Button, activate it.
+    input.set_focused(false);
+    let mut button = Button::new("Submit");
+    button.set_focused(true);
+    if button.state() != WidgetState::Focused {
+        eprintln!("[smoke-test] button not focused");
+        return false;
+    }
+    button.press();
+    if !button.release() {
+        eprintln!("[smoke-test] button release returned false");
+        return false;
+    }
+
+    true
 }
 
 /// Print usage information for backend selection
