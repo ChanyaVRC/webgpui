@@ -218,7 +218,8 @@ impl NodeTree {
             self.nodes[parent_idx].children.retain(|&c| c != idx);
         }
 
-        // Invalidate id_to_index entries (we don't compact the arena in MVP).
+        // Invalidate id_to_index entries.
+        // The arena is not compacted here; call compact() explicitly when needed.
         for ri in to_remove {
             self.id_to_index.remove(&self.nodes[ri].id);
             // Mark slot as removed by resetting to a placeholder.
@@ -293,6 +294,44 @@ impl NodeTree {
     /// Iterates over all valid nodes in arena order.
     pub fn iter(&self) -> impl Iterator<Item = &Node> {
         self.nodes.iter().filter(|n| !n.is_tombstone())
+    }
+
+    /// Compacts the backing arena by removing tombstone slots.
+    ///
+    /// After many [`remove_node`] calls the arena grows monotonically.
+    /// Call this method to reclaim memory. All live `NodeId`s remain valid;
+    /// only internal arena indices change (they are not part of the public API).
+    pub fn compact(&mut self) {
+        let old_len = self.nodes.len();
+        let mut old_to_new: Vec<Option<usize>> = vec![None; old_len];
+
+        // Pass 1: build old→new index map and move live nodes simultaneously.
+        let old_nodes = std::mem::take(&mut self.nodes);
+        let mut new_nodes: Vec<Node> = Vec::new();
+        for (i, node) in old_nodes.into_iter().enumerate() {
+            if !node.is_tombstone() {
+                old_to_new[i] = Some(new_nodes.len());
+                new_nodes.push(node);
+            }
+        }
+        if new_nodes.len() == old_len {
+            self.nodes = new_nodes;
+            return;
+        }
+
+        // Pass 2: remap arena indices and rebuild id→index map in one sweep.
+        self.id_to_index.clear();
+        for (new_idx, node) in new_nodes.iter_mut().enumerate() {
+            node.parent = node.parent.and_then(|p| old_to_new[p]);
+            node.children = node
+                .children
+                .iter()
+                .filter_map(|&c| old_to_new[c])
+                .collect();
+            self.id_to_index.insert(node.id, new_idx);
+        }
+
+        self.nodes = new_nodes;
     }
 }
 
@@ -411,6 +450,23 @@ mod tests {
         let id = tree.add_node(NodeId::ROOT, NodeKind::Container);
         assert!(tree.remove_node(id));
         assert!(tree.get(id).is_none());
+    }
+
+    #[test]
+    fn compact_removes_tombstones() {
+        let mut tree = NodeTree::new();
+        let a = tree.add_node(NodeId::ROOT, NodeKind::Container);
+        let b = tree.add_node(NodeId::ROOT, NodeKind::Container);
+        let c = tree.add_node(a, NodeKind::Text);
+        let len_before = tree.len();
+        tree.remove_node(b);
+        assert_eq!(tree.len(), len_before); // arena still same size
+        tree.compact();
+        assert!(tree.len() < len_before); // tombstone removed
+        assert!(tree.get(a).is_some());
+        assert!(tree.get(c).is_some());
+        assert!(tree.get(b).is_none());
+        assert!(tree.children_of(a).contains(&c));
     }
 
     #[test]
