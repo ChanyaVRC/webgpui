@@ -141,7 +141,7 @@
 - `end_frame_fast()`
 
 2. 差分更新 API
-- `mark_dirty_rect(node_id, rect)`
+- `mark_dirty_rect(rect)` （`mark_dirty_rect(node_id, rect)` の初期プロトタイプを §17 の定義で置き換え）
 - `commit_dirty()`
 
 3. バッファ管理 API

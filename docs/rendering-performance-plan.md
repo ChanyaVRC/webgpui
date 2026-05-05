@@ -141,7 +141,7 @@ Add performance-focused native APIs separate from compatibility APIs.
 - `end_frame_fast()`
 
 2. Differential-update APIs
-- `mark_dirty_rect(node_id, rect)`
+- `mark_dirty_rect(rect)` (supersedes `mark_dirty_rect(node_id, rect)` prototype; see §17)
 - `commit_dirty()`
 
 3. Buffer-management APIs
