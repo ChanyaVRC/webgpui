@@ -18,11 +18,11 @@ use webgpui_layout::LayoutStyle;
 
 /// A stable, unique identifier for a node in the [`NodeTree`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct NodeId(pub u32);
+pub struct NodeId(pub u64);
 
 impl NodeId {
     pub const ROOT: Self = Self(0);
-    const TOMBSTONE: Self = Self(u32::MAX);
+    const TOMBSTONE: Self = Self(u64::MAX);
 }
 
 impl std::fmt::Display for NodeId {
@@ -135,7 +135,7 @@ pub struct NodeTree {
     /// Maps `NodeId` → arena index.
     id_to_index: std::collections::HashMap<NodeId, usize>,
     /// Next `NodeId` to hand out.
-    next_id: u32,
+    next_id: u64,
 }
 
 impl NodeTree {
