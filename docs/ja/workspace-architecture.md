@@ -91,8 +91,11 @@ webgpui/
 - 依存の少ない基礎ユーティリティ
 
 ### 3.13 `webgpui-layout`
-- MVP の簡易レイアウト（縦積み/絶対配置など）
-- 将来的に Flex/Grid 相当へ拡張
+- `Direction::Column`（デフォルト）と `Direction::Row` によるスタックレイアウト
+- `flex_grow` によるメイン軸の残余スペース比例分配
+- `TextMeasure` トレイト（オブジェクトセーフ）+ `DefaultTextMeasure`（ピクセルフォント基準実装）
+- テキストリーフノードはコンテンツと `font_size` から `TextMeasure` で自動サイジング（幅に合わせて折り返し）
+- `LayoutEngine::compute_with` でカスタム `&dyn TextMeasure` を注入可能
 
 ### 3.14 `webgpui-app`
 - アプリ実行フロー統合

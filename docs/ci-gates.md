@@ -96,7 +96,26 @@ New APIs added in M1 (no breaking changes to existing call sites):
 - `FocusManager::register_focusable` / `unregister_focusable` / `set_focusable_order` / `focusable_order`
 - `FocusManager::move_focus_forward` / `move_focus_backward` / `handle_key`
 
-## 11. M3 Component Layer Plan
+## 11. M2 Migration Notes
+
+New additions in M2 (`webgpui-layout`) — no breaking changes to existing call sites:
+
+| Change | Detail |
+| --- | --- |
+| `LayoutStyle::direction` | New field (`Direction::Column` default — existing Column behaviour preserved) |
+| `LayoutStyle::flex_grow` | New field (`0.0` default — nodes without `flex_grow` behave as before) |
+| `LayoutNode::text` / `::font_size` | New fields (empty string / `14.0` defaults — non-text nodes unaffected) |
+| `LayoutEngine::compute` | Now delegates to `DefaultTextMeasure`; result unchanged for nodes without `text` |
+| `LayoutEngine::compute_with` | New method accepting `&dyn TextMeasure` for custom font backends |
+
+New APIs added in M2:
+- `Direction` enum (`Column`, `Row`)
+- `TextMeasure` trait (`measure(text, font_size, max_width) -> Size`)
+- `DefaultTextMeasure` struct (pixel-font baseline, `FONT_W=5 FONT_H=7`)
+- `LayoutNode::text`, `LayoutNode::font_size`
+- `LayoutEngine::compute_with`
+
+## 12. M3 Component Layer Plan
 
 M3 splits into four sub-milestones delivered in order.
 The milestone gate (`scripts/ci/check_milestone_gate.sh M3`) is declared complete only after M3-D.

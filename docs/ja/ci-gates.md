@@ -96,7 +96,26 @@ M1 で追加した新 API（既存の呼び出し箇所に破壊的変更なし�
 - `FocusManager::register_focusable` / `unregister_focusable` / `set_focusable_order` / `focusable_order`
 - `FocusManager::move_focus_forward` / `move_focus_backward` / `handle_key`
 
-## 11. M3 コンポーネント層計画
+## 11. M2 移行ノート
+
+M2 で追加した `webgpui-layout` の変更（既存の呼び出し箇所に破壊的変更なし）:
+
+| 変更点 | 詳細 |
+| --- | --- |
+| `LayoutStyle::direction` | 新フィールド（デフォルト `Direction::Column` — 既存の縦積み挙動を維持） |
+| `LayoutStyle::flex_grow` | 新フィールド（デフォルト `0.0` — 指定しないノードは従来と同じ） |
+| `LayoutNode::text` / `::font_size` | 新フィールド（デフォルト空文字列 / `14.0` — テキストなしノードに影響なし） |
+| `LayoutEngine::compute` | 内部で `DefaultTextMeasure` を使用; `text` を持たないノードの結果は不変 |
+| `LayoutEngine::compute_with` | `&dyn TextMeasure` を受け取る新メソッド（カスタムフォントバックエンド注入用） |
+
+M2 で追加した新 API:
+- `Direction` 列挙型（`Column`、`Row`）
+- `TextMeasure` トレイト（`measure(text, font_size, max_width) -> Size`）
+- `DefaultTextMeasure` 構造体（ピクセルフォント基準、`FONT_W=5 FONT_H=7`）
+- `LayoutNode::text`、`LayoutNode::font_size`
+- `LayoutEngine::compute_with`
+
+## 12. M3 コンポーネント層計画
 
 M3 は 4 つのサブマイルストーンで順番に実装する。
 マイルストーンゲート（`scripts/ci/check_milestone_gate.sh M3`）は M3-D 完了後に確定とする。
