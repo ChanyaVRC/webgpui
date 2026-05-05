@@ -3,7 +3,9 @@ use std::str::FromStr;
 
 use webgpui_app::{AppBuilder, BackendSwitcher, DrawContext, KeyCode, MouseButton};
 use webgpui_batching::{BatchKey, Batcher, BlendModeKey, DrawBatch};
-use webgpui_core::{Button, CursorMove, Label, TextInput, WidgetState};
+use webgpui_core::{
+    focus_ring_color, Button, CursorMove, Label, TextInput, WidgetState, FOCUS_RING_WIDTH,
+};
 use webgpui_geometry::{Color, Point, Rect, Size};
 use webgpui_profiler::FrameTimer;
 use webgpui_render::{BackendSelector, DrawCommand, DrawList};
@@ -274,12 +276,12 @@ impl DemoUiState {
     fn draw_textbox(&self, ctx: &mut DrawContext<'_>, text_rect: Rect) {
         let focused = matches!(self.text_input.state(), WidgetState::Focused);
         let border = if focused {
-            Color::new(0.35, 0.7, 1.0, 1.0)
+            focus_ring_color()
         } else {
             Color::new(0.45, 0.49, 0.58, 1.0)
         };
         ctx.fill_rounded_rect(text_rect, 10.0, Color::new(0.09, 0.1, 0.14, 1.0));
-        ctx.draw_border(text_rect, border, 2.0);
+        ctx.draw_border(text_rect, border, FOCUS_RING_WIDTH);
 
         let value = self.text_input.value();
         let slot_w = ((text_rect.size.width - 26.0) / MAX_TEXT_LEN as f32).max(4.0);
@@ -338,7 +340,7 @@ impl DemoUiState {
                 Point::new(button_rect.origin.x - 3.0, button_rect.origin.y - 3.0),
                 Size::new(button_rect.size.width + 6.0, button_rect.size.height + 6.0),
             );
-            ctx.draw_border(ring, Color::new(0.35, 0.7, 1.0, 1.0), 2.0);
+            ctx.draw_border(ring, focus_ring_color(), FOCUS_RING_WIDTH);
         }
         let color = if self.submit_flash > 0 {
             Color::new(0.27, 0.86, 0.53, 1.0)
