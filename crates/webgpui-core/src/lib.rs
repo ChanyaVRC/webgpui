@@ -194,7 +194,7 @@ impl NodeTree {
     // ------------------------------------------------------------------
 
     pub fn len(&self) -> usize {
-        self.nodes.len()
+        self.nodes.iter().filter(|n| !n.is_tombstone()).count()
     }
 
     /// Returns `true` only if the arena contains no nodes at all.
@@ -286,7 +286,10 @@ impl NodeTree {
         let Some(node) = self.get_mut(id) else {
             return false;
         };
-        node.role = role;
+        if node.role != role {
+            node.role = role;
+            node.dirty = true;
+        }
         true
     }
 
@@ -322,7 +325,9 @@ impl NodeTree {
     /// Marks every node dirty (useful after a resize).
     pub fn mark_all_dirty(&mut self) {
         for node in &mut self.nodes {
-            node.dirty = true;
+            if !node.is_tombstone() {
+                node.dirty = true;
+            }
         }
     }
 
@@ -504,11 +509,14 @@ mod tests {
         let a = tree.add_node(NodeId::ROOT, NodeKind::Container);
         let b = tree.add_node(NodeId::ROOT, NodeKind::Container);
         let c = tree.add_node(a, NodeKind::Text);
-        let len_before = tree.len();
+        // Four live nodes: root + a + b + c
+        assert_eq!(tree.len(), 4);
         tree.remove_node(b);
-        assert_eq!(tree.len(), len_before); // arena still same size
+        // b is gone; three live nodes remain
+        assert_eq!(tree.len(), 3);
         tree.compact();
-        assert!(tree.len() < len_before); // tombstone removed
+        // Still three live nodes after compaction
+        assert_eq!(tree.len(), 3);
         assert!(tree.get(a).is_some());
         assert!(tree.get(c).is_some());
         assert!(tree.get(b).is_none());
@@ -549,6 +557,52 @@ mod tests {
         assert_eq!(Dialog::role(), NodeRole::Dialog);
         assert_eq!(ContextMenu::role(), NodeRole::Menu);
         assert_eq!(Label::role(), NodeRole::None);
+    }
+
+    // ---- len() counts live nodes only (#74) ---
+    #[test]
+    fn len_excludes_tombstones() {
+        let mut tree = NodeTree::new();
+        assert_eq!(tree.len(), 1); // root only
+        let a = tree.add_node(NodeId::ROOT, NodeKind::Container);
+        assert_eq!(tree.len(), 2);
+        tree.remove_node(a);
+        assert_eq!(tree.len(), 1); // tombstone not counted
+    }
+
+    // ---- mark_all_dirty skips tombstones (#75) ---
+    #[test]
+    fn mark_all_dirty_skips_tombstones() {
+        let mut tree = NodeTree::new();
+        let a = tree.add_node(NodeId::ROOT, NodeKind::Container);
+        tree.remove_node(a);
+        // Should not panic or include tombstone in dirty set.
+        tree.mark_all_dirty();
+        let dirty = tree.flush_dirty();
+        assert!(!dirty.contains(&a)); // tombstone must not appear
+        assert!(dirty.contains(&NodeId::ROOT));
+    }
+
+    // ---- set_role marks dirty (#77) ---
+    #[test]
+    fn set_role_marks_dirty() {
+        let mut tree = NodeTree::new();
+        // Flush initial dirty state.
+        tree.flush_dirty();
+        // Setting a new role must mark the node dirty.
+        assert!(tree.set_role(NodeId::ROOT, NodeRole::Button));
+        let dirty = tree.flush_dirty();
+        assert!(dirty.contains(&NodeId::ROOT));
+    }
+
+    #[test]
+    fn set_role_no_dirty_on_same_value() {
+        let mut tree = NodeTree::new();
+        tree.flush_dirty();
+        // Setting the same role (None → None) must not mark dirty.
+        assert!(tree.set_role(NodeId::ROOT, NodeRole::None));
+        let dirty = tree.flush_dirty();
+        assert!(!dirty.contains(&NodeId::ROOT));
     }
 
     // ---- Focus ring ------------------------------------------------------
