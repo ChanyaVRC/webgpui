@@ -284,6 +284,19 @@ impl DemoUiState {
         let tscale = 2.0_f32;
         let th = text_pixel_height(tscale);
         let ty = (text_rect.origin.y + (text_rect.size.height - th) / 2.0).floor();
+        if value.is_empty() && !focused {
+            // Show placeholder text left-aligned when the field is empty and unfocused.
+            let placeholder = self.text_input.placeholder();
+            if !placeholder.is_empty() {
+                draw_text(
+                    ctx,
+                    Point::new(text_rect.origin.x + 13.0, ty),
+                    placeholder,
+                    tscale,
+                    Color::new(0.45, 0.5, 0.6, 1.0),
+                );
+            }
+        }
         for (i, ch) in value.chars().enumerate() {
             if i >= MAX_TEXT_LEN {
                 break;
