@@ -92,12 +92,6 @@
 - 要件サマリーの性能目標を満たす。
 - MUST ティア全 API の Compat/FastPath 同等性テストが合格（api-swapping-quality-plan.md §8 参照）。
 影響クレート: `webgpui-compat`（新規）、`webgpui-app`、`webgpui-core`、`webgpui-input`、`apps/demo-migration`（新規）。
-PR分割案:
-1. `feat/compat-crate-skeleton` — `webgpui-compat` クレート追加、公開型、モジュール構成、スタブ実装。
-2. `feat/compat-must-apis` — MUST ティア全 node/style/event/app 関数を実装；関数ごとのユニットテスト。
-3. `feat/demo-migration-app` — `apps/demo-migration` 追加；compat API で代表画面を2画面以上再現。
-4. `test/compat-equivalence-suite` — MUST ティア全 API のCompatとFastPath同等性テストを4ベースラインシナリオで追加。
-5. `ci/compat-gate` — 同等性テスト失敗時にマージをブロックするCIゲートを追加。
 リスク:
 - シェーピングバックエンドの違いにより、compat とレガシーでテキスト位置がずれる。緩和策: ビジュアルスナップショットで ±2px の許容値を設定；既知の差分を文書化。
 - capture/bubble 順序のタイミング差。緩和策: イベントトレーステストで厳密な順序を固定；compat 層で差分を吸収。
@@ -123,11 +117,6 @@ PR分割案:
 - M0〜M5 のエントリを含む `CHANGELOG.md` を作成。
 - 影響クレートの公開アイテムに `#[allow(missing_docs)]` 抑止ゼロ。
 影響クレート: `webgpui-app`、`webgpui-core`、`webgpui-compat`、`webgpui-input`。
-PR分割案:
-1. `docs/semver-policy` — `docs/semver-policy.md` 追加；contributing ガイド更新。
-2. `docs/api-rustdoc-must` — MUST ティア全公開 API に rustdoc + examples 追加。
-3. `chore/changelog-init` — `CHANGELOG.md` 作成；M0〜M4 エントリを遡及記入。
-4. `refactor/deprecate-candidates` — M4 で特定した API に deprecated アノテーション。
 リスク:
 - API 表面が想定より広い。緩和策: MUST ティアのみに絞る；SHOULD/LATER は後回し。
 
@@ -141,11 +130,6 @@ PR分割案:
 - シンプルな SVG アイコン（フラットパス、テキストなし）がビジュアルリグレッションなしで描画される（ピクセル差分 <= 1%）。
 - `filters` フィーチャー無効時、フィルタパスがバイナリから除外される。
 影響クレート: `webgpui-core`（NodeKind）、`webgpui-render`（テクスチャパイプライン）、`webgpui-render-wgpu`（GPUアップロード）、`webgpui-render-graph`（フィルタパス）、`webgpui-app`（画像API）。
-PR分割案:
-1. `feat/image-node-core` — `NodeKind::Image`、テクスチャハンドル追加；render-wgpu で GPU アップロード。
-2. `feat/svg-rasterize` — `resvg` 統合；SVG をテクスチャへラスタライズ；パス+サイズでキャッシュ。
-3. `feat/filter-pass` — ぼかし + カラー行列パスを render-graph に追加；`filters` フィーチャーでゲート。
-4. `test/visual-regression-images` — 画像・SVG ノードのスナップショットテスト。
 リスク:
 - SVG ラスタライズは CPU バウンドでフレームスパイクを引き起こす可能性。緩和策: フレーム外でバックグラウンドスレッドに分離；結果をキャッシュ。
 - クレートバージョン競合（`image` vs `resvg`）。緩和策: ワークスペース `Cargo.toml` でバージョンを固定。
@@ -162,11 +146,6 @@ PR分割案:
 - アクティブなアニメーションがないシーンでフレーム時間リグレッション（5%超）なし。
 - アニメーション中はティックごとに必ず dirty マーク；フレームスキップなし。
 影響クレート: `webgpui-app`（アニメーション API、タイムライン）、`webgpui-core`（dirty 統合）。
-PR分割案:
-1. `feat/animation-timeline` — `Animation` ビルダー、タイムラインマネージャー、アプリループへのティック統合。
-2. `feat/easing-functions` — linear、ease-in/out、三次ベジェ；f32 epsilon を使ったユニットテスト。
-3. `feat/style-transitions` — トランジション設定がある場合の `style_set` 暗黙トランジション。
-4. `test/animation-visual` — フェード・スライドのスナップショットテスト；アニメーションなしフレームのリグレッションテスト。
 リスク:
 - Windows で winit イベントループ粒度によるサブフレームタイミング精度の問題。緩和策: フレームカウントではなく経過時間ベースの補間を使用。
 
@@ -181,11 +160,6 @@ PR分割案:
 - インスペクターが MUST ティア全スタイルプロパティの計算済みスタイルを正確に反映する。
 - `dev-tools` 無効時のバイナリサイズ増加 < 1 KB（フラグなしベースライン比）。
 影響クレート: `webgpui-profiler`（オーバーレイ描画）、`webgpui-app`（インスペクター API）、`webgpui-core`（データ参照）、`webgpui-render`（オーバーレイパス）。
-PR分割案:
-1. `feat/perf-overlay` — FPS + フレーム時間 + draw call オーバーレイ；`dev-tools` フィーチャーゲート。
-2. `feat/node-inspector-overlay` — ホバーノードインスペクター；計算済みスタイル表示。
-3. `feat/dirty-rect-visualizer` — dirty 領域色付きオーバーレイ；`Profiler::set_dirty_overlay(bool)` でトグル。
-4. `test/devtools-no-cost` — CI チェック: `dev-tools` あり/なしのバイナリサイズ比較；差分 < 閾値を検証。
 リスク:
 - インスペクターオーバーレイが第2レンダーパスを追加。緩和策: 既存のプロファイラーオーバーレイパスと統合してバッチ処理。
 
@@ -206,13 +180,6 @@ PR分割案:
 - 500 ノード以上のシーンで p95 フレーム時間 <= 20ms。
 - レンダーパス自動スキップ検証: dirty 領域なしフレームで GPU サブミッションゼロ。
 影響クレート: `webgpui-render-wgpu`（リングバッファ、一時プール、prewarm）、`webgpui-render-graph`（依存グラフ、自動スキップ）、`webgpui-core`（SoA）、`webgpui-app`（prewarm API）。
-PR分割案:
-1. `perf/p3-ring-buffer` — render-wgpu の頂点/インデックスにリングバッファ；アロケーション差分を計測。
-2. `perf/p3-transient-pool` — 一時バッファプール；アドホックアロケーションを置換。
-3. `perf/p3-prewarm` — `prewarm_pipeline` と `prewarm_glyph_cache` の API + 実装。
-4. `perf/p4-render-graph-deps` — 明示的パス依存関係；自動スキップパス。
-5. `perf/p4-parallel-encode` — UI 更新とレンダーコマンドエンコードをワーカースレッドに分離。
-6. `refactor/core-soa` — `webgpui-core` の position/size/dirty フィールドを SoA レイアウト化。
 リスク:
 - ワーカースレッドでのレンダーエンコード: 一部プラットフォームで wgpu `Surface` が `Send` でない。緩和策: `CommandBuffer`（`Send`）のみワーカーでエンコード；サブミットはメインスレッドで。
 - SoA リファクタは大きな構造変更。緩和策: 専用 PR でスナップショット + 性能の before/after を必須化。
@@ -231,12 +198,6 @@ PR分割案:
 - フレーム時間目標（avg <= 16.6ms、p95 <= 20ms）を Chrome DevTools で達成。
 - CI の `wasm32` ビルドチェックがグリーン。
 影響クレート: `webgpui-platform`（トレイト）、新規 `webgpui-platform-web`、`webgpui-render-wgpu`（WebGPU/WebGL2）、`webgpui-core`、`webgpui-input`、`webgpui-app`、新規 `apps/demo-web`。
-PR分割案:
-1. `refactor/platform-trait` — `PlatformBackend` トレイトを抽出；winit 実装は変更なし。
-2. `feat/platform-web` — 新規 `webgpui-platform-web`；`web-sys` イベントブリッジ；canvas リサイズハンドリング。
-3. `feat/wgpu-webgpu-webgl2` — コンパイル時 wgpu バックエンド選択（`webgpu` vs `webgl` フィーチャー）。
-4. `feat/demo-web` — 新規 `apps/demo-web`；`trunk` 設定；ブラウザ上での基本シーン動作。
-5. `ci/wasm32-build-check` — CI ジョブ: コンパイル + ヘッドレスブラウザテスト。
 リスク:
 - `std::time::Instant` が `wasm32` で使用不可。緩和策: `cfg(target_arch = "wasm32")` でゲート；`web-sys` の `performance.now()` を使用。
 - wgpu WebGPU のブラウザサポート状況が異なる。緩和策: CI デフォルトは `webgl` フォールバック；`webgpu` はフィーチャーフラグでオプトイン。
