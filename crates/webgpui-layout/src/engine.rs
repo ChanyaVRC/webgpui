@@ -12,12 +12,14 @@ use crate::style::PositionType;
 /// [`LayoutEngine::result`].
 pub struct LayoutEngine {
     results: Vec<LayoutResult>,
+    sorted_cache: Vec<usize>,
 }
 
 impl LayoutEngine {
     pub fn new() -> Self {
         Self {
             results: Vec::new(),
+            sorted_cache: Vec::new(),
         }
     }
 
@@ -34,6 +36,7 @@ impl LayoutEngine {
         text_measure: &dyn TextMeasure,
     ) {
         self.results = vec![LayoutResult::zero(); nodes.len()];
+        self.sorted_cache.clear();
         if nodes.is_empty() {
             return;
         }
@@ -49,6 +52,9 @@ impl LayoutEngine {
         }
         let available = Rect::from_origin_size(Point::ZERO, viewport);
         self.layout_node(nodes, 0, available, text_measure);
+        // Rebuild layer-sorted index cache.
+        self.sorted_cache.extend(0..nodes.len());
+        self.sorted_cache.sort_by_key(|&i| self.results[i].layer);
     }
 
     /// Returns the computed result for the node at arena **index**, or `None`.
@@ -59,10 +65,8 @@ impl LayoutEngine {
     /// Returns node indices sorted by their computed layer (ascending).
     /// Render in this order to achieve correct Z-ordering: lower layers
     /// draw first and are occluded by higher layers.
-    pub fn sorted_indices(&self) -> Vec<usize> {
-        let mut indices: Vec<usize> = (0..self.results.len()).collect();
-        indices.sort_by_key(|&i| self.results[i].layer);
-        indices
+    pub fn sorted_indices(&self) -> &[usize] {
+        &self.sorted_cache
     }
 
     // ------------------------------------------------------------------
@@ -1052,6 +1056,6 @@ mod tests {
         engine.compute(&nodes, viewport());
         let order = engine.sorted_indices();
         // layer 0 < layer 1 < layer 10 → indices 0, 2, 1
-        assert_eq!(order, vec![0, 2, 1]);
+        assert_eq!(order, [0usize, 2, 1]);
     }
 }
