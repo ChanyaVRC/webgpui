@@ -21,6 +21,9 @@ const BASE_FONT_SIZE: f32 = 14.0;
 
 impl TextMeasure for DefaultTextMeasure {
     fn measure(&self, text: &str, font_size: f32, max_width: f32) -> Size {
+        if font_size <= 0.0 {
+            return Size::new(0.0, 0.0);
+        }
         let chars: Vec<char> = text.chars().collect();
         let total = chars.len();
         if total == 0 {
@@ -52,5 +55,26 @@ impl TextMeasure for DefaultTextMeasure {
         }
 
         Size::new(max_w, line_h * lines as f32)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn zero_font_size_returns_zero() {
+        let m = DefaultTextMeasure;
+        let s = m.measure("hello", 0.0, f32::INFINITY);
+        assert_eq!(s.width, 0.0);
+        assert_eq!(s.height, 0.0);
+    }
+
+    #[test]
+    fn negative_font_size_returns_zero() {
+        let m = DefaultTextMeasure;
+        let s = m.measure("hello", -14.0, f32::INFINITY);
+        assert_eq!(s.width, 0.0);
+        assert_eq!(s.height, 0.0);
     }
 }
