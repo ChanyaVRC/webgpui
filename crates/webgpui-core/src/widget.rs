@@ -1431,7 +1431,9 @@ mod tests {
         t.delete_forward();
         assert_eq!(t.value(), "");
         // insert_char then delete_selection
-        for ch in "abc".chars() { t.insert_char(ch); }
+        for ch in "abc".chars() {
+            t.insert_char(ch);
+        }
         t.move_cursor(crate::widget::CursorMove::Home, false);
         t.move_cursor(crate::widget::CursorMove::Right, true);
         t.move_cursor(crate::widget::CursorMove::Right, true); // select "ab"
