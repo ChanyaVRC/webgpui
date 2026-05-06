@@ -456,6 +456,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "demo-migration"
+version = "0.1.0"
+dependencies = [
+ "webgpui-compat",
+ "webgpui-core",
+]
+
+[[package]]
 name = "dispatch"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1909,6 +1917,7 @@ dependencies = [
  "webgpui-core",
  "webgpui-geometry",
  "webgpui-input",
+ "webgpui-layout",
 ]
 
 [[package]]
