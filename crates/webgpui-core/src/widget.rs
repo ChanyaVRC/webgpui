@@ -161,6 +161,7 @@ pub struct TextInput {
     /// When `Some`, a selection is active from `selection_anchor` to `cursor`.
     selection_anchor: Option<usize>,
     placeholder: String,
+    cached_value: String,
 }
 
 impl TextInput {
@@ -171,6 +172,7 @@ impl TextInput {
             cursor: 0,
             selection_anchor: None,
             placeholder: String::new(),
+            cached_value: String::new(),
         }
     }
 
@@ -190,8 +192,13 @@ impl TextInput {
     }
 
     /// Returns the current text value.
-    pub fn value(&self) -> String {
-        self.chars.iter().collect()
+    pub fn value(&self) -> &str {
+        &self.cached_value
+    }
+
+    fn sync_cache(&mut self) {
+        self.cached_value.clear();
+        self.cached_value.extend(self.chars.iter());
     }
 
     /// Returns the number of characters in the current value.
@@ -243,6 +250,7 @@ impl TextInput {
         self.delete_selection();
         self.chars.insert(self.cursor, ch);
         self.cursor += 1;
+        self.sync_cache();
     }
 
     /// Delete the character before the cursor (Backspace), or the current
@@ -259,6 +267,7 @@ impl TextInput {
         }
         self.cursor -= 1;
         self.chars.remove(self.cursor);
+        self.sync_cache();
         true
     }
 
@@ -275,6 +284,7 @@ impl TextInput {
             return false;
         }
         self.chars.remove(self.cursor);
+        self.sync_cache();
         true
     }
 
@@ -310,6 +320,7 @@ impl TextInput {
         self.chars.drain(lo..hi);
         self.cursor = lo;
         self.selection_anchor = None;
+        self.sync_cache();
         true
     }
 }
@@ -532,8 +543,17 @@ impl TabBar {
         self.selected
     }
 
+    /// Returns the label of tab at `index`.
+    ///
+    /// # Panics
+    /// Panics if `index >= self.len()`. Use [`TabBar::get_label`] for a non-panicking alternative.
     pub fn label(&self, index: usize) -> &str {
         &self.tabs[index]
+    }
+
+    /// Returns the label of tab at `index`, or `None` if out of bounds.
+    pub fn get_label(&self, index: usize) -> Option<&str> {
+        self.tabs.get(index).map(|s| s.as_str())
     }
 
     pub fn len(&self) -> usize {
@@ -1395,5 +1415,38 @@ mod tests {
         let mut m = ContextMenu::new(["A", "B"]);
         m.select_next_item(); // closed → no-op
         assert_eq!(m.selected_item(), None);
+    }
+
+    // ---- TextInput cached value (#71, #127) ---
+    #[test]
+    fn textinput_value_returns_str_without_alloc() {
+        let mut t = TextInput::new();
+        t.insert_char('h');
+        t.insert_char('i');
+        assert_eq!(t.value(), "hi");
+        t.delete_backward();
+        assert_eq!(t.value(), "h");
+        // Move to start and delete 'h' forward, leaving empty string.
+        t.move_cursor(crate::widget::CursorMove::Home, false);
+        t.delete_forward();
+        assert_eq!(t.value(), "");
+        // insert_char then delete_selection
+        for ch in "abc".chars() {
+            t.insert_char(ch);
+        }
+        t.move_cursor(crate::widget::CursorMove::Home, false);
+        t.move_cursor(crate::widget::CursorMove::Right, true);
+        t.move_cursor(crate::widget::CursorMove::Right, true); // select "ab"
+        t.delete_backward(); // deletes selection
+        assert_eq!(t.value(), "c");
+    }
+
+    // ---- TabBar::get_label (#69) ---
+    #[test]
+    fn tabbar_get_label_out_of_bounds_returns_none() {
+        let tb = TabBar::new(["A", "B"]);
+        assert_eq!(tb.get_label(0), Some("A"));
+        assert_eq!(tb.get_label(1), Some("B"));
+        assert_eq!(tb.get_label(2), None);
     }
 }
