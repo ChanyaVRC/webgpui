@@ -192,7 +192,9 @@ impl RenderGraph {
 
     /// Returns a pass by well-known name.
     pub fn pass_by_name(&self, name: &str) -> Option<&RenderPass> {
-        self.name_to_id.get(name).and_then(|&id| self.passes.get(&id))
+        self.name_to_id
+            .get(name)
+            .and_then(|&id| self.passes.get(&id))
     }
 
     pub fn pass_by_name_mut(&mut self, name: &str) -> Option<&mut RenderPass> {
