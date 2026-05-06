@@ -223,12 +223,15 @@ impl Batcher {
         }
 
         // Sort batches: z-order ascending, then by blend mode.
-        self.batches.sort_by(|a, b| {
-            a.key
-                .z_order
-                .cmp(&b.key.z_order)
-                .then_with(|| a.key.blend_mode.cmp(&b.key.blend_mode))
-        });
+        // Skip sort when there is at most one batch — nothing to reorder.
+        if self.batches.len() > 1 {
+            self.batches.sort_by(|a, b| {
+                a.key
+                    .z_order
+                    .cmp(&b.key.z_order)
+                    .then_with(|| a.key.blend_mode.cmp(&b.key.blend_mode))
+            });
+        }
 
         &self.batches
     }
@@ -317,6 +320,19 @@ mod tests {
         let batches = batcher.process(&dl);
         assert_eq!(batches.len(), 1);
         assert_eq!(batches[0].triangle_count(), 2);
+    }
+
+    #[test]
+    fn batcher_skips_sort_for_single_batch() {
+        // All rects at z=0 → one batch → sort must not be called (behavioral test: result is correct)
+        let mut dl = DrawList::new();
+        dl.fill_rect(Rect::new(0.0, 0.0, 10.0, 10.0), Color::RED);
+        dl.fill_rect(Rect::new(20.0, 0.0, 10.0, 10.0), Color::BLUE);
+        let mut batcher = Batcher::new();
+        let batches = batcher.process(&dl);
+        // One merged batch, z=0
+        assert_eq!(batches.len(), 1);
+        assert_eq!(batches[0].key.z_order, 0);
     }
 
     #[test]
