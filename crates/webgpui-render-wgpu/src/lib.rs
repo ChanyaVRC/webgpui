@@ -71,6 +71,16 @@ struct Globals {
 }
 
 // ---------------------------------------------------------------------------
+// ResolvedFrame – result of querying the RenderGraph for a frame
+// ---------------------------------------------------------------------------
+
+struct ResolvedFrame {
+    clear_enabled: bool,
+    clear_color: ClearColor,
+    ui_enabled: bool,
+}
+
+// ---------------------------------------------------------------------------
 // WgpuContext – device + surface
 // ---------------------------------------------------------------------------
 
@@ -135,7 +145,8 @@ impl WgpuContext {
             .iter()
             .find(|f| f.is_srgb())
             .copied()
-            .unwrap_or(caps.formats[0]);
+            .or_else(|| caps.formats.first().copied())
+            .unwrap_or(wgpu::TextureFormat::Bgra8UnormSrgb);
 
         let present_mode = if vsync {
             wgpu::PresentMode::Fifo
@@ -149,7 +160,7 @@ impl WgpuContext {
             width: width.max(1),
             height: height.max(1),
             present_mode,
-            alpha_mode: caps.alpha_modes[0],
+            alpha_mode: caps.alpha_modes.first().copied().unwrap_or(wgpu::CompositeAlphaMode::Auto),
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
         };
@@ -184,6 +195,10 @@ pub struct WgpuRenderer {
     index_buffer_capacity: u64,
     batcher: Batcher,
     render_graph: RenderGraph,
+    /// Staging buffers reused across frames to avoid per-frame allocation.
+    staging_vertices: Vec<Vertex>,
+    staging_indices: Vec<u32>,
+    staging_batch_ranges: Vec<(u32, u32, u32)>,
 }
 
 impl WgpuRenderer {
@@ -311,6 +326,9 @@ impl WgpuRenderer {
             index_buffer_capacity: INITIAL_IBUF,
             batcher: Batcher::new(),
             render_graph: RenderGraph::new(),
+            staging_vertices: Vec::new(),
+            staging_indices: Vec::new(),
+            staging_batch_ranges: Vec::new(),
         }
     }
 
@@ -356,6 +374,20 @@ impl WgpuRenderer {
     // Per-frame rendering
     // ------------------------------------------------------------------
 
+    /// Queries the [`RenderGraph`] and returns the resolved per-frame state.
+    fn resolve_graph(&self) -> ResolvedFrame {
+        let order = self.render_graph.execution_order();
+        ResolvedFrame {
+            clear_enabled: order.iter().any(|p| p.kind == PassKind::Clear),
+            clear_color: order
+                .iter()
+                .find(|p| p.kind == PassKind::Clear)
+                .map(|p| p.clear_color)
+                .unwrap_or(ClearColor::BLACK),
+            ui_enabled: order.iter().any(|p| p.kind == PassKind::Ui),
+        }
+    }
+
     fn render_batches(
         &mut self,
         encoder: &mut wgpu::CommandEncoder,
@@ -365,20 +397,20 @@ impl WgpuRenderer {
         clear_enabled: bool,
     ) {
         // Pack all vertices / indices into the GPU buffers.
-        let mut all_vertices: Vec<Vertex> = Vec::new();
-        let mut all_indices: Vec<u32> = Vec::new();
-        // Byte offsets per batch.
-        let mut batch_ranges: Vec<(u32, u32, u32)> = Vec::new(); // (v_base, i_start, i_end)
+        // Reuse the staging Vecs allocated on the renderer to avoid per-frame allocation.
+        self.staging_vertices.clear();
+        self.staging_indices.clear();
+        self.staging_batch_ranges.clear();
 
         for batch in batches {
-            let v_base = all_vertices.len() as u32;
-            let i_start = all_indices.len() as u32;
-            all_vertices.extend_from_slice(&batch.vertices);
+            let v_base = self.staging_vertices.len() as u32;
+            let i_start = self.staging_indices.len() as u32;
+            self.staging_vertices.extend_from_slice(&batch.vertices);
             for &idx in &batch.indices {
-                all_indices.push(idx + v_base);
+                self.staging_indices.push(idx + v_base);
             }
-            let i_end = all_indices.len() as u32;
-            batch_ranges.push((v_base, i_start, i_end));
+            let i_end = self.staging_indices.len() as u32;
+            self.staging_batch_ranges.push((v_base, i_start, i_end));
         }
 
         let load_op = if clear_enabled {
@@ -392,7 +424,7 @@ impl WgpuRenderer {
             wgpu::LoadOp::Load
         };
 
-        if all_vertices.is_empty() {
+        if self.staging_vertices.is_empty() {
             // Nothing to draw — issue a pass only to (optionally) clear.
             let _pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("clear-only"),
@@ -412,8 +444,8 @@ impl WgpuRenderer {
         }
 
         // Upload.
-        let vbytes = bytemuck::cast_slice(&all_vertices);
-        let ibytes = bytemuck::cast_slice::<u32, u8>(&all_indices);
+        let vbytes = bytemuck::cast_slice(&self.staging_vertices);
+        let ibytes = bytemuck::cast_slice::<u32, u8>(&self.staging_indices);
         self.ensure_vertex_buffer(vbytes.len() as u64);
         self.ensure_index_buffer(ibytes.len() as u64);
         self.ctx.queue.write_buffer(&self.vertex_buffer, 0, vbytes);
@@ -440,7 +472,7 @@ impl WgpuRenderer {
         pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
 
-        for (_, (_, i_start, i_end)) in batches.iter().zip(batch_ranges.iter()) {
+        for (_, i_start, i_end) in &self.staging_batch_ranges {
             pass.draw_indexed(*i_start..*i_end, 0, 0..1);
         }
     }
@@ -495,27 +527,16 @@ impl Renderer for WgpuRenderer {
                 label: Some("frame-encoder"),
             });
 
-        // Query enabled passes from the graph in topological order.
-        // Collect the data we need so the mutable borrow ends before render_batches.
-        let (clear_enabled, clear_color, ui_enabled) = {
-            let order = self.render_graph.execution_order();
-            let clear_enabled = order.iter().any(|p| p.kind == PassKind::Clear);
-            let clear_color = order
-                .iter()
-                .find(|p| p.kind == PassKind::Clear)
-                .map(|p| p.clear_color)
-                .unwrap_or(ClearColor::BLACK);
-            let ui_enabled = order.iter().any(|p| p.kind == PassKind::Ui);
-            (clear_enabled, clear_color, ui_enabled)
-        };
+        // Resolve enabled passes from the render graph.
+        let frame = self.resolve_graph();
 
-        let effective_batches: &[DrawBatch] = if ui_enabled { &batches } else { &[] };
+        let effective_batches: &[DrawBatch] = if frame.ui_enabled { &batches } else { &[] };
         self.render_batches(
             &mut encoder,
             &view,
             effective_batches,
-            clear_color,
-            clear_enabled,
+            frame.clear_color,
+            frame.clear_enabled,
         );
 
         self.ctx.queue.submit(std::iter::once(encoder.finish()));
