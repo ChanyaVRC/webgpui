@@ -226,45 +226,59 @@ fn convert_mouse_button(button: &WinitMouseButton) -> MouseButton {
 fn convert_key(key: &Key) -> KeyCode {
     match key {
         Key::Named(named) => convert_named_key(named),
-        Key::Character(s) => match s.as_str() {
-            "a" | "A" => KeyCode::A,
-            "b" | "B" => KeyCode::B,
-            "c" | "C" => KeyCode::C,
-            "d" | "D" => KeyCode::D,
-            "e" | "E" => KeyCode::E,
-            "f" | "F" => KeyCode::F,
-            "g" | "G" => KeyCode::G,
-            "h" | "H" => KeyCode::H,
-            "i" | "I" => KeyCode::I,
-            "j" | "J" => KeyCode::J,
-            "k" | "K" => KeyCode::K,
-            "l" | "L" => KeyCode::L,
-            "m" | "M" => KeyCode::M,
-            "n" | "N" => KeyCode::N,
-            "o" | "O" => KeyCode::O,
-            "p" | "P" => KeyCode::P,
-            "q" | "Q" => KeyCode::Q,
-            "r" | "R" => KeyCode::R,
-            "s" | "S" => KeyCode::S,
-            "t" | "T" => KeyCode::T,
-            "u" | "U" => KeyCode::U,
-            "v" | "V" => KeyCode::V,
-            "w" | "W" => KeyCode::W,
-            "x" | "X" => KeyCode::X,
-            "y" | "Y" => KeyCode::Y,
-            "z" | "Z" => KeyCode::Z,
-            "0" => KeyCode::Digit0,
-            "1" => KeyCode::Digit1,
-            "2" => KeyCode::Digit2,
-            "3" => KeyCode::Digit3,
-            "4" => KeyCode::Digit4,
-            "5" => KeyCode::Digit5,
-            "6" => KeyCode::Digit6,
-            "7" => KeyCode::Digit7,
-            "8" => KeyCode::Digit8,
-            "9" => KeyCode::Digit9,
-            _ => KeyCode::Unknown,
-        },
+        Key::Character(s) => {
+            let Some(ch) = s.chars().next() else {
+                return KeyCode::Unknown;
+            };
+            let upper = ch.to_ascii_uppercase();
+            if upper.is_ascii_alphabetic() {
+                const LETTERS: [KeyCode; 26] = [
+                    KeyCode::A,
+                    KeyCode::B,
+                    KeyCode::C,
+                    KeyCode::D,
+                    KeyCode::E,
+                    KeyCode::F,
+                    KeyCode::G,
+                    KeyCode::H,
+                    KeyCode::I,
+                    KeyCode::J,
+                    KeyCode::K,
+                    KeyCode::L,
+                    KeyCode::M,
+                    KeyCode::N,
+                    KeyCode::O,
+                    KeyCode::P,
+                    KeyCode::Q,
+                    KeyCode::R,
+                    KeyCode::S,
+                    KeyCode::T,
+                    KeyCode::U,
+                    KeyCode::V,
+                    KeyCode::W,
+                    KeyCode::X,
+                    KeyCode::Y,
+                    KeyCode::Z,
+                ];
+                LETTERS[(upper as u8 - b'A') as usize]
+            } else if ch.is_ascii_digit() {
+                const DIGITS: [KeyCode; 10] = [
+                    KeyCode::Digit0,
+                    KeyCode::Digit1,
+                    KeyCode::Digit2,
+                    KeyCode::Digit3,
+                    KeyCode::Digit4,
+                    KeyCode::Digit5,
+                    KeyCode::Digit6,
+                    KeyCode::Digit7,
+                    KeyCode::Digit8,
+                    KeyCode::Digit9,
+                ];
+                DIGITS[(ch as u8 - b'0') as usize]
+            } else {
+                KeyCode::Unknown
+            }
+        }
         _ => KeyCode::Unknown,
     }
 }
@@ -302,5 +316,43 @@ fn convert_named_key(key: &NamedKey) -> KeyCode {
         NamedKey::F11 => KeyCode::F11,
         NamedKey::F12 => KeyCode::F12,
         _ => KeyCode::Unknown,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use winit::keyboard::SmolStr;
+
+    fn char_key(s: &str) -> Key {
+        Key::Character(SmolStr::new(s))
+    }
+
+    #[test]
+    fn letter_keys_case_insensitive() {
+        assert_eq!(convert_key(&char_key("a")), KeyCode::A);
+        assert_eq!(convert_key(&char_key("A")), KeyCode::A);
+        assert_eq!(convert_key(&char_key("z")), KeyCode::Z);
+        assert_eq!(convert_key(&char_key("Z")), KeyCode::Z);
+        assert_eq!(convert_key(&char_key("m")), KeyCode::M);
+        assert_eq!(convert_key(&char_key("M")), KeyCode::M);
+    }
+
+    #[test]
+    fn digit_keys() {
+        assert_eq!(convert_key(&char_key("0")), KeyCode::Digit0);
+        assert_eq!(convert_key(&char_key("5")), KeyCode::Digit5);
+        assert_eq!(convert_key(&char_key("9")), KeyCode::Digit9);
+    }
+
+    #[test]
+    fn unknown_character_returns_unknown() {
+        assert_eq!(convert_key(&char_key("!")), KeyCode::Unknown);
+        assert_eq!(convert_key(&char_key(" ")), KeyCode::Unknown);
+        assert_eq!(convert_key(&char_key("")), KeyCode::Unknown);
     }
 }
