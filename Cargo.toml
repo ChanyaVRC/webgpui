@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "apps/demo-basic",
+    "apps/demo-migration",
     "crates/webgpui-geometry",
     "crates/webgpui-profiler",
     "crates/webgpui-input",
