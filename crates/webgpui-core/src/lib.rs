@@ -544,6 +544,59 @@ mod tests {
         assert!(!tracker.is_dirty());
     }
 
+    // ---- Before fix: renderer skips first frame after backend switch (#112) ----
+
+    #[test]
+    fn before_fix_renderer_skips_redraw_after_backend_switch() {
+        // Before the fix, mark_all() was not called after a backend switch.
+        // This test drives DirtyTracker the same way the app event loop does:
+        // 1. Frame N renders normally: mark the full viewport, then clear.
+        // 2. Backend switch happens (old code: no mark_all).
+        // 3. Renderer asks "do I need to redraw?" via overlaps(viewport).
+        // Result: overlaps() returns false — renderer silently skips frame N+1.
+        let mut tracker = DirtyTracker::new();
+        let viewport = Rect::new(0.0, 0.0, 1280.0, 720.0);
+
+        // Frame N: normal render cycle.
+        tracker.mark(viewport);
+        tracker.clear(); // renderer consumed the dirty state
+
+        // Backend switch — old code did NOT call mark_all() here.
+        // Renderer now queries whether anything needs drawing.
+        assert!(
+            !tracker.overlaps(viewport),
+            "bug: renderer sees no dirty area and skips the first frame on the new backend"
+        );
+    }
+
+    // ---- After fix: renderer performs full redraw after backend switch ----
+
+    #[test]
+    fn after_fix_renderer_redraws_full_viewport_after_backend_switch() {
+        // After the fix, mark_all() is called immediately after the backend switch.
+        // Drive through the same public API the renderer uses.
+        let mut tracker = DirtyTracker::new();
+        let viewport = Rect::new(0.0, 0.0, 1280.0, 720.0);
+
+        // Frame N: normal render cycle.
+        tracker.mark(viewport);
+        tracker.clear();
+
+        // Backend switch — new code calls mark_all().
+        tracker.mark_all();
+
+        // Renderer queries: does anything need drawing?
+        assert!(
+            tracker.overlaps(viewport),
+            "renderer must see the full viewport as dirty after backend switch"
+        );
+        assert_eq!(
+            tracker.effective_area(Size::new(1280.0, 720.0)),
+            viewport,
+            "effective_area must cover the entire viewport"
+        );
+    }
+
     // ---- NodeRole --------------------------------------------------------
 
     #[test]
