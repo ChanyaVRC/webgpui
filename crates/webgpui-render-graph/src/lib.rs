@@ -124,12 +124,11 @@ impl RenderPass {
 /// Pass ordering is computed via Kahn's topological sort and cached lazily.
 /// `topo_dirty` is set whenever the graph structure changes; `execution_order()`
 /// recomputes `topo_order` when the cache is stale.
-///
-/// Note: `execution_order()` is implemented but not yet called by the renderer —
-/// see issue #54 for the wiring task.
 pub struct RenderGraph {
     passes: HashMap<PassId, RenderPass>,
     next_id: u32,
+    /// Index from pass name to [`PassId`] for O(1) `pass_by_name` lookups.
+    name_to_id: HashMap<&'static str, PassId>,
     /// Cached result of the last topological sort.  Rebuilt when `topo_dirty` is true.
     topo_order: Vec<PassId>,
     /// Set to `true` whenever passes are added or dependencies change, triggering
@@ -143,6 +142,7 @@ impl RenderGraph {
         let mut graph = Self {
             passes: HashMap::new(),
             next_id: 0,
+            name_to_id: HashMap::new(),
             topo_order: Vec::new(),
             topo_dirty: true,
         };
@@ -162,6 +162,7 @@ impl RenderGraph {
         let id = PassId(self.next_id);
         self.next_id += 1;
         self.passes.insert(id, RenderPass::new(id, name, kind));
+        self.name_to_id.insert(name, id);
         self.topo_dirty = true;
         id
     }
@@ -191,11 +192,12 @@ impl RenderGraph {
 
     /// Returns a pass by well-known name.
     pub fn pass_by_name(&self, name: &str) -> Option<&RenderPass> {
-        self.passes.values().find(|p| p.name == name)
+        self.name_to_id.get(name).and_then(|&id| self.passes.get(&id))
     }
 
     pub fn pass_by_name_mut(&mut self, name: &str) -> Option<&mut RenderPass> {
-        self.passes.values_mut().find(|p| p.name == name)
+        let id = *self.name_to_id.get(name)?;
+        self.passes.get_mut(&id)
     }
 
     /// Sets the background clear colour.
@@ -323,6 +325,14 @@ mod tests {
         let ui_id = graph.pass_by_name("ui").unwrap().id;
         graph.add_dependency(missing, ui_id);
         assert!(!graph.topo_dirty);
+    }
+
+    #[test]
+    fn pass_by_name_o1_lookup() {
+        let mut graph = RenderGraph::new();
+        let extra = graph.add_pass("extra", PassKind::Ui);
+        assert_eq!(graph.pass_by_name("extra").unwrap().id, extra);
+        assert!(graph.pass_by_name("nonexistent").is_none());
     }
 
     #[test]
