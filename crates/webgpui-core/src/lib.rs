@@ -11,7 +11,6 @@ pub use widget::{
     Toolbar, WidgetState,
 };
 
-use std::collections::HashSet;
 use webgpui_geometry::{BorderRadius, Color, Insets, Rect, Size};
 use webgpui_layout::LayoutStyle;
 
@@ -183,6 +182,8 @@ pub struct NodeTree {
     id_to_index: std::collections::HashMap<NodeId, usize>,
     /// Next `NodeId` to hand out.
     next_id: u64,
+    /// Number of live (non-tombstone) nodes; maintained incrementally.
+    live_count: usize,
 }
 
 impl NodeTree {
@@ -195,6 +196,7 @@ impl NodeTree {
             nodes: vec![root],
             id_to_index,
             next_id: 1,
+            live_count: 1,
         }
     }
 
@@ -203,7 +205,7 @@ impl NodeTree {
     // ------------------------------------------------------------------
 
     pub fn len(&self) -> usize {
-        self.nodes.iter().filter(|n| !n.is_tombstone()).count()
+        self.live_count
     }
 
     /// Returns `true` only if the arena contains no nodes at all.
@@ -241,6 +243,7 @@ impl NodeTree {
         self.nodes.push(node);
         self.nodes[parent_index].children.push(new_index);
         self.id_to_index.insert(new_id, new_index);
+        self.live_count += 1;
         Some(new_id)
     }
 
@@ -272,11 +275,13 @@ impl NodeTree {
 
         // Invalidate id_to_index entries.
         // The arena is not compacted here; call compact() explicitly when needed.
+        let removed_count = to_remove.len();
         for ri in to_remove {
             self.id_to_index.remove(&self.nodes[ri].id);
             // Mark slot as removed by resetting to a placeholder.
             self.nodes[ri].id = NodeId::TOMBSTONE;
         }
+        self.live_count -= removed_count;
         true
     }
 
@@ -322,11 +327,11 @@ impl NodeTree {
 
     /// Collects all nodes that are currently marked dirty and clears the
     /// dirty flag.
-    pub fn flush_dirty(&mut self) -> HashSet<NodeId> {
-        let mut dirty = HashSet::new();
+    pub fn flush_dirty(&mut self) -> Vec<NodeId> {
+        let mut dirty = Vec::new();
         for node in &mut self.nodes {
             if node.dirty && !node.is_tombstone() {
-                dirty.insert(node.id);
+                dirty.push(node.id);
                 node.dirty = false;
             }
         }
@@ -398,6 +403,7 @@ impl NodeTree {
             self.id_to_index.insert(node.id, new_idx);
         }
 
+        self.live_count = new_nodes.len();
         self.nodes = new_nodes;
     }
 }
