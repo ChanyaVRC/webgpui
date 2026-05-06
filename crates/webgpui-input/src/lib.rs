@@ -1,6 +1,6 @@
 //! Input event types and state tracking for webgpui.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use webgpui_core::NodeId;
 use webgpui_geometry::Point;
 
@@ -308,6 +308,8 @@ pub struct FocusManager {
     focused: Option<NodeId>,
     /// Ordered list of focusable node ids (tab order).
     focusable: Vec<NodeId>,
+    /// Maps NodeId → index in `focusable` for O(1) membership and position lookup.
+    focusable_index: HashMap<NodeId, usize>,
 }
 
 impl FocusManager {
@@ -347,16 +349,31 @@ impl FocusManager {
     ///
     /// If `node_id` is already registered this is a no-op.
     pub fn register_focusable(&mut self, node_id: NodeId) {
-        if !self.focusable.contains(&node_id) {
-            self.focusable.push(node_id);
+        if self.focusable_index.contains_key(&node_id) {
+            return;
         }
+        let idx = self.focusable.len();
+        self.focusable.push(node_id);
+        self.focusable_index.insert(node_id, idx);
     }
 
     /// Removes `node_id` from the tab-order list.
     ///
     /// If the removed node was focused, focus is cleared.
     pub fn unregister_focusable(&mut self, node_id: NodeId) {
+        if self.focusable_index.remove(&node_id).is_none() {
+            // not registered, just check focus
+            if self.focused == Some(node_id) {
+                self.focused = None;
+            }
+            return;
+        }
         self.focusable.retain(|&id| id != node_id);
+        // Rebuild index since positions shifted
+        self.focusable_index.clear();
+        for (i, &id) in self.focusable.iter().enumerate() {
+            self.focusable_index.insert(id, i);
+        }
         if self.focused == Some(node_id) {
             self.focused = None;
         }
@@ -367,10 +384,14 @@ impl FocusManager {
     /// Duplicates in `order` are removed (first occurrence wins).
     /// If the currently focused node is not present in the new list, focus is cleared.
     pub fn set_focusable_order(&mut self, order: Vec<NodeId>) {
-        let mut seen = std::collections::HashSet::new();
+        let mut seen = HashSet::new();
         self.focusable = order.into_iter().filter(|id| seen.insert(*id)).collect();
+        self.focusable_index.clear();
+        for (i, &id) in self.focusable.iter().enumerate() {
+            self.focusable_index.insert(id, i);
+        }
         if let Some(focused) = self.focused {
-            if !self.focusable.contains(&focused) {
+            if !self.focusable_index.contains_key(&focused) {
                 self.focused = None;
             }
         }
@@ -408,7 +429,7 @@ impl FocusManager {
         let len = self.focusable.len();
         let next = match self
             .focused
-            .and_then(|id| self.focusable.iter().position(|&x| x == id))
+            .and_then(|id| self.focusable_index.get(&id).copied())
         {
             Some(pos) => (pos as i64 + delta).rem_euclid(len as i64) as usize,
             None if delta > 0 => 0,
@@ -725,6 +746,18 @@ mod tests {
         fm.set_focus(NodeId(1));
         fm.set_focusable_order(vec![NodeId(2), NodeId(3)]);
         assert!(fm.focused().is_none());
+    }
+
+    /// O(1) index: position lookup via HashMap drives correct step_focus results.
+    #[test]
+    fn focus_manager_o1_lookup_on_step() {
+        let mut fm = FocusManager::new();
+        for i in 0..100u64 {
+            fm.register_focusable(NodeId(i));
+        }
+        fm.set_focus(NodeId(50));
+        assert_eq!(fm.move_focus_forward(), Some(NodeId(51)));
+        assert_eq!(fm.move_focus_backward(), Some(NodeId(50)));
     }
 
     /// dispatch on an empty path is a no-op.
