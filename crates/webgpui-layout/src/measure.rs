@@ -24,8 +24,7 @@ impl TextMeasure for DefaultTextMeasure {
         if font_size <= 0.0 {
             return Size::new(0.0, 0.0);
         }
-        let chars: Vec<char> = text.chars().collect();
-        let total = chars.len();
+        let total = text.chars().count();
         if total == 0 {
             return Size::new(0.0, 0.0);
         }
@@ -76,5 +75,14 @@ mod tests {
         let s = m.measure("hello", -14.0, f32::INFINITY);
         assert_eq!(s.width, 0.0);
         assert_eq!(s.height, 0.0);
+    }
+
+    #[test]
+    fn measure_does_not_panic_on_multibyte() {
+        let m = DefaultTextMeasure;
+        // "éàü" — 3 Unicode chars, each multiple bytes — count should be 3
+        let s = m.measure("éàü", 14.0, f32::INFINITY);
+        assert!(s.width > 0.0);
+        assert!(s.height > 0.0);
     }
 }
