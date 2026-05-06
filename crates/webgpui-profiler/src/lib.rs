@@ -13,6 +13,7 @@
 //! }
 //! ```
 
+use std::cell::Cell;
 use std::collections::VecDeque;
 use std::time::Instant;
 
@@ -58,6 +59,9 @@ pub struct FrameTimer {
     window: usize,
     /// Timestamp of the last `begin_frame` call.
     frame_start: Option<Instant>,
+    /// Cached result of the last `stats()` computation.
+    /// Invalidated whenever a new sample is added or the timer is reset.
+    cached_stats: Cell<Option<FrameStats>>,
 }
 
 impl FrameTimer {
@@ -67,6 +71,7 @@ impl FrameTimer {
             samples: VecDeque::with_capacity(window),
             window,
             frame_start: None,
+            cached_stats: Cell::new(None),
         }
     }
 
@@ -86,13 +91,20 @@ impl FrameTimer {
             self.samples.pop_front();
         }
         self.samples.push_back(elapsed_ms);
+        self.cached_stats.set(None);
         Some(elapsed_ms)
     }
 
     /// Returns aggregated statistics if at least one sample is available.
+    ///
+    /// The result is cached after the first call and reused until a new sample
+    /// is recorded (via [`end_frame`]) or the timer is [`reset`].
     pub fn stats(&self) -> Option<FrameStats> {
         if self.samples.is_empty() {
             return None;
+        }
+        if let Some(cached) = self.cached_stats.get() {
+            return Some(cached);
         }
         let mut sorted: Vec<f64> = self.samples.iter().copied().collect();
         sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
@@ -101,12 +113,14 @@ impl FrameTimer {
         let p95_idx = ((n as f64 * 0.95) as usize).min(n - 1);
         let p95_ms = sorted[p95_idx];
         let max_ms = sorted[n - 1];
-        Some(FrameStats {
+        let stats = FrameStats {
             avg_ms,
             p95_ms,
             max_ms,
             sample_count: n,
-        })
+        };
+        self.cached_stats.set(Some(stats));
+        Some(stats)
     }
 
     /// Checks performance thresholds and logs warnings when targets are
