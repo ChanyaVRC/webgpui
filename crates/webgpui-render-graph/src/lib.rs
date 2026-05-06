@@ -262,6 +262,12 @@ impl RenderGraph {
                 }
             }
         }
+        debug_assert_eq!(
+            order.len(),
+            ids.len(),
+            "RenderGraph cycle detected; {} pass(es) were skipped",
+            ids.len() - order.len()
+        );
         order
     }
 }
@@ -279,6 +285,20 @@ impl Default for RenderGraph {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    #[cfg(not(debug_assertions))]
+    fn topological_sort_no_infinite_loop_on_cycle() {
+        // Build a two-pass cycle: A depends on B, B depends on A.
+        let mut graph = RenderGraph::new();
+        let a = graph.add_pass("cycle_a", super::PassKind::Ui);
+        let b = graph.add_pass("cycle_b", super::PassKind::Ui);
+        graph.add_dependency(a, b);
+        graph.add_dependency(b, a);
+        // In debug builds the assert fires; in release it silently drops the cycle.
+        // Either way, the sort must terminate without an infinite loop.
+        let _ = graph.execution_order();
+    }
 
     #[test]
     fn default_passes_exist() {
