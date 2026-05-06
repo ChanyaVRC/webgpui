@@ -427,7 +427,10 @@ impl FocusManager {
             return None;
         }
         let len = self.focusable.len();
-        let next = match self.focused.and_then(|id| self.focusable_index.get(&id).copied()) {
+        let next = match self
+            .focused
+            .and_then(|id| self.focusable_index.get(&id).copied())
+        {
             Some(pos) => (pos as i64 + delta).rem_euclid(len as i64) as usize,
             None if delta > 0 => 0,
             None => len - 1,
