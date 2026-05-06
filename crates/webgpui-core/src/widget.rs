@@ -578,7 +578,9 @@ impl TabBar {
 
     /// Jump to the last tab (End key).
     pub fn select_last(&mut self) {
-        self.selected = self.tabs.len().saturating_sub(1);
+        if !self.tabs.is_empty() {
+            self.selected = self.tabs.len() - 1;
+        }
     }
 
     pub fn role() -> NodeRole {
@@ -1287,6 +1289,20 @@ mod tests {
         let mut tb = TabBar::new(std::iter::empty::<&str>());
         tb.select_first(); // must not panic
         assert_eq!(tb.selected(), 0);
+    }
+
+    #[test]
+    fn tabbar_select_last_empty() {
+        let mut tb = TabBar::new(std::iter::empty::<&str>());
+        tb.select_last(); // must not panic, selected stays 0
+        assert_eq!(tb.selected(), 0);
+    }
+
+    #[test]
+    fn tabbar_select_last_nonempty() {
+        let mut tb = TabBar::new(["a", "b", "c"]);
+        tb.select_last();
+        assert_eq!(tb.selected(), 2);
     }
 
     // ---- TextInput Disabled guard (#70) ---
