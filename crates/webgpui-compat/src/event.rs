@@ -33,7 +33,7 @@ pub fn event_on(
         s.next_listener_id += 1;
         s.listeners.entry(core_id).or_default().push(Listener {
             id: lid,
-            event_type: event_type.as_str().to_string(),
+            event_type,
             callback,
         });
         Ok(ListenerId(lid))
