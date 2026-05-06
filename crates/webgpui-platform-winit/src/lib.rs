@@ -233,19 +233,46 @@ fn convert_key(key: &Key) -> KeyCode {
             let upper = ch.to_ascii_uppercase();
             if upper.is_ascii_alphabetic() {
                 const LETTERS: [KeyCode; 26] = [
-                    KeyCode::A, KeyCode::B, KeyCode::C, KeyCode::D, KeyCode::E,
-                    KeyCode::F, KeyCode::G, KeyCode::H, KeyCode::I, KeyCode::J,
-                    KeyCode::K, KeyCode::L, KeyCode::M, KeyCode::N, KeyCode::O,
-                    KeyCode::P, KeyCode::Q, KeyCode::R, KeyCode::S, KeyCode::T,
-                    KeyCode::U, KeyCode::V, KeyCode::W, KeyCode::X, KeyCode::Y,
+                    KeyCode::A,
+                    KeyCode::B,
+                    KeyCode::C,
+                    KeyCode::D,
+                    KeyCode::E,
+                    KeyCode::F,
+                    KeyCode::G,
+                    KeyCode::H,
+                    KeyCode::I,
+                    KeyCode::J,
+                    KeyCode::K,
+                    KeyCode::L,
+                    KeyCode::M,
+                    KeyCode::N,
+                    KeyCode::O,
+                    KeyCode::P,
+                    KeyCode::Q,
+                    KeyCode::R,
+                    KeyCode::S,
+                    KeyCode::T,
+                    KeyCode::U,
+                    KeyCode::V,
+                    KeyCode::W,
+                    KeyCode::X,
+                    KeyCode::Y,
                     KeyCode::Z,
                 ];
                 LETTERS[(upper as u8 - b'A') as usize]
             } else if ch.is_ascii_digit() {
                 const DIGITS: [KeyCode; 10] = [
-                    KeyCode::Digit0, KeyCode::Digit1, KeyCode::Digit2, KeyCode::Digit3,
-                    KeyCode::Digit4, KeyCode::Digit5, KeyCode::Digit6, KeyCode::Digit7,
-                    KeyCode::Digit8, KeyCode::Digit9,
+                    KeyCode::Digit0,
+                    KeyCode::Digit1,
+                    KeyCode::Digit2,
+                    KeyCode::Digit3,
+                    KeyCode::Digit4,
+                    KeyCode::Digit5,
+                    KeyCode::Digit6,
+                    KeyCode::Digit7,
+                    KeyCode::Digit8,
+                    KeyCode::Digit9,
                 ];
                 DIGITS[(ch as u8 - b'0') as usize]
             } else {
