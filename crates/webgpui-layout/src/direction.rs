@@ -11,54 +11,39 @@ pub enum Direction {
 }
 
 impl Direction {
-    pub(crate) fn main_of(self, s: Size) -> f32 {
+    #[inline(always)]
+    fn sel<T>(self, if_col: T, if_row: T) -> T {
         match self {
-            Direction::Column => s.height,
-            Direction::Row => s.width,
+            Direction::Column => if_col,
+            Direction::Row => if_row,
         }
+    }
+
+    pub(crate) fn main_of(self, s: Size) -> f32 {
+        self.sel(s.height, s.width)
     }
     pub(crate) fn cross_of(self, s: Size) -> f32 {
-        match self {
-            Direction::Column => s.width,
-            Direction::Row => s.height,
-        }
+        self.sel(s.width, s.height)
     }
     pub(crate) fn main_insets(self, ins: Insets) -> f32 {
-        match self {
-            Direction::Column => ins.vertical(),
-            Direction::Row => ins.horizontal(),
-        }
+        self.sel(ins.vertical(), ins.horizontal())
     }
     pub(crate) fn cross_insets(self, ins: Insets) -> f32 {
-        match self {
-            Direction::Column => ins.horizontal(),
-            Direction::Row => ins.vertical(),
-        }
+        self.sel(ins.horizontal(), ins.vertical())
     }
     pub(crate) fn main_leading(self, ins: Insets) -> f32 {
-        match self {
-            Direction::Column => ins.top,
-            Direction::Row => ins.left,
-        }
+        self.sel(ins.top, ins.left)
     }
     pub(crate) fn main_trailing(self, ins: Insets) -> f32 {
-        match self {
-            Direction::Column => ins.bottom,
-            Direction::Row => ins.right,
-        }
+        self.sel(ins.bottom, ins.right)
     }
     pub(crate) fn main_origin(self, p: Point) -> f32 {
-        match self {
-            Direction::Column => p.y,
-            Direction::Row => p.x,
-        }
+        self.sel(p.y, p.x)
     }
     pub(crate) fn cross_origin(self, p: Point) -> f32 {
-        match self {
-            Direction::Column => p.x,
-            Direction::Row => p.y,
-        }
+        self.sel(p.x, p.y)
     }
+
     pub(crate) fn main_origin_mut(self, p: &mut Point) -> &mut f32 {
         match self {
             Direction::Column => &mut p.y,
@@ -71,25 +56,14 @@ impl Direction {
             Direction::Row => &mut s.width,
         }
     }
-    /// Build a `Size` from (main, cross) components.
+
     pub(crate) fn size(self, main: f32, cross: f32) -> Size {
-        match self {
-            Direction::Column => Size::new(cross, main),
-            Direction::Row => Size::new(main, cross),
-        }
+        self.sel(Size::new(cross, main), Size::new(main, cross))
     }
-    /// Build a `Point` from (main, cross) components.
     pub(crate) fn point(self, main: f32, cross: f32) -> Point {
-        match self {
-            Direction::Column => Point::new(cross, main),
-            Direction::Row => Point::new(main, cross),
-        }
+        self.sel(Point::new(cross, main), Point::new(main, cross))
     }
-    /// max_y (Column) or max_x (Row) of a rect.
     pub(crate) fn main_max(self, r: Rect) -> f32 {
-        match self {
-            Direction::Column => r.max_y(),
-            Direction::Row => r.max_x(),
-        }
+        self.sel(r.max_y(), r.max_x())
     }
 }
