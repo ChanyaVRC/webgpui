@@ -145,9 +145,13 @@ impl Rect {
         self.origin.y + self.size.height
     }
 
+    /// Returns `true` if `p` lies within this rectangle.
+    ///
+    /// Uses half-open interval semantics: `min <= coord < max` on the trailing
+    /// edges, so a point exactly on a shared boundary belongs to only one rect.
     #[inline]
     pub fn contains(self, p: Point) -> bool {
-        p.x >= self.min_x() && p.x <= self.max_x() && p.y >= self.min_y() && p.y <= self.max_y()
+        p.x >= self.min_x() && p.x < self.max_x() && p.y >= self.min_y() && p.y < self.max_y()
     }
 
     /// Returns the intersection of two rectangles, or `None` if they don't overlap.
