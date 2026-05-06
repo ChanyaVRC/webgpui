@@ -16,6 +16,9 @@
 
 mod state;
 
+#[cfg(test)]
+mod tests;
+
 pub mod app;
 pub mod event;
 pub mod node;

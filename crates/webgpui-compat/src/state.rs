@@ -146,3 +146,13 @@ pub fn with_tree<R>(f: impl FnOnce(&NodeTree) -> R) -> R {
     let m = GLOBAL.get_or_init(|| Mutex::new(CompatState::new()));
     f(&m.lock().unwrap().tree)
 }
+
+/// Replaces the global state with a fresh instance.
+///
+/// Only available in test builds; use the `test_lock!` macro to also
+/// serialize concurrent tests before calling this.
+#[cfg(test)]
+pub(crate) fn reset_for_test() {
+    let m = GLOBAL.get_or_init(|| Mutex::new(CompatState::new()));
+    *m.lock().unwrap() = CompatState::new();
+}
