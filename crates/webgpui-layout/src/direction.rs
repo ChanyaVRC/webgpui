@@ -19,14 +19,30 @@ impl Direction {
         }
     }
 
-    pub(crate) fn main_of(self, s: Size) -> f32 { self.sel(s.height, s.width) }
-    pub(crate) fn cross_of(self, s: Size) -> f32 { self.sel(s.width, s.height) }
-    pub(crate) fn main_insets(self, ins: Insets) -> f32 { self.sel(ins.vertical(), ins.horizontal()) }
-    pub(crate) fn cross_insets(self, ins: Insets) -> f32 { self.sel(ins.horizontal(), ins.vertical()) }
-    pub(crate) fn main_leading(self, ins: Insets) -> f32 { self.sel(ins.top, ins.left) }
-    pub(crate) fn main_trailing(self, ins: Insets) -> f32 { self.sel(ins.bottom, ins.right) }
-    pub(crate) fn main_origin(self, p: Point) -> f32 { self.sel(p.y, p.x) }
-    pub(crate) fn cross_origin(self, p: Point) -> f32 { self.sel(p.x, p.y) }
+    pub(crate) fn main_of(self, s: Size) -> f32 {
+        self.sel(s.height, s.width)
+    }
+    pub(crate) fn cross_of(self, s: Size) -> f32 {
+        self.sel(s.width, s.height)
+    }
+    pub(crate) fn main_insets(self, ins: Insets) -> f32 {
+        self.sel(ins.vertical(), ins.horizontal())
+    }
+    pub(crate) fn cross_insets(self, ins: Insets) -> f32 {
+        self.sel(ins.horizontal(), ins.vertical())
+    }
+    pub(crate) fn main_leading(self, ins: Insets) -> f32 {
+        self.sel(ins.top, ins.left)
+    }
+    pub(crate) fn main_trailing(self, ins: Insets) -> f32 {
+        self.sel(ins.bottom, ins.right)
+    }
+    pub(crate) fn main_origin(self, p: Point) -> f32 {
+        self.sel(p.y, p.x)
+    }
+    pub(crate) fn cross_origin(self, p: Point) -> f32 {
+        self.sel(p.x, p.y)
+    }
 
     pub(crate) fn main_origin_mut(self, p: &mut Point) -> &mut f32 {
         match self {
@@ -47,5 +63,7 @@ impl Direction {
     pub(crate) fn point(self, main: f32, cross: f32) -> Point {
         self.sel(Point::new(cross, main), Point::new(main, cross))
     }
-    pub(crate) fn main_max(self, r: Rect) -> f32 { self.sel(r.max_y(), r.max_x()) }
+    pub(crate) fn main_max(self, r: Rect) -> f32 {
+        self.sel(r.max_y(), r.max_x())
+    }
 }
