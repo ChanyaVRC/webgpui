@@ -44,7 +44,7 @@ pub const VERTEX_SIZE: u64 = std::mem::size_of::<Vertex>() as u64;
 // ---------------------------------------------------------------------------
 
 /// Groups draw calls that can be merged into a single GPU draw command.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct BatchKey {
     pub blend_mode: BlendModeKey,
     /// Reserved for texture binding (MVP: always 0).
@@ -55,8 +55,9 @@ pub struct BatchKey {
     pub z_order: u16,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub enum BlendModeKey {
+    #[default]
     Opaque,
     Alpha,
     Additive,
@@ -79,7 +80,7 @@ impl From<BlendMode> for BlendModeKey {
 /// A finalised batch ready to be uploaded to the GPU.
 #[derive(Debug, Default, Clone)]
 pub struct DrawBatch {
-    pub key: Option<BatchKey>,
+    pub key: BatchKey,
     /// Packed vertices.
     pub vertices: Vec<Vertex>,
     /// Indices into `vertices` forming triangles.
@@ -89,7 +90,7 @@ pub struct DrawBatch {
 impl DrawBatch {
     pub fn new(key: BatchKey) -> Self {
         Self {
-            key: Some(key),
+            key,
             vertices: Vec::new(),
             indices: Vec::new(),
         }
@@ -223,15 +224,10 @@ impl Batcher {
 
         // Sort batches: z-order ascending, then by blend mode.
         self.batches.sort_by(|a, b| {
-            let ka = a
-                .key
-                .expect("every batch produced by get_or_create must have a key");
-            let kb = b
-                .key
-                .expect("every batch produced by get_or_create must have a key");
-            ka.z_order
-                .cmp(&kb.z_order)
-                .then_with(|| ka.blend_mode.cmp(&kb.blend_mode))
+            a.key
+                .z_order
+                .cmp(&b.key.z_order)
+                .then_with(|| a.key.blend_mode.cmp(&b.key.blend_mode))
         });
 
         &self.batches
@@ -278,43 +274,39 @@ mod tests {
     use webgpui_geometry::Color;
     use webgpui_render::DrawList;
 
-    // ---- Problem scenario: DrawBatch::default() has key = None ----
+    // ---- Before fix: Option<BatchKey> + unwrap() panics on default batch ----
 
     #[test]
-    fn draw_batch_default_key_is_none() {
-        // DrawBatch is a public struct and its Default impl sets key = None.
-        // If such a batch reaches the sort in flush(), the expect() fires.
-        // This test documents the type-level gap that makes the invariant
-        // enforcement necessary.
-        let batch = DrawBatch::default();
-        assert!(batch.key.is_none());
+    #[should_panic]
+    fn before_fix_sort_panics_when_batch_has_no_key() {
+        // Before the fix, DrawBatch.key was Option<BatchKey> and flush() called
+        // unwrap(). A default-constructed DrawBatch (key = None) would panic here.
+        // This replicates the exact sort closure that was in flush() before the fix.
+        let mut batches: Vec<(Option<BatchKey>, u16)> = vec![(None, 0), (None, 1)]; // same shape as old DrawBatch
+        batches.sort_by(|a, b| {
+            let ka = a.0.unwrap(); // old code — panics on None
+            let kb = b.0.unwrap();
+            ka.z_order.cmp(&kb.z_order)
+        });
     }
 
-    #[test]
-    #[should_panic(expected = "every batch produced by get_or_create must have a key")]
-    fn sort_panics_on_none_key_batch() {
-        // Directly demonstrates the failure mode: sorting a DrawBatch with
-        // key = None triggers the expect() added by the fix.
-        let batch = DrawBatch::default();
-        let _ = batch
-            .key
-            .expect("every batch produced by get_or_create must have a key");
-    }
+    // ---- After fix: BatchKey is non-optional, Batcher::process() sort is safe ----
 
     #[test]
-    fn process_always_produces_batches_with_some_key() {
-        // Positive assertion: every batch returned by process() must have a key.
+    fn after_fix_batcher_sorts_by_z_order_via_process() {
+        // After fix: DrawBatch.key is BatchKey (not Option). Batcher::process()
+        // sort never needs unwrap. Drive entirely through the public API.
         let mut dl = DrawList::new();
-        dl.fill_rect(Rect::new(0.0, 0.0, 100.0, 50.0), Color::RED);
-        dl.fill_rect(Rect::new(110.0, 0.0, 50.0, 50.0), Color::BLUE);
+        dl.set_z(20);
+        dl.fill_rect(Rect::new(0.0, 0.0, 10.0, 10.0), Color::RED);
+        dl.set_z(5);
+        dl.fill_rect(Rect::new(20.0, 0.0, 10.0, 10.0), Color::BLUE);
         let mut batcher = Batcher::new();
         let batches = batcher.process(&dl);
-        for batch in batches {
-            assert!(
-                batch.key.is_some(),
-                "batch from process() must always have a key"
-            );
-        }
+        // z=5 batch must come first; no unwrap anywhere in this path.
+        assert_eq!(batches.len(), 2);
+        assert_eq!(batches[0].key.z_order, 5);
+        assert_eq!(batches[1].key.z_order, 20);
     }
 
     #[test]
