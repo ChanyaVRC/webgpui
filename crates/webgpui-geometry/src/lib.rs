@@ -80,6 +80,10 @@ impl Size {
         Self { width, height }
     }
 
+    /// Returns `true` if `width` or `height` is `<= 0.0`.
+    ///
+    /// Both zero-area and negative-dimension sizes are considered empty.
+    /// Negative dimensions can arise from unclamped layout arithmetic.
     #[inline]
     pub fn is_empty(self) -> bool {
         self.width <= 0.0 || self.height <= 0.0
@@ -177,6 +181,14 @@ impl Rect {
     }
 
     /// Expands the rect outward by `insets` on all sides.
+    ///
+    /// Negative inset components shrink the corresponding side without clamping;
+    /// this can produce a rect with negative width or height. Use [`shrink`][Self::shrink]
+    /// when you want clamping at zero.
+    ///
+    /// Note: `expand(i).shrink(i)` is an identity only when the rect stays
+    /// positive after expansion; `shrink(i).expand(i)` is an identity only when
+    /// the shrink does not clamp.
     pub fn expand(self, insets: Insets) -> Self {
         Self::new(
             self.origin.x - insets.left,
@@ -187,6 +199,12 @@ impl Rect {
     }
 
     /// Shrinks the rect inward by `insets` on all sides.
+    ///
+    /// Width and height are clamped to `0.0` so the result is never
+    /// negative-sized. Negative inset components expand the corresponding side
+    /// without clamping.
+    ///
+    /// Note: `shrink(i).expand(i)` round-trips only when no dimension was clamped.
     pub fn shrink(self, insets: Insets) -> Self {
         Self::new(
             self.origin.x + insets.left,
