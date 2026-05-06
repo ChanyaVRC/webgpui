@@ -8,5 +8,6 @@ license.workspace = true
 [dependencies]
 webgpui-core     = { workspace = true }
 webgpui-geometry = { workspace = true }
+webgpui-layout   = { workspace = true }
 webgpui-input    = { workspace = true }
 thiserror = "1"
