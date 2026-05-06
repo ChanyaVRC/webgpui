@@ -544,6 +544,39 @@ mod tests {
         assert!(!tracker.is_dirty());
     }
 
+    // ---- Problem scenario: backend switch without mark_all skips redraws (#112) ----
+
+    #[test]
+    fn dirty_tracker_clean_after_frame_without_mark_all() {
+        // Demonstrates the bug: after a frame clears the tracker, a backend
+        // switch without mark_all() leaves the tracker in a clean state.
+        // The new backend renderer would then see no dirty regions and skip
+        // drawing on the first frame.
+        let mut tracker = DirtyTracker::new();
+        tracker.mark(Rect::new(0.0, 0.0, 800.0, 600.0));
+        tracker.clear(); // end-of-frame flush — tracker is now clean
+
+        // Without mark_all() (old behaviour): new backend has nothing to redraw.
+        assert!(
+            !tracker.is_dirty(),
+            "tracker appears clean — new backend would skip the first frame"
+        );
+        assert!(!tracker.needs_full_redraw());
+    }
+
+    #[test]
+    fn dirty_tracker_mark_all_after_backend_switch_forces_full_redraw() {
+        // Verifies the fix: mark_all() after a backend switch ensures the new
+        // backend always performs a full redraw on its first frame.
+        let mut tracker = DirtyTracker::new();
+        tracker.mark(Rect::new(0.0, 0.0, 800.0, 600.0));
+        tracker.clear(); // end-of-frame flush
+
+        tracker.mark_all(); // fix: called after create_side_renderer()
+        assert!(tracker.is_dirty());
+        assert!(tracker.needs_full_redraw());
+    }
+
     // ---- NodeRole --------------------------------------------------------
 
     #[test]
