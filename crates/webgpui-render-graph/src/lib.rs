@@ -167,13 +167,18 @@ impl RenderGraph {
     }
 
     /// Declares that `pass` must run after `after`.
-    pub fn add_dependency(&mut self, pass: PassId, after: PassId) {
+    ///
+    /// Returns `false` if `pass` does not exist in the graph (the call is a no-op in that case).
+    pub fn add_dependency(&mut self, pass: PassId, after: PassId) -> bool {
         if let Some(p) = self.passes.get_mut(&pass) {
             if !p.depends_on.contains(&after) {
                 p.depends_on.push(after);
+                self.topo_dirty = true;
             }
+            true
+        } else {
+            false
         }
-        self.topo_dirty = true;
     }
 
     pub fn pass_mut(&mut self, id: PassId) -> Option<&mut RenderPass> {
@@ -298,6 +303,26 @@ mod tests {
         // In debug builds the assert fires; in release it silently drops the cycle.
         // Either way, the sort must terminate without an infinite loop.
         let _ = graph.execution_order();
+    }
+
+    #[test]
+    fn add_dependency_returns_false_for_missing_pass() {
+        let mut graph = RenderGraph::new();
+        let missing = super::PassId(9999);
+        let ui_id = graph.pass_by_name("ui").unwrap().id;
+        assert!(!graph.add_dependency(missing, ui_id));
+    }
+
+    #[test]
+    fn add_dependency_no_spurious_dirty() {
+        let mut graph = RenderGraph::new();
+        // Populate topo cache.
+        let _ = graph.execution_order();
+        // Adding a dependency to a non-existent pass must not dirty the cache.
+        let missing = super::PassId(9999);
+        let ui_id = graph.pass_by_name("ui").unwrap().id;
+        graph.add_dependency(missing, ui_id);
+        assert!(!graph.topo_dirty);
     }
 
     #[test]
