@@ -363,6 +363,17 @@ impl NodeTree {
             .collect()
     }
 
+    /// Iterates over the children of `id` without allocating.
+    ///
+    /// Callers that need an owned `Vec<NodeId>` can call `.collect()` on the
+    /// returned iterator. Prefer this over [`children_of`][Self::children_of]
+    /// when only iteration is needed.
+    pub fn children_iter(&self, id: NodeId) -> impl Iterator<Item = NodeId> + '_ {
+        let idx = self.id_to_index.get(&id).copied();
+        idx.into_iter()
+            .flat_map(move |i| self.nodes[i].children.iter().map(move |&ci| self.nodes[ci].id))
+    }
+
     /// Iterates over all valid nodes in arena order.
     pub fn iter(&self) -> impl Iterator<Item = &Node> {
         self.nodes.iter().filter(|n| !n.is_tombstone())
