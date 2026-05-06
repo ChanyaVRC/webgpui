@@ -223,8 +223,12 @@ impl Batcher {
 
         // Sort batches: z-order ascending, then by blend mode.
         self.batches.sort_by(|a, b| {
-            let ka = a.key.unwrap();
-            let kb = b.key.unwrap();
+            let ka = a
+                .key
+                .expect("every batch produced by get_or_create must have a key");
+            let kb = b
+                .key
+                .expect("every batch produced by get_or_create must have a key");
             ka.z_order
                 .cmp(&kb.z_order)
                 .then_with(|| ka.blend_mode.cmp(&kb.blend_mode))
