@@ -278,6 +278,45 @@ mod tests {
     use webgpui_geometry::Color;
     use webgpui_render::DrawList;
 
+    // ---- Problem scenario: DrawBatch::default() has key = None ----
+
+    #[test]
+    fn draw_batch_default_key_is_none() {
+        // DrawBatch is a public struct and its Default impl sets key = None.
+        // If such a batch reaches the sort in flush(), the expect() fires.
+        // This test documents the type-level gap that makes the invariant
+        // enforcement necessary.
+        let batch = DrawBatch::default();
+        assert!(batch.key.is_none());
+    }
+
+    #[test]
+    #[should_panic(expected = "every batch produced by get_or_create must have a key")]
+    fn sort_panics_on_none_key_batch() {
+        // Directly demonstrates the failure mode: sorting a DrawBatch with
+        // key = None triggers the expect() added by the fix.
+        let batch = DrawBatch::default();
+        let _ = batch
+            .key
+            .expect("every batch produced by get_or_create must have a key");
+    }
+
+    #[test]
+    fn process_always_produces_batches_with_some_key() {
+        // Positive assertion: every batch returned by process() must have a key.
+        let mut dl = DrawList::new();
+        dl.fill_rect(Rect::new(0.0, 0.0, 100.0, 50.0), Color::RED);
+        dl.fill_rect(Rect::new(110.0, 0.0, 50.0, 50.0), Color::BLUE);
+        let mut batcher = Batcher::new();
+        let batches = batcher.process(&dl);
+        for batch in batches {
+            assert!(
+                batch.key.is_some(),
+                "batch from process() must always have a key"
+            );
+        }
+    }
+
     #[test]
     fn single_rect() {
         let mut dl = DrawList::new();
