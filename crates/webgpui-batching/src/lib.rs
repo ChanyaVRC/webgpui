@@ -170,6 +170,9 @@ pub struct Batcher {
     current_z: u16,
     /// Maps [`BatchKey`] → index into `batches` for O(1) lookup.
     batch_index: std::collections::HashMap<BatchKey, usize>,
+    /// Set when a new batch is created; cleared after sorting. Avoids re-sorting
+    /// frames where the batch order cannot have changed.
+    sort_dirty: bool,
 }
 
 impl Batcher {
@@ -178,6 +181,7 @@ impl Batcher {
             batches: Vec::new(),
             current_z: 0,
             batch_index: std::collections::HashMap::new(),
+            sort_dirty: false,
         }
     }
 
@@ -224,13 +228,14 @@ impl Batcher {
 
         // Sort batches: z-order ascending, then by blend mode.
         // Skip sort when there is at most one batch — nothing to reorder.
-        if self.batches.len() > 1 {
+        if self.sort_dirty && self.batches.len() > 1 {
             self.batches.sort_by(|a, b| {
                 a.key
                     .z_order
                     .cmp(&b.key.z_order)
                     .then_with(|| a.key.blend_mode.cmp(&b.key.blend_mode))
             });
+            self.sort_dirty = false;
         }
 
         &self.batches
@@ -252,6 +257,7 @@ impl Batcher {
         let pos = self.batches.len();
         self.batches.push(DrawBatch::new(key));
         self.batch_index.insert(key, pos);
+        self.sort_dirty = true;
         &mut self.batches[pos]
     }
 
