@@ -379,7 +379,7 @@ impl WgpuRenderer {
     // ------------------------------------------------------------------
 
     /// Queries the [`RenderGraph`] and returns the resolved per-frame state.
-    fn resolve_graph(&self) -> ResolvedFrame {
+    fn resolve_graph(&mut self) -> ResolvedFrame {
         let order = self.render_graph.execution_order();
         ResolvedFrame {
             clear_enabled: order.iter().any(|p| p.kind == PassKind::Clear),
@@ -447,11 +447,13 @@ impl WgpuRenderer {
             return;
         }
 
-        // Upload.
+        // Upload — compute sizes before borrowing slices so ensure_* can take &mut self.
+        let vbytes_len = self.staging_vertices.len() * std::mem::size_of::<Vertex>();
+        let ibytes_len = self.staging_indices.len() * std::mem::size_of::<u32>();
+        self.ensure_vertex_buffer(vbytes_len as u64);
+        self.ensure_index_buffer(ibytes_len as u64);
         let vbytes = bytemuck::cast_slice(&self.staging_vertices);
         let ibytes = bytemuck::cast_slice::<u32, u8>(&self.staging_indices);
-        self.ensure_vertex_buffer(vbytes.len() as u64);
-        self.ensure_index_buffer(ibytes.len() as u64);
         self.ctx.queue.write_buffer(&self.vertex_buffer, 0, vbytes);
         self.ctx.queue.write_buffer(&self.index_buffer, 0, ibytes);
 
