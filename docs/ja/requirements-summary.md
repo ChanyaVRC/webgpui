@@ -33,7 +33,7 @@ Rust で GPU レンダリング可能な WebUI エンジンを実装し、既存
 - 速度: 既存比で有利、または同等で CPU/GPU 使用率を削減
 
 ## 7. 参照
-- 詳細要件: ../requirements.md
-- 代替戦略: ../replacement-strategy.md
-- API マッピング: ../api-mapping.md
+- 詳細要件: requirements.md
+- 代替戦略: replacement-strategy.md
+- API マッピング: api-mapping.md
 - CI ゲート運用: ./ci-gates.md

@@ -40,8 +40,8 @@
 - CI で P0/P1 ゲートを先行運用し、閾値を明文化する
 
 ## 5. 参照
-- 要件定義: ../requirements.md
-- 構成案: ../workspace-architecture.md
-- 高速化計画: ../rendering-performance-plan.md
-- API マッピング: ../api-mapping.md
-- API スワップ品質: ../api-swapping-quality-plan.md
+- 要件定義: requirements.md
+- 構成案: workspace-architecture.md
+- 高速化計画: rendering-performance-plan.md
+- API マッピング: api-mapping.md
+- API スワップ品質: api-swapping-quality-plan.md
