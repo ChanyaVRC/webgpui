@@ -98,7 +98,7 @@ impl FrameTimer {
     /// Returns aggregated statistics if at least one sample is available.
     ///
     /// The result is cached after the first call and reused until a new sample
-    /// is recorded (via [`end_frame`]) or the timer is [`reset`].
+    /// is recorded (via [`FrameTimer::end_frame`]) or the timer is [`FrameTimer::reset`].
     pub fn stats(&self) -> Option<FrameStats> {
         if self.samples.is_empty() {
             return None;
