@@ -1,0 +1,85 @@
+name: docs-i18n-check
+
+on:
+  pull_request:
+    paths:
+      - "docs/**"
+      - "mkdocs.yml"
+      - ".github/workflows/docs-i18n-check.yml"
+  push:
+    branches: ["master"]
+    paths:
+      - "docs/**"
+      - "mkdocs.yml"
+  workflow_dispatch:
+
+jobs:
+  i18n-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check JA translation files exist for every EN page
+        run: |
+          missing=0
+          while IFS= read -r -d '' f; do
+            rel="${f#docs/}"
+            if [ ! -f "docs/ja/$rel" ]; then
+              echo "::error file=docs/$rel::Missing Japanese translation: docs/ja/$rel"
+              missing=$((missing + 1))
+            fi
+          done < <(find docs -maxdepth 1 -name "*.md" -print0)
+          if [ "$missing" -gt 0 ]; then
+            echo "$missing EN page(s) have no Japanese translation in docs/ja/"
+            exit 1
+          fi
+          echo "JA file coverage OK"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install PyYAML
+        run: pip install pyyaml -q
+
+      - name: Check nav_translations covers all nav labels
+        run: |
+          python3 - <<'EOF'
+          import sys
+          import yaml
+
+          with open("mkdocs.yml") as f:
+              config = yaml.safe_load(f)
+
+          def collect_labels(nav):
+              labels = []
+              for item in nav:
+                  if isinstance(item, dict):
+                      for k, v in item.items():
+                          labels.append(k)
+                          if isinstance(v, list):
+                              labels.extend(collect_labels(v))
+              return labels
+
+          nav_labels = set(collect_labels(config.get("nav", [])))
+
+          ja_translations = {}
+          for plugin in config.get("plugins", []):
+              if not isinstance(plugin, dict) or "i18n" not in plugin:
+                  continue
+              for lang in plugin["i18n"].get("languages", []):
+                  if lang.get("locale") == "ja":
+                      ja_translations = lang.get("nav_translations", {})
+                      break
+
+          missing = nav_labels - set(ja_translations.keys())
+          if missing:
+              for label in sorted(missing):
+                  print(f"::error file=mkdocs.yml::nav label missing from nav_translations: '{label}'")
+              print(f"{len(missing)} nav label(s) have no Japanese translation in nav_translations")
+              sys.exit(1)
+
+          print(f"nav_translations coverage OK ({len(nav_labels)} labels)")
+          EOF
