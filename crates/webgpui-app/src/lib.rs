@@ -57,6 +57,16 @@ pub struct BackendSwitcher {
     state: Arc<Mutex<BackendState>>,
 }
 
+impl std::fmt::Debug for BackendSwitcher {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let state = self.state.lock().unwrap();
+        f.debug_struct("BackendSwitcher")
+            .field("current", &state.current)
+            .field("pending", &state.pending)
+            .finish()
+    }
+}
+
 struct BackendState {
     current: BackendSelector,
     pending: Option<BackendSelector>,
