@@ -387,8 +387,12 @@ impl NodeTree {
     /// when only iteration is needed.
     pub fn children_iter(&self, id: NodeId) -> impl Iterator<Item = NodeId> + '_ {
         let idx = self.id_to_index.get(&id).copied();
-        idx.into_iter()
-            .flat_map(move |i| self.nodes[i].children.iter().map(move |&ci| self.nodes[ci].id))
+        idx.into_iter().flat_map(move |i| {
+            self.nodes[i]
+                .children
+                .iter()
+                .map(move |&ci| self.nodes[ci].id)
+        })
     }
 
     /// Iterates over all valid nodes in arena order.
@@ -529,7 +533,10 @@ impl DirtyTracker {
     /// tracker is clean.
     pub fn effective_area(&self, viewport: Size) -> Option<Rect> {
         if self.full_invalidate {
-            Some(Rect::from_origin_size(webgpui_geometry::Point::ZERO, viewport))
+            Some(Rect::from_origin_size(
+                webgpui_geometry::Point::ZERO,
+                viewport,
+            ))
         } else {
             self.dirty_union()
         }
