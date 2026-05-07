@@ -232,6 +232,9 @@ impl Batcher {
                 DrawCommand::PushClip { .. } | DrawCommand::PopClip => {
                     // MVP: clipping not yet implemented at the batch level.
                 }
+                DrawCommand::DrawImage { .. } => {
+                    // Images bypass the batcher and are rendered directly by the backend.
+                }
             }
         }
 

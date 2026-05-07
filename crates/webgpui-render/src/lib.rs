@@ -29,9 +29,24 @@ pub enum RenderError {
     Timeout,
     #[error("backend not available; check feature flags or installed CUDA")]
     BackendUnavailable,
+    #[error("image load error: {0}")]
+    ImageLoad(String),
     #[error("GPU error: {0}")]
     Other(String),
 }
+
+// ---------------------------------------------------------------------------
+// ImageHandle
+// ---------------------------------------------------------------------------
+
+/// An opaque handle to a GPU-uploaded image.
+///
+/// Obtain via [`DrawContext::load_image`][crate::DrawContext::load_image] and
+/// pass to [`DrawContext::draw_image`] to render it.
+///
+/// Handles are valid for the lifetime of the application.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ImageHandle(pub u32);
 
 pub type RenderResult<T> = Result<T, RenderError>;
 
@@ -87,6 +102,12 @@ pub enum DrawCommand {
     PopClip,
     /// Set the depth/z-order for subsequent commands.
     SetZOrder(u16),
+    /// Draw a GPU-uploaded image scaled to fit `rect`.
+    DrawImage {
+        rect: Rect,
+        handle: ImageHandle,
+        blend: BlendMode,
+    },
 }
 
 // ---------------------------------------------------------------------------
@@ -161,6 +182,15 @@ impl DrawList {
 
     pub fn pop_clip(&mut self) {
         self.push(DrawCommand::PopClip);
+    }
+
+    /// Draws a GPU-uploaded image scaled to fit `rect`.
+    pub fn draw_image(&mut self, rect: Rect, handle: ImageHandle) {
+        self.push(DrawCommand::DrawImage {
+            rect,
+            handle,
+            blend: BlendMode::Alpha,
+        });
     }
 
     pub fn set_z(&mut self, z: u16) {

@@ -15,6 +15,7 @@ pollster             = { workspace = true }
 log                  = { workspace = true }
 thiserror            = { workspace = true }
 raw-window-handle    = "0.6"
+image                = { workspace = true }
 
 [features]
 default     = []
