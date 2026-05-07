@@ -2,6 +2,7 @@ use webgpui_geometry::Insets;
 
 use crate::direction::Direction;
 
+/// Controls how a node is positioned within its parent.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum PositionType {
     /// Positioned at `(x, y)` relative to the parent content area.
@@ -14,6 +15,7 @@ pub enum PositionType {
 /// Per-node layout properties.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LayoutStyle {
+    /// How the node is placed within its parent (stack flow or absolute).
     pub position: PositionType,
     /// Stack direction for children.
     pub direction: Direction,
@@ -27,7 +29,9 @@ pub struct LayoutStyle {
     /// Explicit height. `None` means "fill available height" (Row) or
     /// "shrink-wrap children" (Column).
     pub height: Option<f32>,
+    /// Space outside the border box.
     pub margin: Insets,
+    /// Space between the border box and the content area.
     pub padding: Insets,
     /// Gap between consecutive stack children.
     pub gap: f32,
@@ -54,6 +58,7 @@ impl Default for LayoutStyle {
 }
 
 impl LayoutStyle {
+    /// Shorthand for an absolutely-positioned node with explicit position and size.
     pub fn absolute(x: f32, y: f32, width: f32, height: f32) -> Self {
         Self {
             position: PositionType::Absolute,
