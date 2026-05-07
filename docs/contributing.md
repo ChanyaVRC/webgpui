@@ -1,5 +1,8 @@
 # Contributing Guide
 
+See [Semver Policy](semver-policy.md) for version bump rules and the
+deprecation process.
+
 ## 1. Branch and PR Workflow
 - Use feature branches for implementation changes
 - Include purpose, technical changes, and measurement outcomes in PRs

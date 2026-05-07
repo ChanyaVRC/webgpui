@@ -1,3 +1,4 @@
+#![warn(missing_docs)]
 //! Compatibility layer for legacy WebUI engine consumers.
 //!
 //! Maps legacy string-based WebUI calls to the typed `webgpui-core` API.

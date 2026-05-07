@@ -1,3 +1,4 @@
+#![warn(missing_docs)]
 //! Input event types and state tracking for webgpui.
 
 use std::collections::{HashMap, HashSet};
@@ -8,11 +9,16 @@ use webgpui_geometry::Point;
 // MouseButton
 // ---------------------------------------------------------------------------
 
+/// A mouse button identifier.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MouseButton {
+    /// Left mouse button.
     Left,
+    /// Right mouse button.
     Right,
+    /// Middle mouse button (scroll wheel click).
     Middle,
+    /// Any other mouse button identified by its platform index.
     Other(u16),
 }
 
@@ -24,76 +30,143 @@ pub enum MouseButton {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum KeyCode {
     // Printable characters / typing
+    /// The `A` key.
     A,
+    /// The `B` key.
     B,
+    /// The `C` key.
     C,
+    /// The `D` key.
     D,
+    /// The `E` key.
     E,
+    /// The `F` key.
     F,
+    /// The `G` key.
     G,
+    /// The `H` key.
     H,
+    /// The `I` key.
     I,
+    /// The `J` key.
     J,
+    /// The `K` key.
     K,
+    /// The `L` key.
     L,
+    /// The `M` key.
     M,
+    /// The `N` key.
     N,
+    /// The `O` key.
     O,
+    /// The `P` key.
     P,
+    /// The `Q` key.
     Q,
+    /// The `R` key.
     R,
+    /// The `S` key.
     S,
+    /// The `T` key.
     T,
+    /// The `U` key.
     U,
+    /// The `V` key.
     V,
+    /// The `W` key.
     W,
+    /// The `X` key.
     X,
+    /// The `Y` key.
     Y,
+    /// The `Z` key.
     Z,
+    /// The `0` digit key.
     Digit0,
+    /// The `1` digit key.
     Digit1,
+    /// The `2` digit key.
     Digit2,
+    /// The `3` digit key.
     Digit3,
+    /// The `4` digit key.
     Digit4,
+    /// The `5` digit key.
     Digit5,
+    /// The `6` digit key.
     Digit6,
+    /// The `7` digit key.
     Digit7,
+    /// The `8` digit key.
     Digit8,
+    /// The `9` digit key.
     Digit9,
+    /// The Space bar.
     Space,
+    /// The Enter / Return key.
     Enter,
+    /// The Tab key.
     Tab,
+    /// The Backspace key.
     Backspace,
+    /// The Escape key.
     Escape,
+    /// The Delete (forward-delete) key.
     Delete,
     // Navigation
+    /// The left arrow key.
     ArrowLeft,
+    /// The right arrow key.
     ArrowRight,
+    /// The up arrow key.
     ArrowUp,
+    /// The down arrow key.
     ArrowDown,
+    /// The Home key.
     Home,
+    /// The End key.
     End,
+    /// The Page Up key.
     PageUp,
+    /// The Page Down key.
     PageDown,
     // Modifiers
+    /// The Shift key.
     Shift,
+    /// The Control key.
     Control,
+    /// The Alt / Option key.
     Alt,
+    /// The Meta / Command / Windows key.
     Meta,
     // Function
+    /// The F1 function key.
     F1,
+    /// The F2 function key.
     F2,
+    /// The F3 function key.
     F3,
+    /// The F4 function key.
     F4,
+    /// The F5 function key.
     F5,
+    /// The F6 function key.
     F6,
+    /// The F7 function key.
     F7,
+    /// The F8 function key.
     F8,
+    /// The F9 function key.
     F9,
+    /// The F10 function key.
     F10,
+    /// The F11 function key.
     F11,
+    /// The F12 function key.
     F12,
     // Misc
+    /// A key that could not be mapped to any known variant.
     Unknown,
 }
 
@@ -104,13 +177,18 @@ pub enum KeyCode {
 /// Keyboard modifier state at the time of an event.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Modifiers {
+    /// Whether the Shift key is held.
     pub shift: bool,
+    /// Whether the Control key is held.
     pub ctrl: bool,
+    /// Whether the Alt / Option key is held.
     pub alt: bool,
+    /// Whether the Meta / Command / Windows key is held.
     pub meta: bool,
 }
 
 impl Modifiers {
+    /// Returns a `Modifiers` value with no modifier keys held.
     pub fn none() -> Self {
         Self::default()
     }
@@ -124,32 +202,58 @@ impl Modifiers {
 #[derive(Debug, Clone, PartialEq)]
 pub enum InputEvent {
     /// The cursor moved to `position` (in logical pixels).
-    MouseMoved { position: Point },
+    MouseMoved {
+        /// New cursor position in logical pixels.
+        position: Point,
+    },
     /// A mouse button was pressed.
     MousePressed {
+        /// The button that was pressed.
         button: MouseButton,
+        /// Cursor position at the time of the press.
         position: Point,
+        /// Modifier keys held at the time of the press.
         modifiers: Modifiers,
     },
     /// A mouse button was released.
     MouseReleased {
+        /// The button that was released.
         button: MouseButton,
+        /// Cursor position at the time of the release.
         position: Point,
+        /// Modifier keys held at the time of the release.
         modifiers: Modifiers,
     },
     /// The scroll wheel was moved.  Positive `delta_y` is scroll down.
     MouseScrolled {
+        /// Cursor position at the time of the scroll.
         position: Point,
+        /// Horizontal scroll delta in logical pixels.
         delta_x: f32,
+        /// Vertical scroll delta in logical pixels (positive = down).
         delta_y: f32,
+        /// Modifier keys held at the time of the scroll.
         modifiers: Modifiers,
     },
     /// A keyboard key was pressed.
-    KeyPressed { key: KeyCode, modifiers: Modifiers },
+    KeyPressed {
+        /// The key that was pressed.
+        key: KeyCode,
+        /// Modifier keys held at the time of the press.
+        modifiers: Modifiers,
+    },
     /// A keyboard key was released.
-    KeyReleased { key: KeyCode, modifiers: Modifiers },
+    KeyReleased {
+        /// The key that was released.
+        key: KeyCode,
+        /// Modifier keys held at the time of the release.
+        modifiers: Modifiers,
+    },
     /// A Unicode character was typed.
-    CharInput { ch: char },
+    CharInput {
+        /// The character that was typed.
+        ch: char,
+    },
 }
 
 // ---------------------------------------------------------------------------
@@ -172,6 +276,17 @@ pub struct InputState {
 }
 
 impl InputState {
+    /// Creates a new `InputState` with all fields at their default (empty) values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use webgpui_input::InputState;
+    ///
+    /// let state = InputState::new();
+    /// assert!(state.pressed_buttons.is_empty());
+    /// assert!(state.pressed_keys.is_empty());
+    /// ```
     pub fn new() -> Self {
         Self::default()
     }
@@ -220,10 +335,12 @@ impl InputState {
         }
     }
 
+    /// Returns `true` if the given mouse `button` is currently held down.
     pub fn is_button_pressed(&self, button: MouseButton) -> bool {
         self.pressed_buttons.contains(&button)
     }
 
+    /// Returns `true` if the given keyboard `key` is currently held down.
     pub fn is_key_pressed(&self, key: KeyCode) -> bool {
         self.pressed_keys.contains(&key)
     }
@@ -241,8 +358,11 @@ impl InputState {
 /// 3. **Bubble** – travels from the target back up toward the root.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EventPhase {
+    /// Event is traveling from the root down toward the target.
     Capture,
+    /// Event has reached its target node.
     Target,
+    /// Event is traveling from the target back up toward the root.
     Bubble,
 }
 
@@ -313,6 +433,17 @@ pub struct FocusManager {
 }
 
 impl FocusManager {
+    /// Creates a new `FocusManager` with no focused node and an empty focusable list.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use webgpui_input::FocusManager;
+    ///
+    /// let fm = FocusManager::new();
+    /// assert!(fm.focused().is_none());
+    /// assert!(fm.focusable_order().is_empty());
+    /// ```
     pub fn new() -> Self {
         Self::default()
     }

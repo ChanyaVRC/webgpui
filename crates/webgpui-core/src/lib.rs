@@ -1,3 +1,4 @@
+#![warn(missing_docs)]
 //! UI node tree for webgpui.
 //!
 //! The tree is an arena-backed hierarchy of [`Node`]s.  Each node carries a
@@ -46,12 +47,18 @@ pub fn focus_ring_color() -> Color {
 /// inspecting visual properties.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum NodeRole {
+    /// No specific role.
     #[default]
     None,
+    /// Interactive button.
     Button,
+    /// Single-line or multi-line text input.
     TextBox,
+    /// A tab within a tab bar.
     Tab,
+    /// Modal dialog container.
     Dialog,
+    /// Dropdown or context menu container.
     Menu,
 }
 
@@ -64,6 +71,7 @@ pub enum NodeRole {
 pub struct NodeId(pub u64);
 
 impl NodeId {
+    /// The root node, always present in every [`NodeTree`].
     pub const ROOT: Self = Self(0);
     const TOMBSTONE: Self = Self(u64::MAX);
 }
@@ -78,11 +86,15 @@ impl std::fmt::Display for NodeId {
 // NodeKind
 // ---------------------------------------------------------------------------
 
+/// The structural type of a node — drives layout and rendering treatment.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum NodeKind {
+    /// A generic layout container (default).
     #[default]
     Container,
+    /// A leaf node that renders a text string.
     Text,
+    /// A leaf node that renders a raster image.
     Image,
 }
 
@@ -133,10 +145,15 @@ impl Default for NodeStyle {
 // Node
 // ---------------------------------------------------------------------------
 
+/// A single node in the [`NodeTree`] arena.
 pub struct Node {
+    /// Stable unique identifier.
     pub id: NodeId,
+    /// Structural type (container, text, image).
     pub kind: NodeKind,
+    /// Visual style properties.
     pub style: NodeStyle,
+    /// Layout constraints and positioning.
     pub layout: LayoutStyle,
     /// Accessibility role.
     pub role: NodeRole,
@@ -207,6 +224,7 @@ impl NodeTree {
     // Accessors
     // ------------------------------------------------------------------
 
+    /// Returns the number of live (non-removed) nodes in the tree.
     pub fn len(&self) -> usize {
         self.live_count
     }
@@ -219,11 +237,13 @@ impl NodeTree {
         self.nodes.is_empty()
     }
 
+    /// Returns a shared reference to the node with `id`, or `None` if not found.
     pub fn get(&self, id: NodeId) -> Option<&Node> {
         let idx = self.id_to_index.get(&id)?;
         self.nodes.get(*idx)
     }
 
+    /// Returns an exclusive reference to the node with `id`, or `None` if not found.
     pub fn get_mut(&mut self, id: NodeId) -> Option<&mut Node> {
         let idx = *self.id_to_index.get(&id)?;
         self.nodes.get_mut(idx)
@@ -468,6 +488,7 @@ pub struct DirtyTracker {
 }
 
 impl DirtyTracker {
+    /// Creates an empty tracker with no dirty regions.
     pub fn new() -> Self {
         Self::default()
     }
