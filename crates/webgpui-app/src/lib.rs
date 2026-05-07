@@ -397,12 +397,9 @@ impl App {
         }
 
         let mut renderer = WgpuRenderer::new(ctx);
-        renderer.render_graph_mut().set_clear_color(ClearColor::new(
-            bg.r as f64,
-            bg.g as f64,
-            bg.b as f64,
-            bg.a as f64,
-        ));
+        renderer
+            .render_graph_mut()
+            .set_clear_color(ClearColor::new(bg.r, bg.g, bg.b, bg.a));
 
         // Side renderer for non-wgpu backends (CPU, CUDA placeholder).
         let mut side_renderer: Option<Box<dyn Renderer>> = create_side_renderer(
