@@ -422,7 +422,7 @@ impl NodeTree {
 
     /// Compacts the backing arena by removing tombstone slots.
     ///
-    /// After many [`remove_node`] calls the arena grows monotonically.
+    /// After many [`NodeTree::remove_node`] calls the arena grows monotonically.
     /// Call this method to reclaim memory. All live `NodeId`s remain valid;
     /// only internal arena indices change (they are not part of the public API).
     pub fn compact(&mut self) {
