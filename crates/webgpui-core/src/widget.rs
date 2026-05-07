@@ -577,6 +577,7 @@ pub struct TabBar {
 }
 
 impl TabBar {
+    /// Creates a tab bar from an iterable of labels; the first tab is selected by default.
     pub fn new(tabs: impl IntoIterator<Item = impl Into<String>>) -> Self {
         Self {
             tabs: tabs.into_iter().map(|t| t.into()).collect(),
@@ -584,6 +585,7 @@ impl TabBar {
         }
     }
 
+    /// Returns the index of the currently selected tab.
     pub fn selected(&self) -> usize {
         self.selected
     }
@@ -601,10 +603,12 @@ impl TabBar {
         self.tabs.get(index).map(|s| s.as_str())
     }
 
+    /// Returns the number of tabs.
     pub fn len(&self) -> usize {
         self.tabs.len()
     }
 
+    /// Returns `true` when the tab bar has no tabs.
     pub fn is_empty(&self) -> bool {
         self.tabs.is_empty()
     }
@@ -648,6 +652,7 @@ impl TabBar {
         }
     }
 
+    /// Returns the accessibility role for this widget type.
     pub fn role() -> NodeRole {
         NodeRole::Tab
     }
@@ -668,6 +673,7 @@ pub struct Dialog {
 }
 
 impl Dialog {
+    /// Creates a closed dialog with the given number of focusable children.
     pub fn new(focusable_count: usize) -> Self {
         Self {
             open: false,
@@ -676,19 +682,23 @@ impl Dialog {
         }
     }
 
+    /// Opens the dialog and resets focus to the first child.
     pub fn open(&mut self) {
         self.open = true;
         self.focused_index = 0;
     }
 
+    /// Closes the dialog.
     pub fn close(&mut self) {
         self.open = false;
     }
 
+    /// Returns `true` when the dialog is visible.
     pub fn is_open(&self) -> bool {
         self.open
     }
 
+    /// Returns the index of the currently focused child within the dialog.
     pub fn focused_index(&self) -> usize {
         self.focused_index
     }
@@ -740,6 +750,7 @@ impl Dialog {
         }
     }
 
+    /// Returns the accessibility role for this widget type.
     pub fn role() -> NodeRole {
         NodeRole::Dialog
     }
@@ -761,6 +772,7 @@ pub struct ContextMenu {
 }
 
 impl ContextMenu {
+    /// Creates a closed context menu from an iterable of item labels.
     pub fn new(items: impl IntoIterator<Item = impl Into<String>>) -> Self {
         Self {
             open: false,
@@ -770,25 +782,30 @@ impl ContextMenu {
         }
     }
 
+    /// Opens the menu anchored at `(x, y)` in logical pixels; clears item selection.
     pub fn open_at(&mut self, x: f32, y: f32) {
         self.open = true;
         self.anchor = (x, y);
         self.selected_item = None;
     }
 
+    /// Closes the menu and clears item selection.
     pub fn close(&mut self) {
         self.open = false;
         self.selected_item = None;
     }
 
+    /// Returns `true` when the menu is visible.
     pub fn is_open(&self) -> bool {
         self.open
     }
 
+    /// Returns the `(x, y)` position the menu is anchored to.
     pub fn anchor(&self) -> (f32, f32) {
         self.anchor
     }
 
+    /// Returns the list of item labels.
     pub fn items(&self) -> &[String] {
         &self.items
     }
@@ -853,6 +870,7 @@ impl ContextMenu {
         }
     }
 
+    /// Returns the accessibility role for this widget type.
     pub fn role() -> NodeRole {
         NodeRole::Menu
     }
