@@ -43,4 +43,4 @@ Every public-facing change must be recorded in `CHANGELOG.md` under the
 appropriate heading (`Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`,
 `Security`) following the [Keep a Changelog](https://keepachangelog.com) format.
 
-See also: [docs/contributing.md](contributing.md)
+See also: [docs/contributing.md](../getting-started/contributing.md)

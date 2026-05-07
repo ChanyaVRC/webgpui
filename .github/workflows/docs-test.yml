@@ -40,7 +40,7 @@ jobs:
               echo "NOT IN NAV: $rel"
               missing=$((missing + 1))
             fi
-          done < <(find docs -maxdepth 1 -name "*.md" -print0)
+          done < <(find docs -maxdepth 3 -name "*.md" -not -path "*/ja/*" -print0)
           if [ "$missing" -gt 0 ]; then
             echo "::error::$missing file(s) in docs/ are not registered in mkdocs.yml nav"
             exit 1

@@ -231,7 +231,7 @@ CUDA と wgpu の出力は、同じ入力シーンに対して**ピクセル単�
 - イベントシーケンスは同一である必要があります
 - パフォーマンスは個別に測定（ワークロードによって CUDA の方が速い場合と遅い場合がある）
 
-詳細は [API Swapping Quality Plan](api-swapping-quality-plan.md) の等価性テストを参照してください。
+詳細は [API Swapping Quality Plan](../rendering/api-swapping-quality-plan.md) の等価性テストを参照してください。
 
 ## トラブルシューティング
 
@@ -280,7 +280,7 @@ diff wgpu-metrics.txt cuda-metrics.txt
 ```
 
 ### メトリクス比較
-予想 される出力形式（[CI Metrics Format](metrics-format.md) で定義):
+予想 される出力形式（[CI Metrics Format](../quality/metrics-format.md) で定義):
 ```
 p0-metrics:
   avg_ms: 14.2
@@ -294,9 +294,9 @@ p0-metrics:
 - ビジュアル出力は pixel-identical である必要（浮動小数点数学の丸め誤差以内）
 
 ## ドキュメント参照
-- [Requirements](requirements.md) - CUDA がベーステクノロジーとしてリストされています
-- [Workspace Architecture](workspace-architecture.md) - `webgpui-render-cuda` クレート設計
-- [API Swapping Quality Plan](api-swapping-quality-plan.md) - 等価性テスト戦略
+- [Requirements](../architecture/requirements.md) - CUDA がベーステクノロジーとしてリストされています
+- [Workspace Architecture](../architecture/workspace-architecture.md) - `webgpui-render-cuda` クレート設計
+- [API Swapping Quality Plan](../rendering/api-swapping-quality-plan.md) - 等価性テスト戦略
 - [CUDA Toolkit Docs](https://docs.nvidia.com/cuda/) - NVIDIA 公式ドキュメント
 - [cudarc Crate Docs](https://docs.rs/cudarc/) - セーフな CUDA Rust バインディング
 

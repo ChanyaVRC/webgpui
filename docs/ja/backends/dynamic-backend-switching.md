@@ -365,5 +365,5 @@ env:
 
 ## 参考資料
 - [CUDA バックエンド対応](cuda-backend.md) - 完全な CUDA セットアップおよび設定ガイド
-- [ワークスペース構成案](workspace-architecture.md) - フィーチャーフラグポリシーの詳細
-- [要件定義](requirements.md) - アーキテクチャ決定の根拠
+- [ワークスペース構成案](../architecture/workspace-architecture.md) - フィーチャーフラグポリシーの詳細
+- [要件定義](../architecture/requirements.md) - アーキテクチャ決定の根拠
