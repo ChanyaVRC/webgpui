@@ -71,6 +71,7 @@ pub struct Button {
 }
 
 impl Button {
+    /// Creates a button with the given label in the [`WidgetState::Normal`] state.
     pub fn new(label: impl Into<String>) -> Self {
         Self {
             state: WidgetState::Normal,
@@ -79,9 +80,11 @@ impl Button {
         }
     }
 
+    /// Returns the button's label text.
     pub fn label(&self) -> &str {
         &self.label
     }
+    /// Returns the current interaction state.
     pub fn state(&self) -> WidgetState {
         self.state
     }
@@ -137,6 +140,7 @@ impl Button {
         self.state = WidgetState::Pressed;
     }
 
+    /// Returns the accessibility role for this widget type.
     pub fn role() -> NodeRole {
         NodeRole::Button
     }
@@ -177,6 +181,7 @@ pub struct TextInput {
 }
 
 impl TextInput {
+    /// Creates an empty text input in the [`WidgetState::Normal`] state.
     pub fn new() -> Self {
         Self {
             state: WidgetState::Normal,
@@ -188,17 +193,21 @@ impl TextInput {
         }
     }
 
+    /// Sets the placeholder text shown when the value is empty.
     pub fn with_placeholder(mut self, placeholder: impl Into<String>) -> Self {
         self.placeholder = placeholder.into();
         self
     }
 
+    /// Returns the current interaction state.
     pub fn state(&self) -> WidgetState {
         self.state
     }
+    /// Returns the cursor position as a char index in `[0, chars_count()]`.
     pub fn cursor(&self) -> usize {
         self.cursor
     }
+    /// Returns the placeholder text.
     pub fn placeholder(&self) -> &str {
         &self.placeholder
     }
@@ -320,6 +329,7 @@ impl TextInput {
         };
     }
 
+    /// Returns the accessibility role for this widget type.
     pub fn role() -> NodeRole {
         NodeRole::TextBox
     }
