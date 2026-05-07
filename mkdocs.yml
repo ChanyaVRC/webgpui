@@ -47,36 +47,6 @@ nav:
   - Reference:
       - Documentation Map: documentation-map.md
       - GitHub Pages Guide: github-pages.md
-  - 日本語:
-      - はじめに:
-          - ホーム: ja/index.md
-          - 設計思想: ja/design-philosophy.md
-          - 開発ガイド: ja/contributing.md
-          - 用語集: ja/glossary.md
-      - アーキテクチャ:
-          - 要件サマリー: ja/requirements-summary.md
-          - 要件定義（詳細）: ja/requirements.md
-          - 構成案（crate分割）: ja/workspace-architecture.md
-          - クレート依存関係マップ: ja/crate-dependencies.md
-          - アーキテクチャ意思決定ログ方針: ja/architecture-decisions.md
-          - セマンティックバージョニングポリシー: ja/semver-policy.md
-          - ロードマップ: ja/roadmap.md
-      - レンダリング & パフォーマンス:
-          - レンダリング高速化計画: ja/rendering-performance-plan.md
-          - 代替戦略: ja/replacement-strategy.md
-          - APIマッピング: ja/api-mapping.md
-          - APIスワップ品質保証: ja/api-swapping-quality-plan.md
-      - バックエンド:
-          - CUDAバックエンド対応: ja/cuda-backend.md
-          - GPU バックエンド動的切り替え: ja/dynamic-backend-switching.md
-      - CI & 品質:
-          - CIゲート運用: ja/ci-gates.md
-          - メトリクス仕様: ja/metrics-format.md
-          - M4 移行妥当性メトリクス: ja/m4-metrics.md
-          - docs追加検討結果: ja/docs-coverage-review.md
-      - リファレンス:
-          - ドキュメントマップ: ja/documentation-map.md
-          - GitHub Pages 公開手順: ja/github-pages.md
 
 markdown_extensions:
   - tables
@@ -85,3 +55,9 @@ markdown_extensions:
 
 plugins:
   - search
+  - i18n:
+      default_language: en
+      default_language_only: false
+      languages:
+        en: English
+        ja: 日本語
