@@ -48,9 +48,6 @@ nav:
       - Documentation Map: documentation-map.md
       - GitHub Pages Guide: github-pages.md
 
-not_in_nav: |
-  ja/*.md
-
 markdown_extensions:
   - tables
   - toc:
@@ -58,3 +55,43 @@ markdown_extensions:
 
 plugins:
   - search
+  - i18n:
+      docs_structure: folder
+      languages:
+        - locale: en
+          default: true
+          name: English
+          build: true
+        - locale: ja
+          name: 日本語
+          build: true
+          nav_translations:
+            Getting Started: はじめに
+            Home: ホーム
+            Design Philosophy: 設計思想
+            Contributing Guide: 開発ガイド
+            Glossary: 用語集
+            Architecture: アーキテクチャ
+            Requirements Summary: 要件サマリー
+            Detailed Requirements: 要件定義（詳細）
+            Workspace Architecture: 構成案（crate分割）
+            Crate Dependencies: クレート依存関係マップ
+            Architecture Decision Policy: アーキテクチャ意思決定ログ方針
+            Semver Policy: セマンティックバージョニングポリシー
+            Roadmap: ロードマップ
+            Rendering & Performance: レンダリング & パフォーマンス
+            Rendering Performance Plan: レンダリング高速化計画
+            Replacement Strategy: 代替戦略
+            API Mapping: APIマッピング
+            API Swapping Quality Plan: APIスワップ品質保証
+            Backends: バックエンド
+            CUDA Backend Support: CUDAバックエンド対応
+            Dynamic Backend Switching: GPU バックエンド動的切り替え
+            CI & Quality: CI & 品質
+            CI Gates Guide: CIゲート運用
+            Metrics Format: メトリクス仕様
+            M4 Migration Metrics: M4 移行妥当性メトリクス
+            Docs Coverage Review: docs追加検討結果
+            Reference: リファレンス
+            Documentation Map: ドキュメントマップ
+            GitHub Pages Guide: GitHub Pages 公開手順
