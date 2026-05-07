@@ -418,17 +418,26 @@ impl WgpuRenderer {
             label: Some("image-shader"),
             source: wgpu::ShaderSource::Wgsl(IMAGE_SHADER_SRC.into()),
         });
-        let image_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("image-pipeline-layout"),
-            bind_group_layouts: &[&globals_bgl, &image_bgl],
-            push_constant_ranges: &[],
-        });
+        let image_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("image-pipeline-layout"),
+                bind_group_layouts: &[&globals_bgl, &image_bgl],
+                push_constant_ranges: &[],
+            });
         let image_vbl = wgpu::VertexBufferLayout {
             array_stride: std::mem::size_of::<ImageVertex>() as u64,
             step_mode: wgpu::VertexStepMode::Vertex,
             attributes: &[
-                wgpu::VertexAttribute { offset: 0, shader_location: 0, format: wgpu::VertexFormat::Float32x2 },
-                wgpu::VertexAttribute { offset: 8, shader_location: 1, format: wgpu::VertexFormat::Float32x2 },
+                wgpu::VertexAttribute {
+                    offset: 0,
+                    shader_location: 0,
+                    format: wgpu::VertexFormat::Float32x2,
+                },
+                wgpu::VertexAttribute {
+                    offset: 8,
+                    shader_location: 1,
+                    format: wgpu::VertexFormat::Float32x2,
+                },
             ],
         };
         let image_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -518,7 +527,11 @@ impl WgpuRenderer {
             }
             let texture = self.ctx.device.create_texture(&wgpu::TextureDescriptor {
                 label: Some("image-tex"),
-                size: wgpu::Extent3d { width: img.width, height: img.height, depth_or_array_layers: 1 },
+                size: wgpu::Extent3d {
+                    width: img.width,
+                    height: img.height,
+                    depth_or_array_layers: 1,
+                },
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
@@ -527,22 +540,55 @@ impl WgpuRenderer {
                 view_formats: &[],
             });
             self.ctx.queue.write_texture(
-                wgpu::ImageCopyTexture { texture: &texture, mip_level: 0, origin: wgpu::Origin3d::ZERO, aspect: wgpu::TextureAspect::All },
+                wgpu::ImageCopyTexture {
+                    texture: &texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                },
                 &img.pixels,
-                wgpu::ImageDataLayout { offset: 0, bytes_per_row: Some(4 * img.width), rows_per_image: Some(img.height) },
-                wgpu::Extent3d { width: img.width, height: img.height, depth_or_array_layers: 1 },
+                wgpu::ImageDataLayout {
+                    offset: 0,
+                    bytes_per_row: Some(4 * img.width),
+                    rows_per_image: Some(img.height),
+                },
+                wgpu::Extent3d {
+                    width: img.width,
+                    height: img.height,
+                    depth_or_array_layers: 1,
+                },
             );
             let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-            let bind_group = self.ctx.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("image-bg"),
-                layout: &self.image_bgl,
-                entries: &[
-                    wgpu::BindGroupEntry { binding: 0, resource: wgpu::BindingResource::TextureView(&view) },
-                    wgpu::BindGroupEntry { binding: 1, resource: wgpu::BindingResource::Sampler(&self.image_sampler) },
-                ],
-            });
-            self.texture_cache.insert(img.id, TextureEntry { texture, bind_group });
-            log::debug!("[wgpu] uploaded image id={} ({}x{})", img.id, img.width, img.height);
+            let bind_group = self
+                .ctx
+                .device
+                .create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("image-bg"),
+                    layout: &self.image_bgl,
+                    entries: &[
+                        wgpu::BindGroupEntry {
+                            binding: 0,
+                            resource: wgpu::BindingResource::TextureView(&view),
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 1,
+                            resource: wgpu::BindingResource::Sampler(&self.image_sampler),
+                        },
+                    ],
+                });
+            self.texture_cache.insert(
+                img.id,
+                TextureEntry {
+                    texture,
+                    bind_group,
+                },
+            );
+            log::debug!(
+                "[wgpu] uploaded image id={} ({}x{})",
+                img.id,
+                img.width,
+                img.height
+            );
         }
     }
 
@@ -634,13 +680,32 @@ impl WgpuRenderer {
             let base = self.image_staging_verts.len() as u32;
             let (x0, y0, x1, y1) = (rect.min_x(), rect.min_y(), rect.max_x(), rect.max_y());
             self.image_staging_verts.extend_from_slice(&[
-                ImageVertex { position: [x0, y0], uv: [0.0, 0.0] },
-                ImageVertex { position: [x1, y0], uv: [1.0, 0.0] },
-                ImageVertex { position: [x1, y1], uv: [1.0, 1.0] },
-                ImageVertex { position: [x0, y1], uv: [0.0, 1.0] },
+                ImageVertex {
+                    position: [x0, y0],
+                    uv: [0.0, 0.0],
+                },
+                ImageVertex {
+                    position: [x1, y0],
+                    uv: [1.0, 0.0],
+                },
+                ImageVertex {
+                    position: [x1, y1],
+                    uv: [1.0, 1.0],
+                },
+                ImageVertex {
+                    position: [x0, y1],
+                    uv: [0.0, 1.0],
+                },
             ]);
             let i_start = self.image_staging_idx.len() as u32;
-            self.image_staging_idx.extend_from_slice(&[base, base + 1, base + 2, base + 2, base + 3, base]);
+            self.image_staging_idx.extend_from_slice(&[
+                base,
+                base + 1,
+                base + 2,
+                base + 2,
+                base + 3,
+                base,
+            ]);
             let i_end = self.image_staging_idx.len() as u32;
             ranges.push((*image_id, i_start, i_end));
         }
@@ -656,16 +721,23 @@ impl WgpuRenderer {
         self.ensure_image_index_buffer(ilen);
         // Upload to GPU buffers — casts happen after ensure calls have returned.
         let vbytes = bytemuck::cast_slice::<ImageVertex, u8>(&self.image_staging_verts);
-        self.ctx.queue.write_buffer(&self.image_vertex_buffer, 0, vbytes);
+        self.ctx
+            .queue
+            .write_buffer(&self.image_vertex_buffer, 0, vbytes);
         let ibytes = bytemuck::cast_slice::<u32, u8>(&self.image_staging_idx);
-        self.ctx.queue.write_buffer(&self.image_index_buffer, 0, ibytes);
+        self.ctx
+            .queue
+            .write_buffer(&self.image_index_buffer, 0, ibytes);
 
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("image-pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view,
                 resolve_target: None,
-                ops: wgpu::Operations { load: wgpu::LoadOp::Load, store: wgpu::StoreOp::Store },
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
             })],
             depth_stencil_attachment: None,
             timestamp_writes: None,

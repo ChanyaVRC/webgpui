@@ -158,7 +158,11 @@ pub struct ImageRegistry {
 
 impl ImageRegistry {
     fn new() -> Self {
-        Self { next_id: 0, loaded: std::collections::HashMap::new(), pending: Vec::new() }
+        Self {
+            next_id: 0,
+            loaded: std::collections::HashMap::new(),
+            pending: Vec::new(),
+        }
     }
 
     /// Loads a PNG or JPEG image from `path` and returns a reusable [`ImageHandle`].
@@ -176,7 +180,12 @@ impl ImageRegistry {
         let (w, h) = img.dimensions();
         let id = self.next_id;
         self.next_id += 1;
-        self.pending.push(PendingImage { id, pixels: img.into_raw(), width: w, height: h });
+        self.pending.push(PendingImage {
+            id,
+            pixels: img.into_raw(),
+            width: w,
+            height: h,
+        });
         let handle = ImageHandle(id);
         self.loaded.insert(key, handle);
         Ok(handle)
