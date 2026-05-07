@@ -3,5 +3,7 @@ CheckInternal: true
 CheckMailto: false
 CheckTel: false
 DirectoryPath: site/
+IgnoreDirectoryMissingTrailingSlash: true
 IgnoreURLs:
   - "^#"
+  - "^/webgpui"
