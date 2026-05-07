@@ -6,4 +6,5 @@ DirectoryPath: site/
 IgnoreDirectoryMissingTrailingSlash: true
 IgnoreURLs:
   - "^#"
+  - "^/webgpui/api"
   - "^/webgpui"
