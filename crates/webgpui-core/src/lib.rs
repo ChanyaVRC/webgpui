@@ -521,12 +521,17 @@ impl DirtyTracker {
         self.rects.iter().any(|r| r.intersect(query).is_some())
     }
 
-    /// Returns the effective redraw area given the `viewport` size.
-    pub fn effective_area(&self, viewport: Size) -> Rect {
+    /// Returns the effective redraw area given the `viewport` size, or `None`
+    /// if nothing is dirty.
+    ///
+    /// Returns `Some(full_viewport)` when a full-screen redraw was requested,
+    /// `Some(union)` when individual rects were marked, and `None` when the
+    /// tracker is clean.
+    pub fn effective_area(&self, viewport: Size) -> Option<Rect> {
         if self.full_invalidate {
-            Rect::from_origin_size(webgpui_geometry::Point::ZERO, viewport)
+            Some(Rect::from_origin_size(webgpui_geometry::Point::ZERO, viewport))
         } else {
-            self.dirty_union().unwrap_or(Rect::ZERO)
+            self.dirty_union()
         }
     }
 }
@@ -632,7 +637,7 @@ mod tests {
         );
         assert_eq!(
             tracker.effective_area(Size::new(1280.0, 720.0)),
-            viewport,
+            Some(viewport),
             "effective_area must cover the entire viewport"
         );
     }
