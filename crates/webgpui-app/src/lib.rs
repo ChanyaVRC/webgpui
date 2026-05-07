@@ -1,3 +1,4 @@
+#![warn(missing_docs)]
 //! Top-level application integration crate for webgpui.
 //!
 //! Provides a simple, ergonomic API for building GPU-rendered UI applications:
@@ -93,18 +94,24 @@ impl BackendSwitcher {
 // Errors
 // ---------------------------------------------------------------------------
 
+/// Errors that can occur while building or running an application.
 #[derive(Debug, Error)]
 pub enum AppError {
+    /// The OS event loop failed to start or dispatch.
     #[error("event loop error: {0}")]
     EventLoop(String),
+    /// The platform window could not be created.
     #[error("window creation failed: {0}")]
     WindowCreation(String),
+    /// The GPU renderer failed to initialise.
     #[error("renderer initialisation failed: {0}")]
     RendererInit(String),
+    /// A per-frame render error from the backend.
     #[error("render error: {0}")]
     Render(#[from] RenderError),
 }
 
+/// Convenience alias for `Result<T, AppError>`.
 pub type AppResult<T> = Result<T, AppError>;
 
 // ---------------------------------------------------------------------------
@@ -188,16 +195,22 @@ impl<'a> DrawContext<'a> {
 /// Configuration for the application window and renderer.
 #[derive(Debug, Clone)]
 pub struct AppConfig {
+    /// Window title shown in the OS title bar.
     pub title: String,
+    /// Initial window width in logical pixels.
     pub width: u32,
+    /// Initial window height in logical pixels.
     pub height: u32,
+    /// Whether the user can resize the window.
     pub resizable: bool,
+    /// Enable GPU present-mode vsync.
     pub vsync: bool,
     /// Optional application-level frame cap.
     ///
     /// * `Some(n)`: cap redraw scheduling to `n` FPS.
     /// * `None`: no app-side cap (redraw as often as possible).
     pub target_fps: Option<u32>,
+    /// Default background clear colour.
     pub background: Color,
     /// Optional backend switcher for runtime backend switching.
     pub backend_switcher: Option<BackendSwitcher>,
@@ -229,26 +242,31 @@ pub struct AppBuilder {
 }
 
 impl AppBuilder {
+    /// Creates a builder with default configuration.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Sets the window title.
     pub fn title(mut self, title: impl Into<String>) -> Self {
         self.config.title = title.into();
         self
     }
 
+    /// Sets the initial window size in logical pixels.
     pub fn size(mut self, width: u32, height: u32) -> Self {
         self.config.width = width;
         self.config.height = height;
         self
     }
 
+    /// Controls whether the window can be resized by the user.
     pub fn resizable(mut self, resizable: bool) -> Self {
         self.config.resizable = resizable;
         self
     }
 
+    /// Enables or disables GPU present-mode vsync.
     pub fn vsync(mut self, vsync: bool) -> Self {
         self.config.vsync = vsync;
         self
@@ -263,6 +281,7 @@ impl AppBuilder {
         self
     }
 
+    /// Sets the default background clear colour.
     pub fn background(mut self, color: Color) -> Self {
         self.config.background = color;
         self
@@ -274,6 +293,7 @@ impl AppBuilder {
         self
     }
 
+    /// Consumes the builder and returns a configured [`App`].
     pub fn build(self) -> App {
         App {
             config: self.config,
