@@ -107,7 +107,7 @@ impl FrameTimer {
             return Some(cached);
         }
         let mut sorted: Vec<f64> = self.samples.iter().copied().collect();
-        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        sorted.sort_by(|a, b| a.total_cmp(b));
         let n = sorted.len();
         let avg_ms = sorted.iter().sum::<f64>() / n as f64;
         let p95_idx = ((n as f64 * 0.95) as usize).min(n - 1);

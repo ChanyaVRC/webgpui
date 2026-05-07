@@ -35,14 +35,7 @@ impl LayoutNode {
 
 impl Default for LayoutNode {
     fn default() -> Self {
-        Self {
-            id: 0,
-            style: LayoutStyle::default(),
-            children: Vec::new(),
-            text: String::new(),
-            font_size: 14.0,
-            layer: 0,
-        }
+        Self::new(0, LayoutStyle::default())
     }
 }
 
