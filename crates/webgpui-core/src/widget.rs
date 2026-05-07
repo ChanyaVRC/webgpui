@@ -7,11 +7,16 @@ use crate::NodeRole;
 /// Interaction state shared by all interactive widgets.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum WidgetState {
+    /// Default resting state; no interaction is active.
     #[default]
     Normal,
+    /// The pointer is positioned over the widget.
     Hover,
+    /// The widget is being pressed (mouse-down or key-down while focused).
     Pressed,
+    /// The widget holds keyboard focus.
     Focused,
+    /// Input is suppressed; the widget does not respond to events.
     Disabled,
 }
 
@@ -22,9 +27,12 @@ pub enum WidgetState {
 /// Horizontal alignment for text within a [`Label`] or [`TextInput`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum TextAlign {
+    /// Aligns text to the leading edge (left in LTR locales).
     #[default]
     Start,
+    /// Centers text within the available width.
     Center,
+    /// Aligns text to the trailing edge (right in LTR locales).
     End,
 }
 
@@ -35,9 +43,13 @@ pub enum TextAlign {
 /// Logical cursor movement within a [`TextInput`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CursorMove {
+    /// Move one character to the left.
     Left,
+    /// Move one character to the right.
     Right,
+    /// Jump to the start of the text.
     Home,
+    /// Jump to the end of the text.
     End,
 }
 
@@ -59,6 +71,7 @@ pub struct Button {
 }
 
 impl Button {
+    /// Creates a button with the given label in the [`WidgetState::Normal`] state.
     pub fn new(label: impl Into<String>) -> Self {
         Self {
             state: WidgetState::Normal,
@@ -67,9 +80,11 @@ impl Button {
         }
     }
 
+    /// Returns the button's label text.
     pub fn label(&self) -> &str {
         &self.label
     }
+    /// Returns the current interaction state.
     pub fn state(&self) -> WidgetState {
         self.state
     }
@@ -125,6 +140,7 @@ impl Button {
         self.state = WidgetState::Pressed;
     }
 
+    /// Returns the accessibility role for this widget type.
     pub fn role() -> NodeRole {
         NodeRole::Button
     }
@@ -165,6 +181,7 @@ pub struct TextInput {
 }
 
 impl TextInput {
+    /// Creates an empty text input in the [`WidgetState::Normal`] state.
     pub fn new() -> Self {
         Self {
             state: WidgetState::Normal,
@@ -176,17 +193,21 @@ impl TextInput {
         }
     }
 
+    /// Sets the placeholder text shown when the value is empty.
     pub fn with_placeholder(mut self, placeholder: impl Into<String>) -> Self {
         self.placeholder = placeholder.into();
         self
     }
 
+    /// Returns the current interaction state.
     pub fn state(&self) -> WidgetState {
         self.state
     }
+    /// Returns the cursor position as a char index in `[0, chars_count()]`.
     pub fn cursor(&self) -> usize {
         self.cursor
     }
+    /// Returns the placeholder text.
     pub fn placeholder(&self) -> &str {
         &self.placeholder
     }
@@ -308,6 +329,7 @@ impl TextInput {
         };
     }
 
+    /// Returns the accessibility role for this widget type.
     pub fn role() -> NodeRole {
         NodeRole::TextBox
     }
@@ -342,6 +364,7 @@ pub struct Label {
 }
 
 impl Label {
+    /// Creates a label with the given text and [`TextAlign::Start`] alignment.
     pub fn new(text: impl Into<String>) -> Self {
         Self {
             text: text.into(),
@@ -349,21 +372,26 @@ impl Label {
         }
     }
 
+    /// Sets the horizontal text alignment.
     pub fn with_align(mut self, align: TextAlign) -> Self {
         self.align = align;
         self
     }
 
+    /// Returns the label text.
     pub fn text(&self) -> &str {
         &self.text
     }
+    /// Replaces the label text.
     pub fn set_text(&mut self, text: impl Into<String>) {
         self.text = text.into();
     }
+    /// Returns the current text alignment.
     pub fn align(&self) -> TextAlign {
         self.align
     }
 
+    /// Returns the accessibility role for this widget type.
     pub fn role() -> NodeRole {
         NodeRole::None
     }
@@ -384,6 +412,7 @@ pub struct ScrollView {
 }
 
 impl ScrollView {
+    /// Creates a scroll view with the given viewport size and zero scroll offset.
     pub fn new(viewport_size: (f32, f32)) -> Self {
         Self {
             scroll_offset: (0.0, 0.0),
@@ -392,32 +421,39 @@ impl ScrollView {
         }
     }
 
+    /// Updates the total scrollable content size; clamps the scroll offset if needed.
     pub fn set_content_size(&mut self, size: (f32, f32)) {
         self.content_size = size;
         self.clamp_offset();
     }
 
+    /// Updates the visible viewport size; clamps the scroll offset if needed.
     pub fn set_viewport_size(&mut self, size: (f32, f32)) {
         self.viewport_size = size;
         self.clamp_offset();
     }
 
+    /// Returns the current `(x, y)` scroll offset.
     pub fn scroll_offset(&self) -> (f32, f32) {
         self.scroll_offset
     }
 
+    /// Returns the total `(width, height)` of the scrollable content.
     pub fn content_size(&self) -> (f32, f32) {
         self.content_size
     }
 
+    /// Returns the visible `(width, height)` of the viewport.
     pub fn viewport_size(&self) -> (f32, f32) {
         self.viewport_size
     }
 
+    /// Returns `true` when content width exceeds viewport width.
     pub fn overflow_x(&self) -> bool {
         self.content_size.0 > self.viewport_size.0
     }
 
+    /// Returns `true` when content height exceeds viewport height.
     pub fn overflow_y(&self) -> bool {
         self.content_size.1 > self.viewport_size.1
     }
@@ -450,6 +486,7 @@ impl ScrollView {
         );
     }
 
+    /// Returns the accessibility role for this widget type.
     pub fn role() -> NodeRole {
         NodeRole::None
     }
@@ -475,6 +512,7 @@ pub struct Toolbar {
 }
 
 impl Toolbar {
+    /// Creates an empty toolbar with a default gap of `8.0` logical pixels.
     pub fn new() -> Self {
         Self {
             items: Vec::new(),
@@ -482,31 +520,38 @@ impl Toolbar {
         }
     }
 
+    /// Sets the gap between items in logical pixels.
     pub fn with_gap(mut self, gap: f32) -> Self {
         self.gap = gap;
         self
     }
 
+    /// Appends a labelled item to the toolbar.
     pub fn add_item(&mut self, label: impl Into<String>) {
         self.items.push(label.into());
     }
 
+    /// Returns the ordered list of item labels.
     pub fn items(&self) -> &[String] {
         &self.items
     }
 
+    /// Returns the gap between items in logical pixels.
     pub fn gap(&self) -> f32 {
         self.gap
     }
 
+    /// Returns the number of items.
     pub fn len(&self) -> usize {
         self.items.len()
     }
 
+    /// Returns `true` when the toolbar contains no items.
     pub fn is_empty(&self) -> bool {
         self.items.is_empty()
     }
 
+    /// Returns the accessibility role for this widget type.
     pub fn role() -> NodeRole {
         NodeRole::None
     }
@@ -532,6 +577,7 @@ pub struct TabBar {
 }
 
 impl TabBar {
+    /// Creates a tab bar from an iterable of labels; the first tab is selected by default.
     pub fn new(tabs: impl IntoIterator<Item = impl Into<String>>) -> Self {
         Self {
             tabs: tabs.into_iter().map(|t| t.into()).collect(),
@@ -539,6 +585,7 @@ impl TabBar {
         }
     }
 
+    /// Returns the index of the currently selected tab.
     pub fn selected(&self) -> usize {
         self.selected
     }
@@ -556,10 +603,12 @@ impl TabBar {
         self.tabs.get(index).map(|s| s.as_str())
     }
 
+    /// Returns the number of tabs.
     pub fn len(&self) -> usize {
         self.tabs.len()
     }
 
+    /// Returns `true` when the tab bar has no tabs.
     pub fn is_empty(&self) -> bool {
         self.tabs.is_empty()
     }
@@ -603,6 +652,7 @@ impl TabBar {
         }
     }
 
+    /// Returns the accessibility role for this widget type.
     pub fn role() -> NodeRole {
         NodeRole::Tab
     }
@@ -623,6 +673,7 @@ pub struct Dialog {
 }
 
 impl Dialog {
+    /// Creates a closed dialog with the given number of focusable children.
     pub fn new(focusable_count: usize) -> Self {
         Self {
             open: false,
@@ -631,19 +682,23 @@ impl Dialog {
         }
     }
 
+    /// Opens the dialog and resets focus to the first child.
     pub fn open(&mut self) {
         self.open = true;
         self.focused_index = 0;
     }
 
+    /// Closes the dialog.
     pub fn close(&mut self) {
         self.open = false;
     }
 
+    /// Returns `true` when the dialog is visible.
     pub fn is_open(&self) -> bool {
         self.open
     }
 
+    /// Returns the index of the currently focused child within the dialog.
     pub fn focused_index(&self) -> usize {
         self.focused_index
     }
@@ -695,6 +750,7 @@ impl Dialog {
         }
     }
 
+    /// Returns the accessibility role for this widget type.
     pub fn role() -> NodeRole {
         NodeRole::Dialog
     }
@@ -716,6 +772,7 @@ pub struct ContextMenu {
 }
 
 impl ContextMenu {
+    /// Creates a closed context menu from an iterable of item labels.
     pub fn new(items: impl IntoIterator<Item = impl Into<String>>) -> Self {
         Self {
             open: false,
@@ -725,25 +782,30 @@ impl ContextMenu {
         }
     }
 
+    /// Opens the menu anchored at `(x, y)` in logical pixels; clears item selection.
     pub fn open_at(&mut self, x: f32, y: f32) {
         self.open = true;
         self.anchor = (x, y);
         self.selected_item = None;
     }
 
+    /// Closes the menu and clears item selection.
     pub fn close(&mut self) {
         self.open = false;
         self.selected_item = None;
     }
 
+    /// Returns `true` when the menu is visible.
     pub fn is_open(&self) -> bool {
         self.open
     }
 
+    /// Returns the `(x, y)` position the menu is anchored to.
     pub fn anchor(&self) -> (f32, f32) {
         self.anchor
     }
 
+    /// Returns the list of item labels.
     pub fn items(&self) -> &[String] {
         &self.items
     }
@@ -808,6 +870,7 @@ impl ContextMenu {
         }
     }
 
+    /// Returns the accessibility role for this widget type.
     pub fn role() -> NodeRole {
         NodeRole::Menu
     }
