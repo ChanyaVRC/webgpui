@@ -29,6 +29,7 @@ impl std::fmt::Display for PassId {
 // PassKind
 // ---------------------------------------------------------------------------
 
+/// Categorises what a render pass does; drives how the renderer handles it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PassKind {
     /// Clears the render target.
@@ -43,6 +44,7 @@ pub enum PassKind {
 // ClearColor
 // ---------------------------------------------------------------------------
 
+/// RGBA clear colour for the [`PassKind::Clear`] pass, using `f64` components in `[0.0, 1.0]`.
 #[derive(Debug, Clone, Copy)]
 pub struct ClearColor {
     pub r: f64,
@@ -52,18 +54,22 @@ pub struct ClearColor {
 }
 
 impl ClearColor {
+    /// Opaque black `(0, 0, 0, 1)`.
+    /// Opaque black `(0, 0, 0, 1)`.
     pub const BLACK: Self = Self {
         r: 0.0,
         g: 0.0,
         b: 0.0,
         a: 1.0,
     };
+    /// Opaque white `(1, 1, 1, 1)`.
     pub const WHITE: Self = Self {
         r: 1.0,
         g: 1.0,
         b: 1.0,
         a: 1.0,
     };
+    /// Fully transparent `(0, 0, 0, 0)`.
     pub const TRANSPARENT: Self = Self {
         r: 0.0,
         g: 0.0,
@@ -71,6 +77,7 @@ impl ClearColor {
         a: 0.0,
     };
 
+    /// Constructs a colour from individual `f64` components in `[0.0, 1.0]`.
     pub fn new(r: f64, g: f64, b: f64, a: f64) -> Self {
         Self { r, g, b, a }
     }
@@ -182,10 +189,12 @@ impl RenderGraph {
         }
     }
 
+    /// Returns a mutable reference to the pass with the given `id`, or `None` if it does not exist.
     pub fn pass_mut(&mut self, id: PassId) -> Option<&mut RenderPass> {
         self.passes.get_mut(&id)
     }
 
+    /// Returns a shared reference to the pass with the given `id`, or `None` if it does not exist.
     pub fn pass(&self, id: PassId) -> Option<&RenderPass> {
         self.passes.get(&id)
     }
@@ -197,6 +206,7 @@ impl RenderGraph {
             .and_then(|&id| self.passes.get(&id))
     }
 
+    /// Returns a mutable reference to a pass by well-known name.
     pub fn pass_by_name_mut(&mut self, name: &str) -> Option<&mut RenderPass> {
         let id = *self.name_to_id.get(name)?;
         self.passes.get_mut(&id)
