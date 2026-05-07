@@ -6,6 +6,9 @@ on:
     paths:
       - "docs/**"
       - "mkdocs.yml"
+      - "crates/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
   workflow_dispatch:
 
 permissions:
@@ -34,8 +37,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install mkdocs mkdocs-material mkdocs-static-i18n
 
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build API docs
+        run: cargo doc --no-deps --workspace
+
       - name: Build docs
         run: mkdocs build --strict
+
+      - name: Copy API docs into site
+        run: cp -r target/doc site/api
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
