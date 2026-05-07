@@ -28,6 +28,7 @@ pub struct Vertex {
 }
 
 impl Vertex {
+    /// Constructs a vertex at logical-pixel position `(x, y)` with the given colour.
     pub fn new(x: f32, y: f32, color: Color) -> Self {
         Self {
             position: [x, y],
@@ -55,11 +56,15 @@ pub struct BatchKey {
     pub z_order: u16,
 }
 
+/// Blend mode encoded as a key-safe value (implements `Ord`/`Hash` for use in [`BatchKey`]).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub enum BlendModeKey {
+    /// No blending; source colour replaces destination entirely.
     #[default]
     Opaque,
+    /// Standard alpha blending (`src_alpha * src + (1 - src_alpha) * dst`).
     Alpha,
+    /// Additive blending (`src + dst`); brightens overlapping regions.
     Additive,
 }
 
@@ -88,6 +93,7 @@ pub struct DrawBatch {
 }
 
 impl DrawBatch {
+    /// Creates an empty batch for the given [`BatchKey`].
     pub fn new(key: BatchKey) -> Self {
         Self {
             key,
@@ -96,10 +102,12 @@ impl DrawBatch {
         }
     }
 
+    /// Number of triangles (index count / 3).
     pub fn triangle_count(&self) -> usize {
         self.indices.len() / 3
     }
 
+    /// Returns `true` when the batch contains no vertices.
     pub fn is_empty(&self) -> bool {
         self.vertices.is_empty()
     }
