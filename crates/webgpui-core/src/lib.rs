@@ -184,6 +184,8 @@ pub struct NodeTree {
     next_id: u64,
     /// Number of live (non-tombstone) nodes; maintained incrementally.
     live_count: usize,
+    /// Arena indices of nodes currently marked dirty. Kept in sync with `node.dirty`.
+    dirty_indices: Vec<usize>,
 }
 
 impl NodeTree {
@@ -197,6 +199,7 @@ impl NodeTree {
             id_to_index,
             next_id: 1,
             live_count: 1,
+            dirty_indices: vec![0], // root node starts dirty at index 0
         }
     }
 
@@ -244,6 +247,7 @@ impl NodeTree {
         self.nodes[parent_index].children.push(new_index);
         self.id_to_index.insert(new_id, new_index);
         self.live_count += 1;
+        self.dirty_indices.push(new_index);
         Some(new_id)
     }
 
@@ -285,26 +289,33 @@ impl NodeTree {
         true
     }
 
+    fn mark_dirty_at(&mut self, idx: usize) {
+        if !self.nodes[idx].dirty {
+            self.nodes[idx].dirty = true;
+            self.dirty_indices.push(idx);
+        }
+    }
+
     /// Updates the visual style of a node and marks it dirty.
     pub fn set_style(&mut self, id: NodeId, style: NodeStyle) -> bool {
-        let Some(node) = self.get_mut(id) else {
+        let Some(&idx) = self.id_to_index.get(&id) else {
             return false;
         };
-        if node.style != style {
-            node.style = style;
-            node.dirty = true;
+        if self.nodes[idx].style != style {
+            self.nodes[idx].style = style;
+            self.mark_dirty_at(idx);
         }
         true
     }
 
     /// Sets the accessibility role of a node.
     pub fn set_role(&mut self, id: NodeId, role: NodeRole) -> bool {
-        let Some(node) = self.get_mut(id) else {
+        let Some(&idx) = self.id_to_index.get(&id) else {
             return false;
         };
-        if node.role != role {
-            node.role = role;
-            node.dirty = true;
+        if self.nodes[idx].role != role {
+            self.nodes[idx].role = role;
+            self.mark_dirty_at(idx);
         }
         true
     }
@@ -316,7 +327,7 @@ impl NodeTree {
         };
         if self.nodes[idx].layout != layout {
             self.nodes[idx].layout = layout;
-            self.nodes[idx].dirty = true;
+            self.mark_dirty_at(idx);
         }
         true
     }
@@ -328,21 +339,27 @@ impl NodeTree {
     /// Collects all nodes that are currently marked dirty and clears the
     /// dirty flag.
     pub fn flush_dirty(&mut self) -> Vec<NodeId> {
-        let mut dirty = Vec::new();
-        for node in &mut self.nodes {
-            if node.dirty && !node.is_tombstone() {
-                dirty.push(node.id);
-                node.dirty = false;
-            }
-        }
-        dirty
+        self.dirty_indices
+            .drain(..)
+            .filter_map(|i| {
+                let node = &mut self.nodes[i];
+                if node.dirty && !node.is_tombstone() {
+                    node.dirty = false;
+                    Some(node.id)
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 
     /// Marks every node dirty (useful after a resize).
     pub fn mark_all_dirty(&mut self) {
-        for node in &mut self.nodes {
+        self.dirty_indices.clear();
+        for (i, node) in self.nodes.iter_mut().enumerate() {
             if !node.is_tombstone() {
                 node.dirty = true;
+                self.dirty_indices.push(i);
             }
         }
     }
@@ -361,6 +378,21 @@ impl NodeTree {
             .iter()
             .map(|&ci| self.nodes[ci].id)
             .collect()
+    }
+
+    /// Iterates over the children of `id` without allocating.
+    ///
+    /// Callers that need an owned `Vec<NodeId>` can call `.collect()` on the
+    /// returned iterator. Prefer this over [`children_of`][Self::children_of]
+    /// when only iteration is needed.
+    pub fn children_iter(&self, id: NodeId) -> impl Iterator<Item = NodeId> + '_ {
+        let idx = self.id_to_index.get(&id).copied();
+        idx.into_iter().flat_map(move |i| {
+            self.nodes[i]
+                .children
+                .iter()
+                .map(move |&ci| self.nodes[ci].id)
+        })
     }
 
     /// Iterates over all valid nodes in arena order.
@@ -405,6 +437,12 @@ impl NodeTree {
 
         self.live_count = new_nodes.len();
         self.nodes = new_nodes;
+        self.dirty_indices = self
+            .nodes
+            .iter()
+            .enumerate()
+            .filter_map(|(i, n)| if n.dirty { Some(i) } else { None })
+            .collect();
     }
 }
 
@@ -487,12 +525,20 @@ impl DirtyTracker {
         self.rects.iter().any(|r| r.intersect(query).is_some())
     }
 
-    /// Returns the effective redraw area given the `viewport` size.
-    pub fn effective_area(&self, viewport: Size) -> Rect {
+    /// Returns the effective redraw area given the `viewport` size, or `None`
+    /// if nothing is dirty.
+    ///
+    /// Returns `Some(full_viewport)` when a full-screen redraw was requested,
+    /// `Some(union)` when individual rects were marked, and `None` when the
+    /// tracker is clean.
+    pub fn effective_area(&self, viewport: Size) -> Option<Rect> {
         if self.full_invalidate {
-            Rect::from_origin_size(webgpui_geometry::Point::ZERO, viewport)
+            Some(Rect::from_origin_size(
+                webgpui_geometry::Point::ZERO,
+                viewport,
+            ))
         } else {
-            self.dirty_union().unwrap_or(Rect::ZERO)
+            self.dirty_union()
         }
     }
 }
@@ -598,7 +644,7 @@ mod tests {
         );
         assert_eq!(
             tracker.effective_area(Size::new(1280.0, 720.0)),
-            viewport,
+            Some(viewport),
             "effective_area must cover the entire viewport"
         );
     }
