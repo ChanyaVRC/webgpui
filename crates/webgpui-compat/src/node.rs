@@ -57,11 +57,11 @@ pub fn node_append(parent: NodeId, child: NodeId) -> CompatResult<()> {
                 }
             }
             Ok(())
-        } else if s.staged.contains_key(&parent.0) {
+        } else if let Some(staged) = s.staged.get_mut(&parent.0) {
             if !child_staged {
                 return Err(CompatError::InvalidNode);
             }
-            s.staged.get_mut(&parent.0).unwrap().children.push(child.0);
+            staged.children.push(child.0);
             Ok(())
         } else {
             Err(CompatError::InvalidNode)

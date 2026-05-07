@@ -7,6 +7,8 @@ use std::sync::{Mutex, OnceLock};
 use webgpui_core::{NodeId as CoreId, NodeKind as CoreKind, NodeStyle, NodeTree};
 use webgpui_layout::LayoutStyle;
 
+use crate::types::EventType;
+
 // ---------------------------------------------------------------------------
 // StagedNode
 // ---------------------------------------------------------------------------
@@ -28,7 +30,7 @@ pub(crate) struct StagedNode {
 #[allow(dead_code)]
 pub(crate) struct Listener {
     pub id: u64,
-    pub event_type: String,
+    pub event_type: EventType,
     pub callback: Box<dyn Fn() + Send + Sync + 'static>,
 }
 
