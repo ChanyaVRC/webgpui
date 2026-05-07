@@ -364,6 +364,7 @@ pub struct Label {
 }
 
 impl Label {
+    /// Creates a label with the given text and [`TextAlign::Start`] alignment.
     pub fn new(text: impl Into<String>) -> Self {
         Self {
             text: text.into(),
@@ -371,21 +372,26 @@ impl Label {
         }
     }
 
+    /// Sets the horizontal text alignment.
     pub fn with_align(mut self, align: TextAlign) -> Self {
         self.align = align;
         self
     }
 
+    /// Returns the label text.
     pub fn text(&self) -> &str {
         &self.text
     }
+    /// Replaces the label text.
     pub fn set_text(&mut self, text: impl Into<String>) {
         self.text = text.into();
     }
+    /// Returns the current text alignment.
     pub fn align(&self) -> TextAlign {
         self.align
     }
 
+    /// Returns the accessibility role for this widget type.
     pub fn role() -> NodeRole {
         NodeRole::None
     }
@@ -406,6 +412,7 @@ pub struct ScrollView {
 }
 
 impl ScrollView {
+    /// Creates a scroll view with the given viewport size and zero scroll offset.
     pub fn new(viewport_size: (f32, f32)) -> Self {
         Self {
             scroll_offset: (0.0, 0.0),
@@ -414,32 +421,39 @@ impl ScrollView {
         }
     }
 
+    /// Updates the total scrollable content size; clamps the scroll offset if needed.
     pub fn set_content_size(&mut self, size: (f32, f32)) {
         self.content_size = size;
         self.clamp_offset();
     }
 
+    /// Updates the visible viewport size; clamps the scroll offset if needed.
     pub fn set_viewport_size(&mut self, size: (f32, f32)) {
         self.viewport_size = size;
         self.clamp_offset();
     }
 
+    /// Returns the current `(x, y)` scroll offset.
     pub fn scroll_offset(&self) -> (f32, f32) {
         self.scroll_offset
     }
 
+    /// Returns the total `(width, height)` of the scrollable content.
     pub fn content_size(&self) -> (f32, f32) {
         self.content_size
     }
 
+    /// Returns the visible `(width, height)` of the viewport.
     pub fn viewport_size(&self) -> (f32, f32) {
         self.viewport_size
     }
 
+    /// Returns `true` when content width exceeds viewport width.
     pub fn overflow_x(&self) -> bool {
         self.content_size.0 > self.viewport_size.0
     }
 
+    /// Returns `true` when content height exceeds viewport height.
     pub fn overflow_y(&self) -> bool {
         self.content_size.1 > self.viewport_size.1
     }
@@ -472,6 +486,7 @@ impl ScrollView {
         );
     }
 
+    /// Returns the accessibility role for this widget type.
     pub fn role() -> NodeRole {
         NodeRole::None
     }
@@ -497,6 +512,7 @@ pub struct Toolbar {
 }
 
 impl Toolbar {
+    /// Creates an empty toolbar with a default gap of `8.0` logical pixels.
     pub fn new() -> Self {
         Self {
             items: Vec::new(),
@@ -504,31 +520,38 @@ impl Toolbar {
         }
     }
 
+    /// Sets the gap between items in logical pixels.
     pub fn with_gap(mut self, gap: f32) -> Self {
         self.gap = gap;
         self
     }
 
+    /// Appends a labelled item to the toolbar.
     pub fn add_item(&mut self, label: impl Into<String>) {
         self.items.push(label.into());
     }
 
+    /// Returns the ordered list of item labels.
     pub fn items(&self) -> &[String] {
         &self.items
     }
 
+    /// Returns the gap between items in logical pixels.
     pub fn gap(&self) -> f32 {
         self.gap
     }
 
+    /// Returns the number of items.
     pub fn len(&self) -> usize {
         self.items.len()
     }
 
+    /// Returns `true` when the toolbar contains no items.
     pub fn is_empty(&self) -> bool {
         self.items.is_empty()
     }
 
+    /// Returns the accessibility role for this widget type.
     pub fn role() -> NodeRole {
         NodeRole::None
     }
