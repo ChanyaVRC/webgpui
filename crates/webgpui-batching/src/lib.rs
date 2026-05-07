@@ -193,6 +193,7 @@ impl Batcher {
         self.batches.clear();
         self.batch_index.clear();
         self.current_z = 0;
+        self.sort_dirty = false;
 
         for cmd in draw_list.commands() {
             match cmd {
@@ -254,10 +255,23 @@ impl Batcher {
         if let Some(&pos) = self.batch_index.get(&key) {
             return &mut self.batches[pos];
         }
+        // Mark sort needed only when the new batch would be out of ascending key order.
+        if !self.sort_dirty {
+            if let Some(last) = self.batches.last() {
+                let out_of_order = last
+                    .key
+                    .z_order
+                    .cmp(&key.z_order)
+                    .then_with(|| last.key.blend_mode.cmp(&key.blend_mode))
+                    .is_gt();
+                if out_of_order {
+                    self.sort_dirty = true;
+                }
+            }
+        }
         let pos = self.batches.len();
         self.batches.push(DrawBatch::new(key));
         self.batch_index.insert(key, pos);
-        self.sort_dirty = true;
         &mut self.batches[pos]
     }
 
