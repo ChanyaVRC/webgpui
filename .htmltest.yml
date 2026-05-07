@@ -1,0 +1,7 @@
+CheckExternal: false
+CheckInternal: true
+CheckMailto: false
+CheckTel: false
+DirectoryPath: site/
+IgnoreURLs:
+  - "^#"
