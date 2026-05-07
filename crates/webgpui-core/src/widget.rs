@@ -7,11 +7,16 @@ use crate::NodeRole;
 /// Interaction state shared by all interactive widgets.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum WidgetState {
+    /// Default resting state; no interaction is active.
     #[default]
     Normal,
+    /// The pointer is positioned over the widget.
     Hover,
+    /// The widget is being pressed (mouse-down or key-down while focused).
     Pressed,
+    /// The widget holds keyboard focus.
     Focused,
+    /// Input is suppressed; the widget does not respond to events.
     Disabled,
 }
 
@@ -22,9 +27,12 @@ pub enum WidgetState {
 /// Horizontal alignment for text within a [`Label`] or [`TextInput`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum TextAlign {
+    /// Aligns text to the leading edge (left in LTR locales).
     #[default]
     Start,
+    /// Centers text within the available width.
     Center,
+    /// Aligns text to the trailing edge (right in LTR locales).
     End,
 }
 
@@ -35,9 +43,13 @@ pub enum TextAlign {
 /// Logical cursor movement within a [`TextInput`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CursorMove {
+    /// Move one character to the left.
     Left,
+    /// Move one character to the right.
     Right,
+    /// Jump to the start of the text.
     Home,
+    /// Jump to the end of the text.
     End,
 }
 
