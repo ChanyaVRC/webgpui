@@ -53,39 +53,63 @@ use webgpui_render_wgpu::{WgpuContext, WgpuRenderer};
 /// Create with [`BackendSwitcher::new`], pass a clone to
 /// [`AppBuilder::backend_switcher`], and call [`switch_to`][BackendSwitcher::switch_to]
 /// from your frame callback.
-#[derive(Clone, Debug)]
 pub struct BackendSwitcher {
-    current: Arc<Mutex<BackendSelector>>,
-    pending: Arc<Mutex<Option<BackendSelector>>>,
+    state: Arc<Mutex<BackendState>>,
+}
+
+impl std::fmt::Debug for BackendSwitcher {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let state = self.state.lock().unwrap();
+        f.debug_struct("BackendSwitcher")
+            .field("current", &state.current)
+            .field("pending", &state.pending)
+            .finish()
+    }
+}
+
+struct BackendState {
+    current: BackendSelector,
+    pending: Option<BackendSelector>,
+}
+
+impl Clone for BackendSwitcher {
+    fn clone(&self) -> Self {
+        Self {
+            state: Arc::clone(&self.state),
+        }
+    }
 }
 
 impl BackendSwitcher {
     /// Creates a new switcher with the given initial backend.
     pub fn new(initial: BackendSelector) -> Self {
         Self {
-            current: Arc::new(Mutex::new(initial)),
-            pending: Arc::new(Mutex::new(None)),
+            state: Arc::new(Mutex::new(BackendState {
+                current: initial,
+                pending: None,
+            })),
         }
     }
 
     /// Requests a switch to `backend` on the next frame.
     pub fn switch_to(&self, backend: BackendSelector) {
-        *self.pending.lock().unwrap() = Some(backend);
+        self.state.lock().unwrap().pending = Some(backend);
     }
 
     /// Returns the currently active backend.
     pub fn current(&self) -> BackendSelector {
-        *self.current.lock().unwrap()
+        self.state.lock().unwrap().current
     }
 
     /// Takes the pending switch (if any), applies it, and returns it.
     fn take_pending(&self) -> Option<BackendSelector> {
-        let mut pending = self.pending.lock().unwrap();
-        if let Some(backend) = pending.take() {
-            *self.current.lock().unwrap() = backend;
-            return Some(backend);
+        let mut state = self.state.lock().unwrap();
+        if let Some(backend) = state.pending.take() {
+            state.current = backend;
+            Some(backend)
+        } else {
+            None
         }
-        None
     }
 }
 
@@ -259,6 +283,12 @@ impl AppBuilder {
     /// This is independent from GPU present-mode vsync.
     /// Set to `None` for uncapped redraw scheduling.
     pub fn target_fps(mut self, target_fps: Option<u32>) -> Self {
+        if let Some(fps) = target_fps {
+            assert!(
+                fps > 0,
+                "target_fps must be > 0; use None for uncapped rendering"
+            );
+        }
         self.config.target_fps = target_fps;
         self
     }
@@ -596,45 +626,59 @@ fn convert_mouse_button(button: &winit::event::MouseButton) -> MouseButton {
 fn convert_key(key: &Key) -> KeyCode {
     match key {
         Key::Named(named) => convert_named_key(named),
-        Key::Character(s) => match s.as_str() {
-            "a" | "A" => KeyCode::A,
-            "b" | "B" => KeyCode::B,
-            "c" | "C" => KeyCode::C,
-            "d" | "D" => KeyCode::D,
-            "e" | "E" => KeyCode::E,
-            "f" | "F" => KeyCode::F,
-            "g" | "G" => KeyCode::G,
-            "h" | "H" => KeyCode::H,
-            "i" | "I" => KeyCode::I,
-            "j" | "J" => KeyCode::J,
-            "k" | "K" => KeyCode::K,
-            "l" | "L" => KeyCode::L,
-            "m" | "M" => KeyCode::M,
-            "n" | "N" => KeyCode::N,
-            "o" | "O" => KeyCode::O,
-            "p" | "P" => KeyCode::P,
-            "q" | "Q" => KeyCode::Q,
-            "r" | "R" => KeyCode::R,
-            "s" | "S" => KeyCode::S,
-            "t" | "T" => KeyCode::T,
-            "u" | "U" => KeyCode::U,
-            "v" | "V" => KeyCode::V,
-            "w" | "W" => KeyCode::W,
-            "x" | "X" => KeyCode::X,
-            "y" | "Y" => KeyCode::Y,
-            "z" | "Z" => KeyCode::Z,
-            "0" => KeyCode::Digit0,
-            "1" => KeyCode::Digit1,
-            "2" => KeyCode::Digit2,
-            "3" => KeyCode::Digit3,
-            "4" => KeyCode::Digit4,
-            "5" => KeyCode::Digit5,
-            "6" => KeyCode::Digit6,
-            "7" => KeyCode::Digit7,
-            "8" => KeyCode::Digit8,
-            "9" => KeyCode::Digit9,
-            _ => KeyCode::Unknown,
-        },
+        Key::Character(s) => {
+            let Some(ch) = s.chars().next() else {
+                return KeyCode::Unknown;
+            };
+            let upper = ch.to_ascii_uppercase();
+            if upper.is_ascii_alphabetic() {
+                const LETTERS: [KeyCode; 26] = [
+                    KeyCode::A,
+                    KeyCode::B,
+                    KeyCode::C,
+                    KeyCode::D,
+                    KeyCode::E,
+                    KeyCode::F,
+                    KeyCode::G,
+                    KeyCode::H,
+                    KeyCode::I,
+                    KeyCode::J,
+                    KeyCode::K,
+                    KeyCode::L,
+                    KeyCode::M,
+                    KeyCode::N,
+                    KeyCode::O,
+                    KeyCode::P,
+                    KeyCode::Q,
+                    KeyCode::R,
+                    KeyCode::S,
+                    KeyCode::T,
+                    KeyCode::U,
+                    KeyCode::V,
+                    KeyCode::W,
+                    KeyCode::X,
+                    KeyCode::Y,
+                    KeyCode::Z,
+                ];
+                LETTERS[(upper as u8 - b'A') as usize]
+            } else if ch.is_ascii_digit() {
+                const DIGITS: [KeyCode; 10] = [
+                    KeyCode::Digit0,
+                    KeyCode::Digit1,
+                    KeyCode::Digit2,
+                    KeyCode::Digit3,
+                    KeyCode::Digit4,
+                    KeyCode::Digit5,
+                    KeyCode::Digit6,
+                    KeyCode::Digit7,
+                    KeyCode::Digit8,
+                    KeyCode::Digit9,
+                ];
+                DIGITS[(ch as u8 - b'0') as usize]
+            } else {
+                KeyCode::Unknown
+            }
+        }
         _ => KeyCode::Unknown,
     }
 }
