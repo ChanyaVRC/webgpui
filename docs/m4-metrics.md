@@ -4,8 +4,6 @@ Measured: 2026-05-07
 Target commit: feat/m4-compat-impl (PR #144)  
 Reference documents: `docs/ja/api-mapping.md`, `docs/ja/roadmap.md §M4`
 
-Japanese version: [`docs/ja/m4-metrics.md`](ja/m4-metrics.md)
-
 ---
 
 ## 1. API Replacement Rate (target ≥ 80%)
