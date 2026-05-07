@@ -48,6 +48,9 @@ nav:
       - Documentation Map: documentation-map.md
       - GitHub Pages Guide: github-pages.md
 
+not_in_nav: |
+  ja/*.md
+
 markdown_extensions:
   - tables
   - toc:
@@ -55,9 +58,3 @@ markdown_extensions:
 
 plugins:
   - search
-  - i18n:
-      default_language: en
-      default_language_only: false
-      languages:
-        en: English
-        ja: 日本語
