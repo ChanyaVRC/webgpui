@@ -419,10 +419,10 @@ impl WgpuRenderer {
 
         let load_op = if clear_enabled {
             wgpu::LoadOp::Clear(wgpu::Color {
-                r: clear.r,
-                g: clear.g,
-                b: clear.b,
-                a: clear.a,
+                r: clear.r as f64,
+                g: clear.g as f64,
+                b: clear.b as f64,
+                a: clear.a as f64,
             })
         } else {
             wgpu::LoadOp::Load

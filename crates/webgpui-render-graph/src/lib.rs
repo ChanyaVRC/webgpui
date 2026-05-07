@@ -44,13 +44,13 @@ pub enum PassKind {
 // ClearColor
 // ---------------------------------------------------------------------------
 
-/// RGBA clear colour for the [`PassKind::Clear`] pass, using `f64` components in `[0.0, 1.0]`.
+/// RGBA clear colour for the [`PassKind::Clear`] pass, using `f32` components in `[0.0, 1.0]`.
 #[derive(Debug, Clone, Copy)]
 pub struct ClearColor {
-    pub r: f64,
-    pub g: f64,
-    pub b: f64,
-    pub a: f64,
+    pub r: f32,
+    pub g: f32,
+    pub b: f32,
+    pub a: f32,
 }
 
 impl ClearColor {
@@ -77,8 +77,8 @@ impl ClearColor {
         a: 0.0,
     };
 
-    /// Constructs a colour from individual `f64` components in `[0.0, 1.0]`.
-    pub fn new(r: f64, g: f64, b: f64, a: f64) -> Self {
+    /// Constructs a colour from individual `f32` components in `[0.0, 1.0]`.
+    pub fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
         Self { r, g, b, a }
     }
 }
