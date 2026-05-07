@@ -13,11 +13,14 @@ This enables:
 
 ## Compile-Time Feature Selection
 
-To enable dynamic switching, compile both backends into your binary:
+To enable dynamic switching, compile multiple backends into your binary:
 
 ```bash
-# Enable both backends for runtime selection
+# Enable both GPU backends for runtime selection
 cargo build --features backend-wgpu,backend-cuda
+
+# Enable GPU and CPU backends
+cargo build --features backend-wgpu,backend-cpu
 
 # Or in Cargo.toml
 [dependencies]
@@ -33,6 +36,7 @@ cargo build
 # Or explicit single backend
 cargo build --features backend-cuda  # CUDA only
 cargo build --features backend-wgpu  # wgpu only
+cargo build --features backend-cpu   # CPU only (headless, no GPU required)
 ```
 
 ## Runtime Backend Detection API
@@ -48,9 +52,13 @@ for backend in &available {
     println!("Available: {} ({})", backend.name(), backend);
 }
 
-// Output (with both features):
+// Output (with wgpu + CUDA features):
 // Available: wgpu (wgpu)
 // Available: CUDA (CUDA)
+//
+// Output (with wgpu + CPU features):
+// Available: wgpu (wgpu)
+// Available: CPU (cpu)
 ```
 
 ### Check Specific Backend Availability
@@ -67,6 +75,10 @@ if BackendSelector::Cuda.is_available() {
 if BackendSelector::Wgpu.is_available() {
     println!("wgpu backend is available");
 }
+
+if BackendSelector::Cpu.is_available() {
+    println!("CPU backend is available (no GPU required)");
+}
 ```
 
 ### Detect Hardware and Select Backend
@@ -74,15 +86,17 @@ if BackendSelector::Wgpu.is_available() {
 ```rust
 use webgpui_render::BackendSelector;
 
-// Example: detect NVIDIA GPU and prefer CUDA
+// Example: detect NVIDIA GPU and prefer CUDA, fall back to wgpu, then CPU
 fn select_backend() -> BackendSelector {
     // Check for NVIDIA GPU (pseudocode; actual implementation depends on system)
     if has_nvidia_gpu() && BackendSelector::Cuda.is_available() {
         BackendSelector::Cuda
     } else if BackendSelector::Wgpu.is_available() {
         BackendSelector::Wgpu
+    } else if BackendSelector::Cpu.is_available() {
+        BackendSelector::Cpu
     } else {
-        panic!("No GPU backend available!");
+        panic!("No backend available!");
     }
 }
 
@@ -91,6 +105,106 @@ fn has_nvidia_gpu() -> bool {
     // For MVP, assume true if user requests CUDA
     true
 }
+```
+
+## CPU Backend (`BackendSelector::Cpu`)
+
+### What It Is
+
+`BackendSelector::Cpu` selects the headless CPU software renderer. It requires no GPU
+and produces correct output entirely on the CPU. The implementation lives in the
+`webgpui-render-cpu` crate.
+
+### When to Use It
+
+- **CI environments**: run rendering tests on machines without a GPU (e.g., standard GitHub
+  Actions runners).
+- **Automated testing**: deterministic pixel output without driver variation.
+- **Headless servers**: generate UI screenshots or thumbnails server-side with no display.
+- **Fallback of last resort**: ensure the application can start even when all GPU backends
+  fail to initialize.
+
+The CPU backend trades throughput for portability. It is not intended for interactive,
+frame-rate-sensitive use.
+
+### How to Enable
+
+Add the `backend-cpu` feature flag in `Cargo.toml`:
+
+```toml
+[dependencies]
+webgpui = { version = "0.1", features = ["backend-cpu"] }
+```
+
+Or pass it on the command line:
+
+```bash
+cargo build --features backend-cpu
+cargo test --features backend-cpu
+```
+
+Combining it with a GPU backend enables a CPU fallback at runtime:
+
+```bash
+cargo build --features backend-wgpu,backend-cpu
+```
+
+### Example: Fallback to CPU in Headless / CI Contexts
+
+```rust
+use webgpui_render::BackendSelector;
+
+fn select_backend() -> BackendSelector {
+    if BackendSelector::Wgpu.is_available() {
+        BackendSelector::Wgpu
+    } else if BackendSelector::Cpu.is_available() {
+        // No GPU present — fall back to the headless CPU renderer.
+        // Suitable for CI and server-side rendering.
+        BackendSelector::Cpu
+    } else {
+        panic!("No backend available!");
+    }
+}
+```
+
+### Testing with the CPU Backend
+
+```rust
+#[cfg(test)]
+mod tests {
+    use webgpui_render::BackendSelector;
+
+    #[test]
+    #[cfg(feature = "backend-cpu")]
+    fn cpu_available_when_feature_enabled() {
+        assert!(BackendSelector::Cpu.is_available());
+    }
+
+    #[test]
+    #[cfg(not(feature = "backend-cpu"))]
+    fn cpu_unavailable_when_feature_disabled() {
+        assert!(!BackendSelector::Cpu.is_available());
+    }
+}
+```
+
+```bash
+# Run tests with the CPU backend (no GPU required)
+cargo test --features backend-cpu
+```
+
+### CI Configuration with CPU Backend
+
+```yaml
+# .github/workflows/test.yml
+strategy:
+  matrix:
+    backend:
+      - wgpu
+      - cuda
+      - cpu    # headless; runs on standard runners without GPU
+env:
+  WEBGPUI_BACKEND: ${{ matrix.backend }}
 ```
 
 ## Application-Level Backend Selection
@@ -109,15 +223,18 @@ fn main() {
             match &arg[10..] {
                 "cuda" => Some(BackendSelector::Cuda),
                 "wgpu" => Some(BackendSelector::Wgpu),
+                "cpu"  => Some(BackendSelector::Cpu),
                 _ => None,
             }
         })
         .unwrap_or_else(|| {
-            // Default: prefer CUDA if available, else wgpu
+            // Default: prefer CUDA if available, else wgpu, else CPU
             if BackendSelector::Cuda.is_available() {
                 BackendSelector::Cuda
-            } else {
+            } else if BackendSelector::Wgpu.is_available() {
                 BackendSelector::Wgpu
+            } else {
+                BackendSelector::Cpu
             }
         });
 
@@ -148,6 +265,7 @@ fn select_backend_from_env() -> BackendSelector {
             match backend_name.to_lowercase().as_str() {
                 "cuda" => Some(BackendSelector::Cuda),
                 "wgpu" => Some(BackendSelector::Wgpu),
+                "cpu"  => Some(BackendSelector::Cpu),
                 _ => None,
             }
         })
@@ -202,6 +320,13 @@ fn select_backend_from_config(config_path: &str) -> Result<BackendSelector, Box<
                 Err("wgpu backend requested but not available".into())
             }
         }
+        "cpu" => {
+            if BackendSelector::Cpu.is_available() {
+                Ok(BackendSelector::Cpu)
+            } else {
+                Err("cpu backend requested but not available".into())
+            }
+        }
         other => Err(format!("Unknown backend: {}", other).into()),
     }
 }
@@ -223,20 +348,20 @@ fn select_backend_with_fallback(prefer_cuda: bool) -> BackendSelector {
         BackendSelector::Cuda
     } else if BackendSelector::Wgpu.is_available() {
         BackendSelector::Wgpu
-    } else if prefer_cuda && BackendSelector::Cuda.is_available() {
-        // Already tried CUDA above
-        panic!("No GPU backend available!");
+    } else if BackendSelector::Cpu.is_available() {
+        // No GPU available — fall back to headless CPU renderer.
+        BackendSelector::Cpu
     } else {
-        panic!("No GPU backend available!");
+        panic!("No backend available!");
     }
 }
 
-// Simpler version
+// Simpler version (CUDA > wgpu > CPU)
 fn select_backend_smart() -> BackendSelector {
-    [BackendSelector::Cuda, BackendSelector::Wgpu]
+    [BackendSelector::Cuda, BackendSelector::Wgpu, BackendSelector::Cpu]
         .into_iter()
         .find(|b| b.is_available())
-        .expect("No GPU backend available!")
+        .expect("No backend available!")
 }
 ```
 
@@ -246,7 +371,9 @@ fn select_backend_smart() -> BackendSelector {
 |----------|---------------|---------------|-------------------|
 | Development (wgpu only) | `--features backend-wgpu` | 1 | N/A (forced to wgpu) |
 | Development (CUDA only) | `--features backend-cuda` | 1 | N/A (forced to CUDA) |
-| Server (both available) | `--features backend-wgpu,backend-cuda` | 2 | Via CLI/env/config |
+| CI / headless testing | `--features backend-cpu` | 1 | N/A (forced to CPU) |
+| Server (GPU + fallback) | `--features backend-wgpu,backend-cpu` | 2 | Via CLI/env/config |
+| Server (both GPU backends) | `--features backend-wgpu,backend-cuda` | 2 | Via CLI/env/config |
 | Release (optimized) | `--features backend-wgpu` (default) | 1 | N/A (smallest binary) |
 
 ## Performance Considerations
@@ -308,7 +435,13 @@ cargo test --features backend-wgpu
 # Test CUDA backend
 cargo test --features backend-cuda
 
-# Test both backends
+# Test CPU backend (headless; no GPU required)
+cargo test --features backend-cpu
+
+# Test wgpu + CPU (GPU with headless fallback)
+cargo test --features backend-wgpu,backend-cpu
+
+# Test all GPU backends
 cargo test --features backend-wgpu,backend-cuda
 
 # Test default (wgpu)
@@ -324,6 +457,7 @@ strategy:
     backend:
       - wgpu
       - cuda
+      - cpu    # headless; runs on standard runners without GPU
       - both
 env:
   WEBGPUI_BACKEND: ${{ matrix.backend }}

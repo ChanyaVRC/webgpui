@@ -7,16 +7,17 @@ Split `webgpui` into a Cargo workspace to make responsibilities explicit and dev
 - Keep structure extensible for future features (text/image/layout)
 - Preserve testability with small crate units
 
-## 2. Expected Directory Structure
+## 2. Directory Structure
 ```text
 webgpui/
 	Cargo.toml                # workspace root
 	crates/
-		webgpui/                # facade: public API entrypoint
 		webgpui-compat/         # compatibility layer for legacy WebUI engines
 		webgpui-core/           # UI tree, state, diff calculation
 		webgpui-render/         # renderer abstraction + shared draw data
-		webgpui-render-wgpu/    # wgpu implementation
+		webgpui-render-wgpu/    # wgpu GPU implementation
+		webgpui-render-cuda/    # CUDA GPU implementation
+		webgpui-render-cpu/     # headless CPU software renderer
 		webgpui-render-graph/   # pass graph and render-order optimization
 		webgpui-batching/       # draw command aggregation and instancing
 		webgpui-profiler/       # CPU/GPU measurement
@@ -31,82 +32,91 @@ webgpui/
 		demo-migration/         # migration validation sample for legacy engine
 ```
 
-## 3. Responsibilities by Crate
-### 3.1 `webgpui` (Facade)
-- External public entrypoint crate
-- Re-export minimal MVP public API
-- Hide internal crate details
+> **Note**: A top-level `webgpui` facade crate (public API re-export) is planned but is not
+> yet part of the workspace. The current public entry point is `webgpui-app`.
 
-### 3.2 `webgpui-compat`
+## 3. Responsibilities by Crate
+
+### 3.1 `webgpui-compat`
 - Provide legacy-compatible APIs (Node/Style/Event)
 - Translate legacy APIs into `webgpui` APIs
 - Emit migration warnings (unsupported properties, behavior differences)
 
-### 3.3 `webgpui-core`
+### 3.2 `webgpui-core`
 - UI node tree management (add/remove/update)
 - Diff detection (dirty tracking)
 - Build intermediate render representation
 
-### 3.4 `webgpui-render`
+### 3.3 `webgpui-render`
 - Renderer abstraction trait
 - Shared draw-command/batch data
 - Backend-agnostic rendering contract
 
-### 3.5 `webgpui-render-wgpu`
+### 3.4 `webgpui-render-wgpu`
 - `wgpu` initialization
 - Pipeline creation
 - Frame rendering, resize, VSync handling
 
-### 3.6 `webgpui-platform`
+### 3.5 `webgpui-render-cuda`
+- CUDA-based GPU renderer
+- Enabled via the `backend-cuda` feature flag
+- Requires an NVIDIA GPU and the CUDA runtime
+
+### 3.6 `webgpui-render-cpu`
+- Headless CPU software renderer; no GPU required
+- Enabled via the `backend-cpu` feature flag
+- Intended for CI environments, automated testing, and headless servers
+
+### 3.7 `webgpui-platform`
 - Window and event-loop abstraction
 - Common interface for OS-dependent behavior
 
-### 3.7 `webgpui-render-graph`
+### 3.8 `webgpui-render-graph`
 - Manage pass dependencies (clear/ui/overlay)
 - Render-order optimization based on sort keys
 - Foundation for future multi-pass optimization
 
-### 3.8 `webgpui-batching`
+### 3.9 `webgpui-batching`
 - Aggregate commands to reduce draw calls
 - Auto-classify instancing candidates
 - Optimize vertex/index buffer packing
 
-### 3.9 `webgpui-profiler`
+### 3.10 `webgpui-profiler`
 - CPU frame metrics (update/render/submit)
 - GPU timestamp query metrics
 - MVP threshold validation logic (for future CI)
 
-### 3.10 `webgpui-platform-winit`
+### 3.11 `webgpui-platform-winit`
 - `winit` implementation
 - Window creation and input event intake
 - Mouse press/release/scroll events use the latest logical cursor position
 
-### 3.11 `webgpui-input`
+### 3.12 `webgpui-input`
 - Mouse/keyboard state handling (`InputState`, `InputEvent`)
 - `EventPhase` enum (Capture / Target / Bubble) and `dispatch()` for DOM-style three-phase event routing
 - `FocusManager`: tab-order registry, Tab/Shift+Tab traversal with wrap-around, `handle_key` integration hook
 
-### 3.12 `webgpui-geometry`
+### 3.13 `webgpui-geometry`
 - Shared types such as `Rect`, `Point`, `Size`, `Color`
 - Low-dependency base utilities
 
-### 3.13 `webgpui-layout`
+### 3.14 `webgpui-layout`
 - `Direction::Column` (default) and `Direction::Row` stack layout
 - `flex_grow` for proportional main-axis space distribution
 - `TextMeasure` trait (object-safe) + `DefaultTextMeasure` (pixel-font baseline)
 - Text leaf nodes auto-sized from content and `font_size` via `TextMeasure`; wraps to available width
 - `LayoutEngine::compute_with` accepts a custom `&dyn TextMeasure`
 
-### 3.14 `webgpui-app`
+### 3.15 `webgpui-app`
 - Integrate app runtime flow
 - Connect `platform` + `render` + `core`
 
-### 3.15 `apps/demo-basic`
+### 3.16 `apps/demo-basic`
 - Validate clear render, rectangle render, input display
 - M1 keyboard baseline: Tab focus traversal (textbox ↔ button), Enter/Space button activation, focus ring
 - Future CI smoke target
 
-### 3.16 `apps/demo-migration`
+### 3.17 `apps/demo-migration`
 - Demonstrate migration path from legacy engine implementation
 - Validate side-by-side behavior (visual/input/performance)
 
@@ -114,12 +124,6 @@ webgpui/
 Dependencies must be one-way; cyclic dependencies are forbidden.
 
 ```text
-webgpui (facade)
-	-> webgpui-app
-	-> webgpui-compat
-	-> webgpui-core
-	-> webgpui-layout
-
 webgpui-compat
 	-> webgpui-core
 	-> webgpui-layout
@@ -142,6 +146,16 @@ webgpui-render-wgpu
 	-> webgpui-batching
 	-> webgpui-geometry
 
+webgpui-render-cuda
+	-> webgpui-render
+	-> webgpui-render-graph
+	-> webgpui-batching
+	-> webgpui-geometry
+
+webgpui-render-cpu
+	-> webgpui-render
+	-> webgpui-geometry
+
 webgpui-render-graph
 	-> webgpui-render
 	-> webgpui-geometry
@@ -159,46 +173,52 @@ webgpui-core
 	-> webgpui-layout (minimum only)
 ```
 
-## 5. Cargo.toml (Workspace Root) Draft
+## 5. Cargo.toml (Workspace Root)
 ```toml
 [workspace]
 members = [
-	"crates/webgpui",
-	"crates/webgpui-compat",
-	"crates/webgpui-core",
-	"crates/webgpui-render",
-	"crates/webgpui-render-wgpu",
-	"crates/webgpui-render-graph",
-	"crates/webgpui-batching",
-	"crates/webgpui-profiler",
-	"crates/webgpui-platform",
-	"crates/webgpui-platform-winit",
-	"crates/webgpui-input",
-	"crates/webgpui-geometry",
-	"crates/webgpui-layout",
-	"crates/webgpui-app",
 	"apps/demo-basic",
 	"apps/demo-migration",
+	"crates/webgpui-geometry",
+	"crates/webgpui-profiler",
+	"crates/webgpui-input",
+	"crates/webgpui-platform",
+	"crates/webgpui-platform-winit",
+	"crates/webgpui-layout",
+	"crates/webgpui-core",
+	"crates/webgpui-render",
+	"crates/webgpui-batching",
+	"crates/webgpui-render-graph",
+	"crates/webgpui-render-wgpu",
+	"crates/webgpui-render-cuda",
+	"crates/webgpui-render-cpu",
+	"crates/webgpui-app",
+	"crates/webgpui-compat",
 ]
 resolver = "2"
 
 [workspace.package]
+version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-version = "0.1.0"
 
 [workspace.dependencies]
-wgpu = "0.20"
-winit = "0.30"
-thiserror = "1"
-tracing = "0.1"
-smallvec = "1"
-glam = "0.28"
+wgpu       = "0.20"
+winit      = "0.29"
+glam       = "0.27"
+pollster   = "0.3"
+log        = "0.4"
+env_logger = "0.11"
+thiserror  = "1"
+bytemuck   = { version = "1", features = ["derive"] }
+cudarc     = "0.12"
 ```
 
 ## 6. Feature Flag Policy
 - `default = ["backend-wgpu", "platform-winit"]`
-- `backend-wgpu`: enable `webgpui-render-wgpu`
+- `backend-wgpu`: enable `webgpui-render-wgpu` (GPU rendering via wgpu)
+- `backend-cuda`: enable `webgpui-render-cuda` (CUDA GPU rendering; requires NVIDIA GPU)
+- `backend-cpu`: enable `webgpui-render-cpu` (headless CPU software renderer; no GPU required)
 - `platform-winit`: enable `webgpui-platform-winit`
 - `compat`: enable `webgpui-compat` (legacy migration)
 - Future: add `text`, `image`, `svg`, etc.

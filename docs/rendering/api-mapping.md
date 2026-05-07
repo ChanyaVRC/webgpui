@@ -99,7 +99,7 @@ This section defines a path that prioritizes performance over compatibility.
 |---|---|---|---|---|
 | Frame begin/end | `requestRender()` + internal automation | `webgpui::FastPath::begin_frame_fast(ctx)` / `end_frame_fast()` | Reduce extra frame-boundary overhead | Call order must be strict |
 | Batch submission | Layered `appendChild` + `setStyle` calls | `webgpui::FastPath::submit_batch(batch_key, instances)` | Reduce draw calls | More responsibility than high-level API |
-| Differential update | `update(node, patch)` | `webgpui::FastPath::mark_dirty_rect(node, rect)` | Minimize redraw area | Dirty management must be accurate |
+| Differential update | `update(node, patch)` | `webgpui::FastPath::mark_dirty_rect(node, rect)` *(not yet implemented)* | Minimize redraw area | Dirty management must be accurate |
 | Transient buffer | Allocate per use internally | `webgpui::FastPath::allocate_transient_buffer(size)` | Reduce allocation cost | Requires reuse rules |
 | Pipeline prewarm | Lazy creation at first draw | `webgpui::FastPath::prewarm_pipeline(desc)` | Suppress initial stutter | Increases startup cost |
 | Text prewarm | Create on first glyph use | `webgpui::FastPath::prewarm_glyph_cache(font, charset)` | Reduce typing-time stutter | Requires charset design |
