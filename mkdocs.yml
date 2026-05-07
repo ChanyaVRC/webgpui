@@ -29,6 +29,7 @@ nav:
       - Workspace Architecture: workspace-architecture.md
       - Crate Dependencies: crate-dependencies.md
       - Architecture Decision Policy: architecture-decisions.md
+      - Semver Policy: semver-policy.md
       - Roadmap: roadmap.md
   - Rendering & Performance:
       - Rendering Performance Plan: rendering-performance-plan.md
@@ -41,6 +42,7 @@ nav:
   - CI & Quality:
       - CI Gates Guide: ci-gates.md
       - Metrics Format: metrics-format.md
+      - M4 Migration Metrics: m4-metrics.md
       - Docs Coverage Review: docs-coverage-review.md
   - Reference:
       - Documentation Map: documentation-map.md
@@ -57,6 +59,7 @@ nav:
           - 構成案（crate分割）: ja/workspace-architecture.md
           - クレート依存関係マップ: ja/crate-dependencies.md
           - アーキテクチャ意思決定ログ方針: ja/architecture-decisions.md
+          - セマンティックバージョニングポリシー: ja/semver-policy.md
           - ロードマップ: ja/roadmap.md
       - レンダリング & パフォーマンス:
           - レンダリング高速化計画: ja/rendering-performance-plan.md
@@ -69,6 +72,7 @@ nav:
       - CI & 品質:
           - CIゲート運用: ja/ci-gates.md
           - メトリクス仕様: ja/metrics-format.md
+          - M4 移行妥当性メトリクス: ja/m4-metrics.md
           - docs追加検討結果: ja/docs-coverage-review.md
       - リファレンス:
           - ドキュメントマップ: ja/documentation-map.md
