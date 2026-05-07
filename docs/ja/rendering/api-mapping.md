@@ -99,7 +99,7 @@ compat::app_mount(root)?;
 |---|---|---|---|---|
 | フレーム開始/終了 | `requestRender()` + 内部自動処理 | `webgpui::FastPath::begin_frame_fast(ctx)` / `end_frame_fast()` | フレーム境界の余分な処理を削減 | 呼び出し順序を守る必要 |
 | バッチ送信 | `appendChild` + `setStyle` の積み上げ | `webgpui::FastPath::submit_batch(batch_key, instances)` | draw call 削減 | 高水準APIより責務が増える |
-| 差分更新 | `update(node, patch)` | `webgpui::FastPath::mark_dirty_rect(node, rect)` | 再描画領域を最小化 | dirty管理の正確性が必要 |
+| 差分更新 | `update(node, patch)` | `webgpui::FastPath::mark_dirty_rect(node, rect)` *（未実装）* | 再描画領域を最小化 | dirty管理の正確性が必要 |
 | 一時バッファ | 内部で都度確保 | `webgpui::FastPath::allocate_transient_buffer(size)` | アロケーション削減 | メモリ再利用ルール必須 |
 | パイプライン準備 | 初回描画時に遅延生成 | `webgpui::FastPath::prewarm_pipeline(desc)` | 初回スタッタリング抑制 | 起動時コスト増加 |
 | テキスト準備 | 初回文字出現時に生成 | `webgpui::FastPath::prewarm_glyph_cache(font, charset)` | 入力直後のカクつき低減 | 文字集合の設計が必要 |

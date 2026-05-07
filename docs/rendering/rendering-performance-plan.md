@@ -110,7 +110,7 @@ Fix the order below; do not start lower priority items before upper ones are com
 - Pipeline-sort batching verified: draw call count reduces by >= 30% vs unbatched baseline.
 - CI P1 gate is green.
 
-### P2 Completion (M4 Parallel Track)
+### P2 Completion (M4 Parallel Track) — not yet implemented
 - `mark_dirty_rect` / `commit_dirty` integrated into render pipeline (`webgpui-render`).
 - Render pass skipped on frames with no dirty regions; verified by GPU query (submission count = 0).
 - `P2_GPU_SKIP_RATIO` metric added to `.ci/` metrics format and reported per frame.
@@ -304,7 +304,12 @@ P1 completion is mechanically judged by CI based on improvement before/after bat
 - Operations guide: `docs/ci-gates.md`
 - Metrics spec: `docs/metrics-format.md`
 
-## 17. P2 API Specification — Dirty Rect Optimization
+## 17. P2 API Specification — Dirty Rect Optimization (not yet implemented)
+
+> **Status**: Planned for a future milestone (Performance P2, running parallel to M4).
+> `DirtyTracker::mark_dirty_rect`, `DrawContext::mark_dirty_rect`, `DirtyTracker::commit_dirty`,
+> `DirtyDecision`, and `RenderOutcome` are **not yet implemented** in the codebase.
+> The specification below is the design target.
 
 ### 17.1 Design Goals
 - Two public entry points: `mark_dirty_rect(rect)` and `commit_dirty(viewport) -> DirtyDecision`.

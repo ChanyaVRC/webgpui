@@ -110,7 +110,7 @@
 - パイプラインソートバッチング検証: バッチなしベースライン比で draw call 数が >= 30% 減少。
 - CI P1 ゲートがグリーン。
 
-### P2 完了（M4 並走トラック）
+### P2 完了（M4 並走トラック）— 未実装
 - `mark_dirty_rect` / `commit_dirty` をレンダーパイプライン（`webgpui-render`）に統合。
 - dirty 領域なしフレームでレンダーパスをスキップ；GPU クエリで確認（サブミッション数 = 0）。
 - `P2_GPU_SKIP_RATIO` メトリクスを `.ci/` メトリクス形式に追加し毎フレーム出力。
@@ -304,7 +304,12 @@ P1 の完了判定は、バッチング適用前後の改善量を CI で機械�
 - 運用ガイド: `docs/ci-gates.md`
 - メトリクス仕様: `docs/metrics-format.md`
 
-## 17. P2 API仕様 — dirty rect 最適化
+## 17. P2 API仕様 — dirty rect 最適化（未実装）
+
+> **ステータス**: 将来のマイルストーン（Performance P2、M4 並走）で実装予定。
+> `DirtyTracker::mark_dirty_rect`、`DrawContext::mark_dirty_rect`、`DirtyTracker::commit_dirty`、
+> `DirtyDecision`、`RenderOutcome` は**コードベースに未実装**です。
+> 以下の仕様は設計目標です。
 
 ### 17.1 設計目標
 - 公開エントリポイントは2つ: `mark_dirty_rect(rect)` と `commit_dirty(viewport) -> DirtyDecision`。
