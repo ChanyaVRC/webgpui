@@ -25,12 +25,11 @@ fn parse_color(s: &str) -> CompatResult<Color> {
     let hex = s
         .strip_prefix('#')
         .ok_or_else(|| CompatError::StyleParseError(format!("unsupported color: {s}")))?;
-    let chars: Vec<char> = hex.chars().collect();
-    let (r, g, b, a) = match chars.len() {
+    let (r, g, b, a) = match hex.len() {
         3 => {
-            let r = hex1(chars[0]).ok_or_else(|| bad_color(s))?;
-            let g = hex1(chars[1]).ok_or_else(|| bad_color(s))?;
-            let b = hex1(chars[2]).ok_or_else(|| bad_color(s))?;
+            let r = hex1(hex.as_bytes()[0] as char).ok_or_else(|| bad_color(s))?;
+            let g = hex1(hex.as_bytes()[1] as char).ok_or_else(|| bad_color(s))?;
+            let b = hex1(hex.as_bytes()[2] as char).ok_or_else(|| bad_color(s))?;
             (r, g, b, 255u8)
         }
         6 => {
@@ -69,14 +68,8 @@ where
             return Ok(());
         }
         if let Some(core_id) = s.core_id_of(node.0) {
-            let mut style = s
-                .tree
-                .get(core_id)
-                .ok_or(CompatError::InvalidNode)?
-                .style
-                .clone();
-            f(&mut style);
-            s.tree.set_style(core_id, style);
+            let node_ref = s.tree.get_mut(core_id).ok_or(CompatError::InvalidNode)?;
+            f(&mut node_ref.style);
             return Ok(());
         }
         Err(CompatError::InvalidNode)
@@ -93,14 +86,8 @@ where
             return Ok(());
         }
         if let Some(core_id) = s.core_id_of(node.0) {
-            let mut layout = s
-                .tree
-                .get(core_id)
-                .ok_or(CompatError::InvalidNode)?
-                .layout
-                .clone();
-            f(&mut layout);
-            s.tree.set_layout(core_id, layout);
+            let node_ref = s.tree.get_mut(core_id).ok_or(CompatError::InvalidNode)?;
+            f(&mut node_ref.layout);
             return Ok(());
         }
         Err(CompatError::InvalidNode)
