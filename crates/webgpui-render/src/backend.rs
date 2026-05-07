@@ -184,19 +184,22 @@ impl FromStr for BackendSelector {
     type Err = RenderError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "wgpu" => Ok(BackendSelector::Wgpu),
-            "cuda" => Ok(BackendSelector::Cuda),
-            "cpu" => Ok(BackendSelector::Cpu),
-            other => Err(RenderError::Other(format!(
+        if s.eq_ignore_ascii_case("wgpu") {
+            Ok(BackendSelector::Wgpu)
+        } else if s.eq_ignore_ascii_case("cuda") {
+            Ok(BackendSelector::Cuda)
+        } else if s.eq_ignore_ascii_case("cpu") {
+            Ok(BackendSelector::Cpu)
+        } else {
+            Err(RenderError::Other(format!(
                 "unknown backend '{}'; available: {}",
-                other,
+                s,
                 BackendSelector::available()
                     .iter()
                     .map(|b| b.name())
                     .collect::<Vec<_>>()
                     .join(", ")
-            ))),
+            )))
         }
     }
 }
