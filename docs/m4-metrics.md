@@ -2,7 +2,7 @@
 
 Measured: 2026-05-07  
 Target commit: feat/m4-compat-impl (PR #144)  
-Reference documents: `docs/ja/api-mapping.md`, `docs/ja/roadmap.md §M4`
+Reference documents: `docs/api-mapping.md`, `docs/roadmap.md §M4`
 
 ---
 
