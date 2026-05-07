@@ -5,7 +5,9 @@ use crate::style::LayoutStyle;
 /// A node fed into the layout engine.
 #[derive(Debug)]
 pub struct LayoutNode {
+    /// Caller-assigned identifier; must be unique within a layout pass.
     pub id: u64,
+    /// Layout properties that drive sizing, positioning, and stacking.
     pub style: LayoutStyle,
     /// Indices into the same flat array of layout nodes (children).
     pub children: Vec<usize>,
@@ -21,6 +23,7 @@ pub struct LayoutNode {
 }
 
 impl LayoutNode {
+    /// Creates a node with the given `id` and `style`; children, text, and layer default to empty/zero.
     pub fn new(id: u64, style: LayoutStyle) -> Self {
         Self {
             id,
