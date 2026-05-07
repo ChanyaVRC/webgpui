@@ -102,8 +102,7 @@ impl CompatState {
         tree.set_style(core_id, node.style);
         tree.set_layout(core_id, node.layout);
         id_map.insert(compat_id, core_id);
-        let children: Vec<u64> = node.children.clone();
-        for child_compat in children {
+        for child_compat in node.children {
             Self::flush_recursive(staged, id_map, tree, child_compat, core_id);
         }
     }
