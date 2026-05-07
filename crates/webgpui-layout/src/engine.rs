@@ -35,7 +35,8 @@ impl LayoutEngine {
         viewport: Size,
         text_measure: &dyn TextMeasure,
     ) {
-        self.results = vec![LayoutResult::zero(); nodes.len()];
+        self.results.clear();
+        self.results.resize(nodes.len(), LayoutResult::zero());
         self.sorted_cache.clear();
         if nodes.is_empty() {
             return;
@@ -43,7 +44,7 @@ impl LayoutEngine {
         // Validate all child indices before traversal to give a clear error.
         for (i, node) in nodes.iter().enumerate() {
             for &ci in &node.children {
-                assert!(
+                debug_assert!(
                     ci < nodes.len(),
                     "LayoutNode at index {i} has child index {ci} which is out of bounds (nodes.len() = {})",
                     nodes.len()
@@ -1004,6 +1005,7 @@ mod tests {
 
     // ---- child index validation (#82) ---
     #[test]
+    #[cfg(debug_assertions)]
     #[should_panic(expected = "out of bounds")]
     fn engine_panics_on_bad_child_index() {
         let mut engine = LayoutEngine::new();
