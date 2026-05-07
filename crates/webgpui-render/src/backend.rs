@@ -131,7 +131,7 @@ impl BackendSelector {
     /// # Note
     /// This is a low-level factory stub.  wgpu and CUDA backends require a
     /// window handle that is not representable without a concrete type here.
-    /// Prefer [`webgpui_app::AppBuilder`] for typical application use.
+    /// Prefer `webgpui_app::AppBuilder` for typical application use.
     pub fn create(&self) -> Result<Box<dyn crate::Renderer>, RenderError> {
         match self {
             #[cfg(feature = "backend-wgpu")]
