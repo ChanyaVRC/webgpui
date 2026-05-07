@@ -1,6 +1,6 @@
 # Contributing Guide
 
-See [Semver Policy](semver-policy.md) for version bump rules and the
+See [Semver Policy](../architecture/semver-policy.md) for version bump rules and the
 deprecation process.
 
 ## 1. Branch and PR Workflow

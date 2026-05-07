@@ -20,34 +20,34 @@ extra:
 nav:
   - Getting Started:
       - Home: index.md
-      - Design Philosophy: design-philosophy.md
-      - Contributing Guide: contributing.md
-      - Glossary: glossary.md
+      - Design Philosophy: getting-started/design-philosophy.md
+      - Contributing Guide: getting-started/contributing.md
+      - Glossary: getting-started/glossary.md
   - Architecture:
-      - Requirements Summary: requirements-summary.md
-      - Detailed Requirements: requirements.md
-      - Workspace Architecture: workspace-architecture.md
-      - Crate Dependencies: crate-dependencies.md
-      - Architecture Decision Policy: architecture-decisions.md
-      - Semver Policy: semver-policy.md
-      - Roadmap: roadmap.md
+      - Requirements Summary: architecture/requirements-summary.md
+      - Detailed Requirements: architecture/requirements.md
+      - Workspace Architecture: architecture/workspace-architecture.md
+      - Crate Dependencies: architecture/crate-dependencies.md
+      - Architecture Decision Policy: architecture/architecture-decisions.md
+      - Semver Policy: architecture/semver-policy.md
+      - Roadmap: architecture/roadmap.md
   - Rendering & Performance:
-      - Rendering Performance Plan: rendering-performance-plan.md
-      - Replacement Strategy: replacement-strategy.md
-      - API Mapping: api-mapping.md
-      - API Swapping Quality Plan: api-swapping-quality-plan.md
+      - Rendering Performance Plan: rendering/rendering-performance-plan.md
+      - Replacement Strategy: rendering/replacement-strategy.md
+      - API Mapping: rendering/api-mapping.md
+      - API Swapping Quality Plan: rendering/api-swapping-quality-plan.md
   - Backends:
-      - CUDA Backend Support: cuda-backend.md
-      - Dynamic Backend Switching: dynamic-backend-switching.md
+      - CUDA Backend Support: backends/cuda-backend.md
+      - Dynamic Backend Switching: backends/dynamic-backend-switching.md
   - CI & Quality:
-      - CI Gates Guide: ci-gates.md
-      - Metrics Format: metrics-format.md
-      - M4 Migration Metrics: m4-metrics.md
-      - Docs Coverage Review: docs-coverage-review.md
+      - CI Gates Guide: quality/ci-gates.md
+      - Metrics Format: quality/metrics-format.md
+      - M4 Migration Metrics: quality/m4-metrics.md
+      - Docs Coverage Review: quality/docs-coverage-review.md
   - Reference:
-      - Documentation Map: documentation-map.md
-      - GitHub Pages Guide: github-pages.md
-      - API Reference: api-reference.md
+      - Documentation Map: reference/documentation-map.md
+      - GitHub Pages Guide: reference/github-pages.md
+      - API Reference: reference/api-reference.md
 
 markdown_extensions:
   - tables

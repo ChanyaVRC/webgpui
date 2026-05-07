@@ -38,4 +38,4 @@ v0.x 期間中は以下のルールを適用します。
 形式に従い `CHANGELOG.md` の適切な見出し
 （`Added`・`Changed`・`Deprecated`・`Removed`・`Fixed`・`Security`）に記録する。
 
-参照: [docs/ja/contributing.md](contributing.md)
+参照: [docs/ja/contributing.md](../getting-started/contributing.md)

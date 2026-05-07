@@ -365,5 +365,5 @@ env:
 
 ## References
 - [CUDA Backend Support](cuda-backend.md) - Full CUDA setup and configuration guide
-- [Workspace Architecture](workspace-architecture.md) - Feature flag policy details
-- [Requirements](requirements.md) - Architecture decision rationale
+- [Workspace Architecture](../architecture/workspace-architecture.md) - Feature flag policy details
+- [Requirements](../architecture/requirements.md) - Architecture decision rationale

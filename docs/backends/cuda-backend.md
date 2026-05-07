@@ -231,7 +231,7 @@ CUDA and wgpu output **must be pixel-identical** for the same input scene:
 - Event sequences must be identical
 - Performance measured separately (CUDA may be faster or slower depending on workload)
 
-See [API Swapping Quality Plan](api-swapping-quality-plan.md) for equivalence test details.
+See [API Swapping Quality Plan](../rendering/api-swapping-quality-plan.md) for equivalence test details.
 
 ## Troubleshooting
 
@@ -280,7 +280,7 @@ diff wgpu-metrics.txt cuda-metrics.txt
 ```
 
 ### Metrics Comparison
-Expected output format (defined in [CI Metrics Format](metrics-format.md)):
+Expected output format (defined in [CI Metrics Format](../quality/metrics-format.md)):
 ```
 p0-metrics:
   avg_ms: 14.2
@@ -294,9 +294,9 @@ p0-metrics:
 - Visual output must be pixel-identical (within rounding error for float math)
 
 ## Documentation References
-- [Requirements](requirements.md) - CUDA listed as baseline technology
-- [Workspace Architecture](workspace-architecture.md) - `webgpui-render-cuda` crate design
-- [API Swapping Quality Plan](api-swapping-quality-plan.md) - Equivalence testing strategy
+- [Requirements](../architecture/requirements.md) - CUDA listed as baseline technology
+- [Workspace Architecture](../architecture/workspace-architecture.md) - `webgpui-render-cuda` crate design
+- [API Swapping Quality Plan](../rendering/api-swapping-quality-plan.md) - Equivalence testing strategy
 - [CUDA Toolkit Docs](https://docs.nvidia.com/cuda/) - Official NVIDIA documentation
 - [cudarc Crate Docs](https://docs.rs/cudarc/) - Safe CUDA Rust bindings
 
