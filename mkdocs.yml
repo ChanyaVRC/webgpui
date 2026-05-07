@@ -27,6 +27,7 @@ nav:
       - Requirements Summary: requirements-summary.md
       - Detailed Requirements: requirements.md
       - Workspace Architecture: workspace-architecture.md
+      - Crate Dependencies: crate-dependencies.md
       - Architecture Decision Policy: architecture-decisions.md
       - Roadmap: roadmap.md
   - Rendering & Performance:
@@ -54,6 +55,7 @@ nav:
           - 要件サマリー: ja/requirements-summary.md
           - 要件定義（詳細）: ja/requirements.md
           - 構成案（crate分割）: ja/workspace-architecture.md
+          - クレート依存関係マップ: ja/crate-dependencies.md
           - アーキテクチャ意思決定ログ方針: ja/architecture-decisions.md
           - ロードマップ: ja/roadmap.md
       - レンダリング & パフォーマンス:
