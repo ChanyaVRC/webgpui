@@ -54,6 +54,8 @@ pub struct BatchKey {
     pub pipeline_id: u32,
     /// Z-order bucket (lower = drawn first).
     pub z_order: u16,
+    /// Clip region identifier: 0 = no clip, >0 = index into clip registry.
+    pub clip_id: u16,
 }
 
 /// Blend mode encoded as a key-safe value (implements `Ord`/`Hash` for use in [`BatchKey`]).
@@ -90,6 +92,8 @@ pub struct DrawBatch {
     pub vertices: Vec<Vertex>,
     /// Indices into `vertices` forming triangles.
     pub indices: Vec<u32>,
+    /// Scissor rectangle for this batch. `None` = full viewport (no clip).
+    pub scissor: Option<Rect>,
 }
 
 impl DrawBatch {
@@ -99,6 +103,7 @@ impl DrawBatch {
             key,
             vertices: Vec::new(),
             indices: Vec::new(),
+            scissor: None,
         }
     }
 
@@ -181,6 +186,12 @@ pub struct Batcher {
     /// Set when a new batch is created; cleared after sorting. Avoids re-sorting
     /// frames where the batch order cannot have changed.
     sort_dirty: bool,
+    /// Stack of active clip rects (intersection of all ancestors).
+    clip_stack: Vec<Rect>,
+    /// clip_id → effective Rect; index 0 = no clip.
+    clip_registry: Vec<Option<Rect>>,
+    /// The clip_id corresponding to the current top of `clip_stack`.
+    current_clip_id: u16,
 }
 
 impl Batcher {
@@ -190,6 +201,9 @@ impl Batcher {
             current_z: 0,
             batch_index: std::collections::HashMap::new(),
             sort_dirty: false,
+            clip_stack: Vec::new(),
+            clip_registry: vec![None], // id=0 means "no clip"
+            current_clip_id: 0,
         }
     }
 
@@ -202,6 +216,10 @@ impl Batcher {
         self.batch_index.clear();
         self.current_z = 0;
         self.sort_dirty = false;
+        self.clip_stack.clear();
+        self.clip_registry.clear();
+        self.clip_registry.push(None); // id=0 means "no clip"
+        self.current_clip_id = 0;
 
         for cmd in draw_list.commands() {
             match cmd {
@@ -229,8 +247,30 @@ impl Batcher {
                     let key = self.make_key(*blend);
                     self.get_or_create(key).push_border(*rect, *color, *width);
                 }
-                DrawCommand::PushClip { .. } | DrawCommand::PopClip => {
-                    // MVP: clipping not yet implemented at the batch level.
+                DrawCommand::PushClip { rect } => {
+                    // Intersect with the current clip (if any).
+                    let effective = if let Some(top) = self.clip_stack.last() {
+                        intersect_rects(*top, *rect)
+                    } else {
+                        *rect
+                    };
+                    self.clip_stack.push(effective);
+                    // Register as a new clip id.
+                    let id = self.clip_registry.len() as u16;
+                    self.clip_registry.push(Some(effective));
+                    self.current_clip_id = id;
+                }
+                DrawCommand::PopClip => {
+                    self.clip_stack.pop();
+                    self.current_clip_id = if let Some(top) = self.clip_stack.last() {
+                        // Find the id of the current top of stack (search registry).
+                        self.clip_registry
+                            .iter()
+                            .rposition(|r| r.as_ref() == Some(top))
+                            .unwrap_or(0) as u16
+                    } else {
+                        0
+                    };
                 }
                 DrawCommand::DrawImage { .. } => {
                     // Images bypass the batcher and are rendered directly by the backend.
@@ -259,6 +299,7 @@ impl Batcher {
             texture_id: 0,
             pipeline_id: 0,
             z_order: self.current_z,
+            clip_id: self.current_clip_id,
         }
     }
 
@@ -281,7 +322,14 @@ impl Batcher {
             }
         }
         let pos = self.batches.len();
-        self.batches.push(DrawBatch::new(key));
+        let scissor = self
+            .clip_registry
+            .get(key.clip_id as usize)
+            .copied()
+            .flatten();
+        let mut batch = DrawBatch::new(key);
+        batch.scissor = scissor;
+        self.batches.push(batch);
         self.batch_index.insert(key, pos);
         &mut self.batches[pos]
     }
@@ -296,6 +344,15 @@ impl Default for Batcher {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Returns the intersection of two rectangles, clamping width/height to 0.0 if they don't overlap.
+fn intersect_rects(a: Rect, b: Rect) -> Rect {
+    let x0 = a.min_x().max(b.min_x());
+    let y0 = a.min_y().max(b.min_y());
+    let x1 = a.max_x().min(b.max_x());
+    let y1 = a.max_y().min(b.max_y());
+    Rect::new(x0, y0, (x1 - x0).max(0.0), (y1 - y0).max(0.0))
 }
 
 // ---------------------------------------------------------------------------
@@ -406,5 +463,73 @@ mod tests {
         // Two color rects → merged into one batch of 4 triangles.
         assert_eq!(batches.len(), 1);
         assert_eq!(batches[0].triangle_count(), 4);
+    }
+
+    #[test]
+    fn push_clip_sets_scissor_on_batch() {
+        use webgpui_geometry::{Point, Size};
+        let mut batcher = Batcher::new();
+        let clip = Rect {
+            origin: Point::new(10.0, 10.0),
+            size: Size::new(100.0, 50.0),
+        };
+        let mut list = DrawList::new();
+        list.push_clip(clip);
+        list.fill_rect(Rect::new(0.0, 0.0, 200.0, 200.0), Color::WHITE);
+        list.pop_clip();
+        let batches = batcher.process(&list);
+        assert!(!batches.is_empty());
+        assert_eq!(batches[0].scissor, Some(clip));
+    }
+
+    #[test]
+    fn pop_clip_restores_no_scissor() {
+        use webgpui_geometry::{Point, Size};
+        let mut batcher = Batcher::new();
+        let clip = Rect {
+            origin: Point::new(10.0, 10.0),
+            size: Size::new(100.0, 50.0),
+        };
+        let mut list = DrawList::new();
+        list.fill_rect(Rect::new(0.0, 0.0, 200.0, 200.0), Color::RED);
+        list.push_clip(clip);
+        list.fill_rect(Rect::new(0.0, 0.0, 200.0, 200.0), Color::BLUE);
+        list.pop_clip();
+        list.fill_rect(Rect::new(0.0, 0.0, 200.0, 200.0), Color::GREEN);
+        let batches = batcher.process(&list);
+        // Note: batches may be merged if same key — the clip_id keeps them separate.
+        let clipped: Vec<_> = batches.iter().filter(|b| b.scissor.is_some()).collect();
+        let unclipped: Vec<_> = batches.iter().filter(|b| b.scissor.is_none()).collect();
+        assert!(!clipped.is_empty(), "clipped batch must exist");
+        assert!(!unclipped.is_empty(), "unclipped batch must exist");
+    }
+
+    #[test]
+    fn nested_clips_intersect() {
+        use webgpui_geometry::{Point, Size};
+        let mut batcher = Batcher::new();
+        let outer = Rect {
+            origin: Point::new(0.0, 0.0),
+            size: Size::new(100.0, 100.0),
+        };
+        let inner = Rect {
+            origin: Point::new(50.0, 50.0),
+            size: Size::new(100.0, 100.0),
+        };
+        let mut list = DrawList::new();
+        list.push_clip(outer);
+        list.push_clip(inner);
+        list.fill_rect(Rect::new(0.0, 0.0, 200.0, 200.0), Color::WHITE);
+        list.pop_clip();
+        list.pop_clip();
+        let batches = batcher.process(&list);
+        let clipped: Vec<_> = batches.iter().filter(|b| b.scissor.is_some()).collect();
+        assert!(!clipped.is_empty());
+        // Intersection of (0,0,100,100) and (50,50,100,100) = (50,50,50,50)
+        let sci = clipped[0].scissor.unwrap();
+        assert!((sci.min_x() - 50.0).abs() < 1e-5);
+        assert!((sci.min_y() - 50.0).abs() < 1e-5);
+        assert!((sci.size.width - 50.0).abs() < 1e-5);
+        assert!((sci.size.height - 50.0).abs() < 1e-5);
     }
 }
