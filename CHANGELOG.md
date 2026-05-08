@@ -6,7 +6,33 @@ Versioning follows [Semantic Versioning](https://semver.org/) — see [docs/semv
 
 ---
 
-## [Unreleased] — M5: API Stabilization
+## [Unreleased] — M7: Animation and Transitions
+
+---
+
+## [0.7.0] — M6: Visual Feature Expansion
+
+### Added
+- **Image rendering**: PNG/JPEG loading via the `image` crate; `ImageRegistry` caches decoded
+  images by path and avoids re-decoding across frames; `DrawContext::load_image` / `draw_image`
+  API; `WgpuRenderer::upload_images` uploads pixel data to GPU textures on demand.
+- **SVG rasterization**: `DrawContext::draw_svg` / `load_svg` via `resvg` + `tiny-skia`; results
+  are cached by `(path, width, height)` so repeated draws within the same or future frames are
+  zero-cost after the first rasterization.
+- **Filter effects** (`filters` feature, zero cost when disabled):
+  - `PassKind::Filter`, `FilterKind::Blur` / `FilterKind::ColorMatrix` in `webgpui-render-graph`.
+  - `BlurParams` (Gaussian blur, configurable pixel radius) and `ColorMatrixParams` (5×4 RGBA
+    matrix with built-in `IDENTITY` and `GRAYSCALE` constants).
+  - `RenderGraph::add_blur_pass` / `add_color_matrix_pass` helpers.
+  - `AppBuilder::enable_filter(FilterKind)` fluent API in `webgpui-app`.
+  - WGSL fullscreen-triangle shaders; offscreen intermediate texture used as UI render target
+    when filters are active; texture invalidated on resize.
+- **CI**: `--features filters` check + test steps; `--features test-gpu,filters` WGSL shader
+  compilation tests via lavapipe.
+
+---
+
+## [0.6.0] — M5: API Stabilization
 
 ### Added
 - `#![warn(missing_docs)]` enabled in `webgpui-core`, `webgpui-compat`, `webgpui-input`, `webgpui-app`; all public items now carry rustdoc comments.

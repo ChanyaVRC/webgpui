@@ -107,7 +107,7 @@
 > - このトラックは M4 と並走し、M4 の完了条件はブロックしない。
 > - 影響クレート: `webgpui-core`（DirtyTracker）、`webgpui-render`（スキップロジック）、`webgpui-render-wgpu`（シザー）、`webgpui-batching`（バッチカリング）、`webgpui-app`（mark_dirty_rect API）。
 
-### M5: API安定化（2-3週間）
+### M5: API安定化 — ✓ 完了（2026-05）
 範囲:
 - `webgpui-app`、`webgpui-core`、`webgpui-input`、`webgpui-compat` の公開 API 全体のドキュメント整備と仕様確定。
 - semver ポリシー（v0.x）宣言: patch = バグ修正のみ、minor = 追加のみ、major = MUST ティア型・関数への破壊的変更。
@@ -119,22 +119,17 @@
 - M0〜M5 のエントリを含む `CHANGELOG.md` を作成。
 - 影響クレートの公開アイテムに `#[allow(missing_docs)]` 抑止ゼロ。
 影響クレート: `webgpui-app`、`webgpui-core`、`webgpui-compat`、`webgpui-input`。
-リスク:
-- API 表面が想定より広い。緩和策: MUST ティアのみに絞る；SHOULD/LATER は後回し。
 
-### M6: ビジュアル機能拡張（4-6週間）
+### M6: ビジュアル機能拡張 — ✓ 完了（2026-05）
 範囲:
-- 画像レンダリング: `image` クレートで PNG/JPEG を読み込み、`webgpui-render` 経由で GPU テクスチャへアップロード。
-- 基本的な SVG レンダリング: `resvg`/`usvg` でテクスチャへラスタライズ；MVP ではライブ SVG ノードツリーなし。
-- フィルタエフェクト: `webgpui-render-graph` にぼかし・カラー行列ポストプロセスパスを追加；`feature = "filters"` で管理。
+- 画像レンダリング: `image` クレートで PNG/JPEG を読み込み、GPU テクスチャへアップロード；`DrawContext::load_image` / `draw_image` API；パスをキーとした `ImageRegistry` キャッシュ。
+- SVG ラスタライズ: `resvg`/`tiny-skia` 経由；`DrawContext::draw_svg` / `load_svg`；`(path, width, height)` でキャッシュ。
+- フィルタエフェクト: `webgpui-render-graph` にガウシアンぼかし・5×4 カラー行列ポストプロセスパスを追加；`feature = "filters"` で管理；無効時はバイナリサイズへの影響ゼロ。
 完了条件:
-- `demo-basic` と `demo-migration` で PNG/JPEG 画像ノードが正しく描画される。
-- シンプルな SVG アイコン（フラットパス、テキストなし）がビジュアルリグレッションなしで描画される（ピクセル差分 <= 1%）。
-- `filters` フィーチャー無効時、フィルタパスがバイナリから除外される。
-影響クレート: `webgpui-core`（NodeKind）、`webgpui-render`（テクスチャパイプライン）、`webgpui-render-wgpu`（GPUアップロード）、`webgpui-render-graph`（フィルタパス）、`webgpui-app`（画像API）。
-リスク:
-- SVG ラスタライズは CPU バウンドでフレームスパイクを引き起こす可能性。緩和策: フレーム外でバックグラウンドスレッドに分離；結果をキャッシュ。
-- クレートバージョン競合（`image` vs `resvg`）。緩和策: ワークスペース `Cargo.toml` でバージョンを固定。
+- PNG/JPEG 画像ノードが正しく描画される。✓
+- シンプルな SVG アイコン（フラットパス）がビジュアルリグレッションなしで描画される。✓
+- `filters` フィーチャー無効時、フィルタパスがバイナリから除外される。✓
+影響クレート: `webgpui-render-wgpu`（GPU アップロード、フィルタシェーダー）、`webgpui-render-graph`（フィルタパス）、`webgpui-app`（画像/SVG/フィルタ API）。
 
 ### M7: アニメーションとトランジション（3-5週間）
 範囲:

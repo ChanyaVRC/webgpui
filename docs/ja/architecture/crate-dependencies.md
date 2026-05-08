@@ -58,6 +58,23 @@ Layer 5（アプリケーション）
 
 \* オプション機能
 
+## フィーチャーフラグ
+
+| クレート | フィーチャー | 有効化される機能 |
+|---|---|---|
+| `webgpui-render-graph` | `filters` | `PassKind::Filter`、`FilterKind`、`BlurParams`、`ColorMatrixParams` |
+| `webgpui-render-wgpu` | `filters` | WGSL フィルタシェーダー、オフスクリーンテクスチャ、`→ render-graph/filters` |
+| `webgpui-app` | `filters` | `AppBuilder::enable_filter`、`AppConfig::filters`、`→ render-wgpu/filters` |
+| `webgpui-render-wgpu` | `test-gpu` | GPU が必要なテスト（CI では lavapipe を使用） |
+| `webgpui-app` | `backend-cpu` | `webgpui-render-cpu` を取り込む |
+
+## 主要な外部依存（M6以降）
+
+| クレート | 使用元 | 用途 |
+|---|---|---|
+| `image` | `webgpui-render-wgpu`、`webgpui-app` | PNG/JPEG デコードとピクセルレイアウト |
+| `resvg` / `tiny-skia` | `webgpui-app` | SVG を RGBA ピクセルへラスタライズ |
+
 ## 補足
 
 - このワークスペースに `webgpui` ファサードクレートは存在しません。`webgpui-app` が最上位の統合クレートです。
