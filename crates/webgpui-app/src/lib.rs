@@ -33,11 +33,12 @@ use winit::{
     window::WindowBuilder,
 };
 
-use webgpui_core::{DirtyTracker, NodeTree};
+use webgpui_core::{DirtyTracker, NodeStyle, NodeTree, TransitionConfig};
 use webgpui_geometry::{Color, Point, Rect, Size};
 use webgpui_input::{FocusManager, InputEvent, InputState, Modifiers};
 
 // Re-export types that application code commonly needs.
+pub use webgpui_core::NodeId;
 pub use webgpui_input::{KeyCode, MouseButton};
 use webgpui_profiler::FrameTimer;
 pub use webgpui_render::BackendSelector;
@@ -47,6 +48,295 @@ use webgpui_render_graph::ClearColor;
 #[cfg(feature = "filters")]
 use webgpui_render_graph::FilterKind;
 use webgpui_render_wgpu::{PendingImage, WgpuContext, WgpuRenderer};
+
+// ---------------------------------------------------------------------------
+// Animation
+// ---------------------------------------------------------------------------
+
+/// Easing curve for an [`Animation`].
+///
+/// [`Easing::sample`] maps a normalized time `t ∈ [0, 1]` to an output
+/// value in roughly `[0, 1]`.
+///
+/// # Example
+///
+/// ```
+/// use webgpui_app::Easing;
+///
+/// assert_eq!(Easing::Linear.sample(0.5), 0.5);
+/// assert!(Easing::EaseIn.sample(0.5) < 0.5);
+/// assert!(Easing::EaseOut.sample(0.5) > 0.5);
+/// ```
+#[derive(Debug, Clone, PartialEq)]
+pub enum Easing {
+    /// Constant-rate interpolation.
+    Linear,
+    /// Slow start, fast end (cubic).
+    EaseIn,
+    /// Fast start, slow end (cubic).
+    EaseOut,
+    /// Slow start and end, fast middle (cubic).
+    EaseInOut,
+    /// Custom cubic bézier with control points `(x1, y1)` and `(x2, y2)`,
+    /// matching the CSS `cubic-bezier()` function.
+    CubicBezier(f32, f32, f32, f32),
+}
+
+impl Easing {
+    /// Samples the easing curve at normalized time `t ∈ [0.0, 1.0]`.
+    ///
+    /// Values outside `[0, 1]` are clamped before sampling.
+    pub fn sample(&self, t: f32) -> f32 {
+        let t = t.clamp(0.0, 1.0);
+        match self {
+            Self::Linear => t,
+            Self::EaseIn => t * t * t,
+            Self::EaseOut => 1.0 - (1.0 - t).powi(3),
+            Self::EaseInOut => {
+                if t < 0.5 {
+                    4.0 * t * t * t
+                } else {
+                    1.0 - (-2.0 * t + 2.0_f32).powi(3) / 2.0
+                }
+            }
+            Self::CubicBezier(x1, y1, x2, y2) => cubic_bezier_sample(*x1, *y1, *x2, *y2, t),
+        }
+    }
+}
+
+/// Samples a CSS cubic-bézier easing curve.
+///
+/// Solves `x(s) = t` via 16-iteration binary search (sufficient for 60 fps),
+/// then evaluates `y(s)`.
+fn cubic_bezier_sample(x1: f32, y1: f32, x2: f32, y2: f32, t: f32) -> f32 {
+    let bx = |s: f32| 3.0 * x1 * s * (1.0 - s).powi(2) + 3.0 * x2 * s * s * (1.0 - s) + s * s * s;
+    let by = |s: f32| 3.0 * y1 * s * (1.0 - s).powi(2) + 3.0 * y2 * s * s * (1.0 - s) + s * s * s;
+    let (mut lo, mut hi) = (0.0_f32, 1.0_f32);
+    for _ in 0..16 {
+        let mid = (lo + hi) * 0.5;
+        if bx(mid) < t {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+    }
+    by((lo + hi) * 0.5)
+}
+
+/// The style property targeted by an [`Animation`].
+#[derive(Debug, Clone, PartialEq)]
+pub enum AnimatedProperty {
+    /// Animate [`NodeStyle::opacity`] from `from` to `to`.
+    Opacity {
+        /// Starting opacity.
+        from: f32,
+        /// Target opacity.
+        to: f32,
+    },
+    /// Animate [`NodeStyle::translate_x`] from `from` to `to` logical pixels.
+    TranslateX {
+        /// Starting X offset.
+        from: f32,
+        /// Target X offset.
+        to: f32,
+    },
+    /// Animate [`NodeStyle::translate_y`] from `from` to `to` logical pixels.
+    TranslateY {
+        /// Starting Y offset.
+        from: f32,
+        /// Target Y offset.
+        to: f32,
+    },
+}
+
+/// A one-shot animation that interpolates a node's style property over time.
+///
+/// Construct with one of the factory methods, then chain `.duration_ms` and
+/// `.easing` before passing to [`DrawContext::start_animation`].
+///
+/// # Example
+///
+/// ```no_run
+/// use webgpui_app::{Animation, Easing, NodeId};
+///
+/// let anim = Animation::opacity(NodeId::ROOT, 0.0, 1.0)
+///     .duration_ms(400.0)
+///     .easing(Easing::EaseOut);
+/// ```
+#[derive(Debug, Clone)]
+pub struct Animation {
+    pub(crate) node_id: NodeId,
+    pub(crate) property: AnimatedProperty,
+    pub(crate) duration_ms: f64,
+    pub(crate) easing: Easing,
+}
+
+impl Animation {
+    /// Animates [`NodeStyle::opacity`] from `from` to `to`.
+    pub fn opacity(node_id: NodeId, from: f32, to: f32) -> Self {
+        Self {
+            node_id,
+            property: AnimatedProperty::Opacity { from, to },
+            duration_ms: 300.0,
+            easing: Easing::Linear,
+        }
+    }
+
+    /// Animates [`NodeStyle::translate_x`] from `from` to `to` logical pixels.
+    pub fn translate_x(node_id: NodeId, from: f32, to: f32) -> Self {
+        Self {
+            node_id,
+            property: AnimatedProperty::TranslateX { from, to },
+            duration_ms: 300.0,
+            easing: Easing::Linear,
+        }
+    }
+
+    /// Animates [`NodeStyle::translate_y`] from `from` to `to` logical pixels.
+    pub fn translate_y(node_id: NodeId, from: f32, to: f32) -> Self {
+        Self {
+            node_id,
+            property: AnimatedProperty::TranslateY { from, to },
+            duration_ms: 300.0,
+            easing: Easing::Linear,
+        }
+    }
+
+    /// Sets the animation duration in milliseconds (default: 300).
+    pub fn duration_ms(mut self, ms: f64) -> Self {
+        self.duration_ms = ms;
+        self
+    }
+
+    /// Sets the easing curve (default: [`Easing::Linear`]).
+    pub fn easing(mut self, easing: Easing) -> Self {
+        self.easing = easing;
+        self
+    }
+}
+
+// Internal record of a running animation.
+struct RunningAnimation {
+    node_id: NodeId,
+    property: AnimatedProperty,
+    easing: Easing,
+    start: Instant,
+    duration: Duration,
+}
+
+/// Manages all active animations for an [`App`].
+///
+/// Owned by `App::run` and passed by mutable reference to [`DrawContext`].
+/// Users interact with it via [`DrawContext::start_animation`] and
+/// [`DrawContext::set_style`].
+pub(crate) struct AnimationTimeline {
+    active: Vec<RunningAnimation>,
+}
+
+impl AnimationTimeline {
+    fn new() -> Self {
+        Self { active: Vec::new() }
+    }
+
+    /// Enqueues an animation to start immediately.
+    pub(crate) fn start(&mut self, anim: Animation) {
+        self.active.push(RunningAnimation {
+            node_id: anim.node_id,
+            property: anim.property,
+            easing: anim.easing,
+            start: Instant::now(),
+            duration: Duration::from_secs_f64(anim.duration_ms / 1000.0),
+        });
+    }
+
+    /// Returns `true` if at least one animation is still running.
+    pub(crate) fn has_active(&self) -> bool {
+        !self.active.is_empty()
+    }
+
+    /// Advances all animations, writes interpolated values into `node_tree`,
+    /// and calls `dirty.mark_all()` for every frame that has active animations.
+    ///
+    /// Completed animations are removed from the active list.
+    pub(crate) fn tick(&mut self, node_tree: &mut NodeTree, dirty: &mut DirtyTracker) {
+        if self.active.is_empty() {
+            return;
+        }
+        let now = Instant::now();
+        let mut i = 0;
+        while i < self.active.len() {
+            // Extract what we need without keeping a borrow on self.active.
+            let (node_id, v, done) = {
+                let anim = &self.active[i];
+                let t = if anim.duration.is_zero() {
+                    1.0_f32
+                } else {
+                    (now.duration_since(anim.start).as_secs_f64() / anim.duration.as_secs_f64())
+                        .min(1.0) as f32
+                };
+                (anim.node_id, anim.easing.sample(t), t >= 1.0)
+            };
+            // Clone the current style and apply the interpolated value.
+            let style_opt = node_tree.get(node_id).map(|n| n.style.clone());
+            if let Some(mut style) = style_opt {
+                match &self.active[i].property {
+                    AnimatedProperty::Opacity { from, to } => {
+                        style.opacity = from + (to - from) * v;
+                    }
+                    AnimatedProperty::TranslateX { from, to } => {
+                        style.translate_x = from + (to - from) * v;
+                    }
+                    AnimatedProperty::TranslateY { from, to } => {
+                        style.translate_y = from + (to - from) * v;
+                    }
+                }
+                node_tree.set_style(node_id, style);
+                // Mark full frame dirty so the renderer repaints this frame.
+                // P2 integration: replace with per-node rect when layout rects
+                // are queryable from the animation system.
+                dirty.mark_all();
+            }
+            if done {
+                self.active.swap_remove(i);
+            } else {
+                i += 1;
+            }
+        }
+    }
+
+    /// Creates implicit transition animations for any animatable properties
+    /// that differ between `old` and `new`.
+    pub(crate) fn create_transitions(
+        &mut self,
+        node_id: NodeId,
+        old: &NodeStyle,
+        new: &NodeStyle,
+        config: &TransitionConfig,
+    ) {
+        let dur = config.duration_ms;
+        if (old.opacity - new.opacity).abs() > 1e-4 {
+            self.start(
+                Animation::opacity(node_id, old.opacity, new.opacity)
+                    .duration_ms(dur)
+                    .easing(Easing::EaseInOut),
+            );
+        }
+        if (old.translate_x - new.translate_x).abs() > 1e-4 {
+            self.start(
+                Animation::translate_x(node_id, old.translate_x, new.translate_x)
+                    .duration_ms(dur)
+                    .easing(Easing::EaseInOut),
+            );
+        }
+        if (old.translate_y - new.translate_y).abs() > 1e-4 {
+            self.start(
+                Animation::translate_y(node_id, old.translate_y, new.translate_y)
+                    .duration_ms(dur)
+                    .easing(Easing::EaseInOut),
+            );
+        }
+    }
+}
 
 // ---------------------------------------------------------------------------
 // BackendSwitcher
@@ -280,9 +570,11 @@ pub struct DrawContext<'a> {
     pub focus: &'a mut FocusManager,
     /// Image loading and caching registry.
     pub images: &'a mut ImageRegistry,
+    timeline: &'a mut AnimationTimeline,
 }
 
 impl<'a> DrawContext<'a> {
+    #[allow(clippy::too_many_arguments)]
     fn new(
         draw_list: &'a mut DrawList,
         viewport: Size,
@@ -292,6 +584,7 @@ impl<'a> DrawContext<'a> {
         dirty: &'a mut DirtyTracker,
         focus: &'a mut FocusManager,
         images: &'a mut ImageRegistry,
+        timeline: &'a mut AnimationTimeline,
     ) -> Self {
         Self {
             draw_list,
@@ -302,6 +595,7 @@ impl<'a> DrawContext<'a> {
             dirty,
             focus,
             images,
+            timeline,
         }
     }
 
@@ -366,6 +660,46 @@ impl<'a> DrawContext<'a> {
         let handle = self.images.load_svg(path, w, h)?;
         self.draw_list.draw_image(rect, handle);
         Ok(())
+    }
+
+    /// Starts a one-shot animation on a node's style property.
+    ///
+    /// The animation begins on the current frame and runs until its duration
+    /// elapses.  The animation timeline applies interpolated values to the
+    /// node's style each frame before the user callback is called.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use webgpui_app::{Animation, DrawContext, Easing, NodeId};
+    ///
+    /// fn frame(ctx: &mut DrawContext<'_>) {
+    ///     ctx.start_animation(
+    ///         Animation::opacity(NodeId::ROOT, 0.0, 1.0)
+    ///             .duration_ms(500.0)
+    ///             .easing(Easing::EaseOut),
+    ///     );
+    /// }
+    /// ```
+    pub fn start_animation(&mut self, animation: Animation) {
+        self.timeline.start(animation);
+    }
+
+    /// Updates the style of a node, automatically creating transition
+    /// animations for changed properties when the node has a
+    /// [`TransitionConfig`].
+    ///
+    /// Prefer this over `self.node_tree.set_style(id, style)` when implicit
+    /// transitions should be honoured.
+    pub fn set_style(&mut self, node_id: NodeId, new_style: NodeStyle) {
+        if let Some(transition) = new_style.transition.clone() {
+            let old_opt = self.node_tree.get(node_id).map(|n| n.style.clone());
+            if let Some(old) = old_opt {
+                self.timeline
+                    .create_transitions(node_id, &old, &new_style, &transition);
+            }
+        }
+        self.node_tree.set_style(node_id, new_style);
     }
 }
 
@@ -601,6 +935,7 @@ impl App {
         let mut dirty_tracker = DirtyTracker::new();
         let mut focus = FocusManager::new();
         let mut image_registry = ImageRegistry::new();
+        let mut timeline = AnimationTimeline::new();
         let mut cursor_pos = Point::ZERO;
         let frame_interval = self.config.target_fps.and_then(|fps| {
             if fps == 0 {
@@ -662,6 +997,11 @@ impl App {
                                 }
                             }
 
+                            // Advance active animations before the user callback so
+                            // that node_tree already holds the interpolated values
+                            // when frame_fn runs.
+                            timeline.tick(&mut node_tree, &mut dirty_tracker);
+
                             let (sw, sh) = renderer.surface_size();
                             let viewport = Size::new(sw as f32, sh as f32);
                             draw_list.clear();
@@ -674,6 +1014,7 @@ impl App {
                                 &mut dirty_tracker,
                                 &mut focus,
                                 &mut image_registry,
+                                &mut timeline,
                             );
                             frame_fn(&mut ctx);
 
@@ -1051,5 +1392,182 @@ mod tests {
         std::fs::write(&path, b"not valid svg content").unwrap();
         let mut reg = ImageRegistry::new();
         assert!(reg.load_svg(&path, 16, 16).is_err());
+    }
+
+    // ---- Easing ----
+
+    #[test]
+    fn easing_linear_endpoints() {
+        assert_eq!(Easing::Linear.sample(0.0), 0.0);
+        assert_eq!(Easing::Linear.sample(1.0), 1.0);
+        assert!((Easing::Linear.sample(0.5) - 0.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn easing_ease_in_slow_start() {
+        // Cubic ease-in: output at t=0.5 should be less than 0.5.
+        assert!(Easing::EaseIn.sample(0.0) < 1e-6);
+        assert!((Easing::EaseIn.sample(1.0) - 1.0).abs() < 1e-6);
+        assert!(Easing::EaseIn.sample(0.5) < 0.5);
+    }
+
+    #[test]
+    fn easing_ease_out_fast_start() {
+        // Cubic ease-out: output at t=0.5 should be greater than 0.5.
+        assert!(Easing::EaseOut.sample(0.0) < 1e-6);
+        assert!((Easing::EaseOut.sample(1.0) - 1.0).abs() < 1e-6);
+        assert!(Easing::EaseOut.sample(0.5) > 0.5);
+    }
+
+    #[test]
+    fn easing_ease_in_out_symmetry() {
+        let e = Easing::EaseInOut;
+        assert!(e.sample(0.0) < 1e-6);
+        assert!((e.sample(1.0) - 1.0).abs() < 1e-6);
+        // Symmetric: sample(0.5) ≈ 0.5
+        assert!((e.sample(0.5) - 0.5).abs() < 1e-5);
+        // Slow start: below linear at t=0.25
+        assert!(e.sample(0.25) < 0.25);
+        // Slow end: above linear at t=0.75
+        assert!(e.sample(0.75) > 0.75);
+    }
+
+    #[test]
+    fn easing_cubic_bezier_endpoints() {
+        let e = Easing::CubicBezier(0.25, 0.1, 0.25, 1.0); // CSS "ease"
+        assert!(e.sample(0.0) < 1e-4);
+        assert!((e.sample(1.0) - 1.0).abs() < 1e-4);
+    }
+
+    #[test]
+    fn easing_clamps_out_of_range() {
+        assert_eq!(Easing::Linear.sample(-1.0), 0.0);
+        assert_eq!(Easing::Linear.sample(2.0), 1.0);
+    }
+
+    // ---- Animation opacity keyframes (5-point check per exit criteria) ----
+
+    #[test]
+    fn opacity_fade_keyframes_linear() {
+        let (from, to) = (0.0_f32, 1.0_f32);
+        for (t, expected) in [
+            (0.0, 0.0),
+            (0.25, 0.25),
+            (0.5, 0.5),
+            (0.75, 0.75),
+            (1.0, 1.0),
+        ] {
+            let v = Easing::Linear.sample(t);
+            let actual = from + (to - from) * v;
+            assert!(
+                (actual - expected).abs() < 1e-5,
+                "at t={t}: expected {expected} got {actual}"
+            );
+        }
+    }
+
+    // ---- Animation translate keyframes ----
+
+    #[test]
+    fn translate_slide_keyframes_ease_out() {
+        let (from, to) = (-30.0_f32, 0.0_f32);
+        // Endpoints
+        let v0 = Easing::EaseOut.sample(0.0);
+        let v1 = Easing::EaseOut.sample(1.0);
+        assert!((from + (to - from) * v0 - from).abs() < 1e-4);
+        assert!((from + (to - from) * v1 - to).abs() < 1e-4);
+        // Midpoint: ease-out reaches more than halfway by t=0.5
+        let v_mid = Easing::EaseOut.sample(0.5);
+        let actual_mid = from + (to - from) * v_mid;
+        // Linear midpoint would be -15.0; ease-out should be closer to 0 (> -15)
+        assert!(
+            actual_mid > -15.0 && actual_mid <= 0.0,
+            "ease-out midpoint should be > -15.0, got {actual_mid}"
+        );
+    }
+
+    // ---- AnimationTimeline ----
+
+    #[test]
+    fn animation_tick_no_dirty_when_empty() {
+        let mut timeline = AnimationTimeline::new();
+        let mut tree = webgpui_core::NodeTree::new();
+        let mut dirty = webgpui_core::DirtyTracker::new();
+        assert!(!timeline.has_active());
+        timeline.tick(&mut tree, &mut dirty);
+        assert!(!dirty.is_dirty(), "empty timeline must not mark dirty");
+    }
+
+    #[test]
+    fn animation_tick_marks_dirty_when_active() {
+        let mut timeline = AnimationTimeline::new();
+        let mut tree = webgpui_core::NodeTree::new();
+        let mut dirty = webgpui_core::DirtyTracker::new();
+        // Long duration so it stays active on the first tick.
+        timeline.start(Animation::opacity(NodeId::ROOT, 0.0, 1.0).duration_ms(100_000.0));
+        assert!(timeline.has_active());
+        timeline.tick(&mut tree, &mut dirty);
+        assert!(
+            dirty.is_dirty(),
+            "active animation must mark dirty every tick"
+        );
+    }
+
+    #[test]
+    fn animation_zero_duration_completes_immediately() {
+        let mut timeline = AnimationTimeline::new();
+        let mut tree = webgpui_core::NodeTree::new();
+        let mut dirty = webgpui_core::DirtyTracker::new();
+        timeline.start(Animation::opacity(NodeId::ROOT, 0.0, 1.0).duration_ms(0.0));
+        timeline.tick(&mut tree, &mut dirty);
+        // After one tick with zero duration the animation should be gone.
+        assert!(!timeline.has_active());
+        // The node's opacity should be the target value.
+        let opacity = tree
+            .get(NodeId::ROOT)
+            .map(|n| n.style.opacity)
+            .unwrap_or(0.0);
+        assert!(
+            (opacity - 1.0).abs() < 1e-5,
+            "opacity should reach target, got {opacity}"
+        );
+    }
+
+    #[test]
+    fn animation_translate_applied_to_node() {
+        let mut timeline = AnimationTimeline::new();
+        let mut tree = webgpui_core::NodeTree::new();
+        let mut dirty = webgpui_core::DirtyTracker::new();
+        // Zero duration so tick applies the final value immediately.
+        timeline.start(Animation::translate_y(NodeId::ROOT, -40.0, 0.0).duration_ms(0.0));
+        timeline.tick(&mut tree, &mut dirty);
+        let ty = tree
+            .get(NodeId::ROOT)
+            .map(|n| n.style.translate_y)
+            .unwrap_or(-1.0);
+        assert!(
+            (ty - 0.0).abs() < 1e-5,
+            "translate_y should reach 0.0, got {ty}"
+        );
+    }
+
+    #[test]
+    fn transition_creates_implicit_animation() {
+        use webgpui_core::{NodeStyle, TransitionConfig};
+        let mut timeline = AnimationTimeline::new();
+        let mut tree = webgpui_core::NodeTree::new();
+        // Give root node a starting style and a transition config.
+        let mut old = NodeStyle::default();
+        old.opacity = 1.0;
+        old.transition = Some(TransitionConfig { duration_ms: 400.0 });
+        tree.set_style(NodeId::ROOT, old.clone());
+        // New style: different opacity.
+        let mut new = old.clone();
+        new.opacity = 0.0;
+        timeline.create_transitions(NodeId::ROOT, &old, &new, old.transition.as_ref().unwrap());
+        assert!(
+            timeline.has_active(),
+            "transition must create an active animation"
+        );
     }
 }

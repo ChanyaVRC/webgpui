@@ -99,6 +99,21 @@ pub enum NodeKind {
 }
 
 // ---------------------------------------------------------------------------
+// TransitionConfig
+// ---------------------------------------------------------------------------
+
+/// Configuration for implicit style transitions.
+///
+/// When present on a [`NodeStyle`], property changes made via the application
+/// layer's `DrawContext::set_style` will be animated over `duration_ms`
+/// milliseconds using the animation timeline.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TransitionConfig {
+    /// Duration of the transition in milliseconds.
+    pub duration_ms: f64,
+}
+
+// ---------------------------------------------------------------------------
 // NodeStyle  (visual properties)
 // ---------------------------------------------------------------------------
 
@@ -123,6 +138,16 @@ pub struct NodeStyle {
     pub font_size: f32,
     /// Whether the node and its subtree are visible.
     pub visible: bool,
+    /// X-axis translation applied at render time in logical pixels.
+    pub translate_x: f32,
+    /// Y-axis translation applied at render time in logical pixels.
+    pub translate_y: f32,
+    /// Optional transition configuration for implicit style animations.
+    ///
+    /// When `Some`, changes to animatable properties (`opacity`, `translate_x`,
+    /// `translate_y`) via the application layer's `DrawContext::set_style` will
+    /// be interpolated over [`TransitionConfig::duration_ms`] milliseconds.
+    pub transition: Option<TransitionConfig>,
 }
 
 impl Default for NodeStyle {
@@ -137,6 +162,9 @@ impl Default for NodeStyle {
             text_color: Color::BLACK,
             font_size: 14.0,
             visible: true,
+            translate_x: 0.0,
+            translate_y: 0.0,
+            transition: None,
         }
     }
 }

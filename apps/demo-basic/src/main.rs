@@ -1,10 +1,12 @@
 use std::collections::HashSet;
 use std::str::FromStr;
 
-use webgpui_app::{AppBuilder, BackendSwitcher, DrawContext, KeyCode, MouseButton};
+use webgpui_app::{
+    Animation, AppBuilder, BackendSwitcher, DrawContext, Easing, KeyCode, MouseButton, NodeId,
+};
 use webgpui_batching::{BatchKey, Batcher, BlendModeKey, DrawBatch};
 use webgpui_core::{
-    focus_ring_color, Button, CursorMove, Label, TextInput, WidgetState, FOCUS_RING_WIDTH,
+    focus_ring_color, Button, CursorMove, Label, NodeKind, TextInput, WidgetState, FOCUS_RING_WIDTH,
 };
 use webgpui_geometry::{Color, Point, Rect, Size};
 use webgpui_profiler::FrameTimer;
@@ -37,6 +39,12 @@ struct DemoUiState {
     switcher: BackendSwitcher,
     notice_frames: u8,
     notice_text: String,
+    /// Node used by the startup fade-in animation.
+    anim_fade_node: NodeId,
+    /// Node used by the startup slide-in animation.
+    anim_slide_node: NodeId,
+    /// Whether startup animations have been started.
+    anim_started: bool,
 }
 
 impl DemoUiState {
@@ -58,6 +66,9 @@ impl DemoUiState {
             switcher,
             notice_frames: 0,
             notice_text: String::new(),
+            anim_fade_node: NodeId::ROOT,
+            anim_slide_node: NodeId::ROOT,
+            anim_started: false,
         }
     }
 
@@ -71,6 +82,29 @@ impl DemoUiState {
         self.frame_index = self.frame_index.wrapping_add(1);
         let w = ctx.viewport.width;
         let h = ctx.viewport.height;
+
+        // Start startup animations on the very first frame.
+        if !self.anim_started {
+            self.anim_started = true;
+            self.anim_fade_node = ctx
+                .node_tree
+                .add_node(NodeId::ROOT, NodeKind::Container)
+                .unwrap_or(NodeId::ROOT);
+            self.anim_slide_node = ctx
+                .node_tree
+                .add_node(NodeId::ROOT, NodeKind::Container)
+                .unwrap_or(NodeId::ROOT);
+            ctx.start_animation(
+                Animation::opacity(self.anim_fade_node, 0.0, 1.0)
+                    .duration_ms(900.0)
+                    .easing(Easing::EaseInOut),
+            );
+            ctx.start_animation(
+                Animation::translate_y(self.anim_slide_node, -32.0, 0.0)
+                    .duration_ms(600.0)
+                    .easing(Easing::EaseOut),
+            );
+        }
 
         ctx.fill_background(Color::new(0.11, 0.12, 0.15, 1.0));
         ctx.fill_rect(
@@ -151,6 +185,19 @@ impl DemoUiState {
         if self.submit_flash > 0 {
             self.submit_flash -= 1;
         }
+
+        // Animation demo strip — shows startup fade + slide animations.
+        let fade_opacity = ctx
+            .node_tree
+            .get(self.anim_fade_node)
+            .map(|n| n.style.opacity)
+            .unwrap_or(1.0);
+        let slide_offset = ctx
+            .node_tree
+            .get(self.anim_slide_node)
+            .map(|n| n.style.translate_y)
+            .unwrap_or(0.0);
+        draw_anim_demo(ctx, w, h, fade_opacity, slide_offset);
     }
 
     fn handle_interaction(&mut self, ctx: &DrawContext<'_>, text_rect: Rect, button_rect: Rect) {
@@ -956,6 +1003,61 @@ fn backend_button_rects(viewport_w: f32) -> Vec<(BackendSelector, Rect)> {
             (b, rect)
         })
         .collect()
+}
+
+/// Draws the M7 animation demo strip at the bottom of the viewport.
+///
+/// A fade-in box (opacity animation) and a slide-in box (translate_y animation)
+/// demonstrate the startup animations started on the first frame.
+fn draw_anim_demo(ctx: &mut DrawContext<'_>, w: f32, h: f32, fade_opacity: f32, slide_offset: f32) {
+    let strip_h = 56.0_f32;
+    let strip_y = h - strip_h - 8.0 + slide_offset;
+    let strip_x = (w / 2.0 - 200.0).max(8.0);
+
+    // Fade box
+    let fade_rect = Rect::from_origin_size(Point::new(strip_x, strip_y), Size::new(185.0, strip_h));
+    ctx.fill_rounded_rect(
+        fade_rect,
+        10.0,
+        Color::new(0.18, 0.52, 0.82, fade_opacity * 0.92),
+    );
+    ctx.draw_border(fade_rect, Color::new(0.45, 0.75, 1.0, fade_opacity), 1.5);
+    draw_text(
+        ctx,
+        Point::new(fade_rect.origin.x + 10.0, fade_rect.origin.y + 10.0),
+        "FADE IN",
+        1.5,
+        Color::new(0.9, 0.96, 1.0, fade_opacity),
+    );
+    draw_text(
+        ctx,
+        Point::new(fade_rect.origin.x + 10.0, fade_rect.origin.y + 28.0),
+        "OPACITY ANIM",
+        1.2,
+        Color::new(0.65, 0.82, 1.0, fade_opacity),
+    );
+
+    // Slide box (shares the same slide_offset so both animate together)
+    let slide_rect = Rect::from_origin_size(
+        Point::new(strip_x + 200.0, strip_y),
+        Size::new(185.0, strip_h),
+    );
+    ctx.fill_rounded_rect(slide_rect, 10.0, Color::new(0.45, 0.22, 0.78, 0.92));
+    ctx.draw_border(slide_rect, Color::new(0.75, 0.55, 1.0, 1.0), 1.5);
+    draw_text(
+        ctx,
+        Point::new(slide_rect.origin.x + 10.0, slide_rect.origin.y + 10.0),
+        "SLIDE IN",
+        1.5,
+        Color::new(0.9, 0.8, 1.0, 1.0),
+    );
+    draw_text(
+        ctx,
+        Point::new(slide_rect.origin.x + 10.0, slide_rect.origin.y + 28.0),
+        "TRANSLATE ANIM",
+        1.2,
+        Color::new(0.72, 0.6, 1.0, 1.0),
+    );
 }
 
 /// Draw a semi-transparent toast notification near the bottom of the screen.
