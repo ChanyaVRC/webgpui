@@ -137,6 +137,9 @@ pub enum AppError {
     /// Failed to load or decode an image file.
     #[error("image load error: {0}")]
     ImageLoad(String),
+    /// Failed to load or rasterize an SVG file.
+    #[error("SVG load error: {0}")]
+    SvgLoad(String),
 }
 
 // ---------------------------------------------------------------------------
@@ -191,10 +194,62 @@ impl ImageRegistry {
         Ok(handle)
     }
 
+    /// Loads and rasterizes an SVG from `path` at `width × height` pixels.
+    ///
+    /// The result is cached by `(path, width, height)` — subsequent calls with
+    /// the same arguments return the cached handle without re-rasterizing.
+    pub fn load_svg(
+        &mut self,
+        path: impl AsRef<std::path::Path>,
+        width: u32,
+        height: u32,
+    ) -> Result<ImageHandle, AppError> {
+        let key = format!(
+            "svg:{}@{}x{}",
+            path.as_ref().to_string_lossy(),
+            width,
+            height
+        );
+        if let Some(&handle) = self.loaded.get(&key) {
+            return Ok(handle);
+        }
+        let pixels = rasterize_svg(path.as_ref(), width, height)?;
+        let id = self.next_id;
+        self.next_id += 1;
+        self.pending.push(PendingImage {
+            id,
+            pixels,
+            width,
+            height,
+        });
+        let handle = ImageHandle(id);
+        self.loaded.insert(key, handle);
+        Ok(handle)
+    }
+
     /// Drains all pending (not yet GPU-uploaded) images.
     fn take_pending(&mut self) -> Vec<PendingImage> {
         std::mem::take(&mut self.pending)
     }
+}
+
+/// Rasterizes an SVG file to raw RGBA8 pixels at the given dimensions.
+fn rasterize_svg(path: &std::path::Path, width: u32, height: u32) -> Result<Vec<u8>, AppError> {
+    let data =
+        std::fs::read(path).map_err(|e| AppError::SvgLoad(format!("{}: {}", path.display(), e)))?;
+    let options = resvg::usvg::Options::default();
+    let tree = resvg::usvg::Tree::from_data(&data, &options)
+        .map_err(|e| AppError::SvgLoad(e.to_string()))?;
+    let mut pixmap = resvg::tiny_skia::Pixmap::new(width, height)
+        .ok_or_else(|| AppError::SvgLoad(format!("invalid dimensions {}x{}", width, height)))?;
+    let sx = width as f32 / tree.size().width();
+    let sy = height as f32 / tree.size().height();
+    resvg::render(
+        &tree,
+        resvg::tiny_skia::Transform::from_scale(sx, sy),
+        &mut pixmap.as_mut(),
+    );
+    Ok(pixmap.data().to_vec())
 }
 
 /// Convenience alias for `Result<T, AppError>`.
@@ -290,6 +345,25 @@ impl<'a> DrawContext<'a> {
     /// Draws a previously loaded image filling `rect`.
     pub fn draw_image(&mut self, rect: Rect, handle: ImageHandle) {
         self.draw_list.draw_image(rect, handle);
+    }
+
+    /// Loads, rasterizes, and draws an SVG file scaled to fill `rect`.
+    ///
+    /// The rasterized texture is cached by `(path, width, height)` and
+    /// re-used on subsequent frames without re-rasterizing.
+    pub fn draw_svg(
+        &mut self,
+        rect: Rect,
+        path: impl AsRef<std::path::Path>,
+    ) -> Result<(), AppError> {
+        let w = rect.size.width.round() as u32;
+        let h = rect.size.height.round() as u32;
+        if w == 0 || h == 0 {
+            return Ok(());
+        }
+        let handle = self.images.load_svg(path, w, h)?;
+        self.draw_list.draw_image(rect, handle);
+        Ok(())
     }
 }
 
@@ -894,5 +968,60 @@ mod tests {
         assert_eq!(first[0].height, 4);
         // After draining, pending is empty.
         assert!(reg.take_pending().is_empty());
+    }
+
+    // ---- SVG ----
+
+    fn write_tmp_svg(name: &str) -> std::path::PathBuf {
+        let path = std::env::temp_dir().join(name);
+        std::fs::write(
+            &path,
+            r#"<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16">
+                <rect width="16" height="16" fill="red"/>
+            </svg>"#,
+        )
+        .unwrap();
+        path
+    }
+
+    #[test]
+    fn svg_rasterize_produces_correct_dimensions() {
+        let path = write_tmp_svg("webgpui_test_svg_dims.svg");
+        let pixels = rasterize_svg(&path, 32, 32).unwrap();
+        assert_eq!(pixels.len(), (32 * 32 * 4) as usize);
+    }
+
+    #[test]
+    fn svg_load_same_path_size_returns_cached_handle() {
+        let path = write_tmp_svg("webgpui_test_svg_cache.svg");
+        let mut reg = ImageRegistry::new();
+        let h1 = reg.load_svg(&path, 16, 16).unwrap();
+        let h2 = reg.load_svg(&path, 16, 16).unwrap();
+        assert_eq!(h1, h2);
+        assert_eq!(reg.take_pending().len(), 1);
+    }
+
+    #[test]
+    fn svg_load_different_sizes_get_different_handles() {
+        let path = write_tmp_svg("webgpui_test_svg_sizes.svg");
+        let mut reg = ImageRegistry::new();
+        let h1 = reg.load_svg(&path, 16, 16).unwrap();
+        let h2 = reg.load_svg(&path, 32, 32).unwrap();
+        assert_ne!(h1, h2);
+        assert_eq!(reg.take_pending().len(), 2);
+    }
+
+    #[test]
+    fn svg_load_invalid_path_returns_error() {
+        let mut reg = ImageRegistry::new();
+        assert!(reg.load_svg("nonexistent.svg", 16, 16).is_err());
+    }
+
+    #[test]
+    fn svg_load_invalid_svg_returns_error() {
+        let path = std::env::temp_dir().join("webgpui_test_bad.svg");
+        std::fs::write(&path, b"not valid svg content").unwrap();
+        let mut reg = ImageRegistry::new();
+        assert!(reg.load_svg(&path, 16, 16).is_err());
     }
 }
