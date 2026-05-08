@@ -1555,6 +1555,7 @@ fn simulate_unbatched(draw_list: &DrawList) -> Vec<DrawBatch> {
                     texture_id: 0,
                     pipeline_id: 0,
                     z_order: 0,
+                    clip_id: 0,
                 };
                 let mut batch = DrawBatch::new(key);
                 batch.push_rect(*rect, *color);
@@ -1568,6 +1569,7 @@ fn simulate_unbatched(draw_list: &DrawList) -> Vec<DrawBatch> {
                     texture_id: 0,
                     pipeline_id: 0,
                     z_order: 0,
+                    clip_id: 0,
                 };
                 let mut batch = DrawBatch::new(key);
                 batch.push_rect(*rect, *color);
@@ -1585,6 +1587,7 @@ fn simulate_unbatched(draw_list: &DrawList) -> Vec<DrawBatch> {
                     texture_id: 0,
                     pipeline_id: 0,
                     z_order: 0,
+                    clip_id: 0,
                 };
                 let mut batch = DrawBatch::new(key);
                 batch.push_border(*rect, *color, *width);

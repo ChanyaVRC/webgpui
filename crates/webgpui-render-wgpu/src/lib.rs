@@ -1250,7 +1250,20 @@ impl WgpuRenderer {
         pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
 
-        for (i_start, i_end) in &self.staging_batch_ranges {
+        let sw = self.ctx.config.width;
+        let sh = self.ctx.config.height;
+        for ((i_start, i_end), batch) in self.staging_batch_ranges.iter().zip(batches.iter()) {
+            if let Some(sci) = batch.scissor {
+                // Convert logical pixel rect to physical pixels (assume scale=1 for MVP).
+                // Clamp to surface bounds to avoid wgpu validation errors.
+                let sx = (sci.min_x() as u32).min(sw);
+                let sy = (sci.min_y() as u32).min(sh);
+                let sw2 = ((sci.max_x() as u32).min(sw)).saturating_sub(sx);
+                let sh2 = ((sci.max_y() as u32).min(sh)).saturating_sub(sy);
+                pass.set_scissor_rect(sx, sy, sw2, sh2);
+            } else {
+                pass.set_scissor_rect(0, 0, sw, sh);
+            }
             pass.draw_indexed(*i_start..*i_end, 0, 0..1);
         }
     }
