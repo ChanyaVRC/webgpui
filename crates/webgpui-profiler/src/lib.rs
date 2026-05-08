@@ -151,6 +151,7 @@ impl FrameTimer {
     pub fn reset(&mut self) {
         self.samples.clear();
         self.frame_start = None;
+        self.cached_stats.set(None);
     }
 }
 
@@ -222,5 +223,15 @@ mod tests {
             t.end_frame();
         }
         assert_eq!(t.stats().unwrap().sample_count, 3);
+    }
+
+    #[test]
+    fn reset_clears_cached_stats() {
+        let mut t = FrameTimer::new(10);
+        t.begin_frame();
+        t.end_frame();
+        assert!(t.stats().is_some());
+        t.reset();
+        assert!(t.stats().is_none());
     }
 }
