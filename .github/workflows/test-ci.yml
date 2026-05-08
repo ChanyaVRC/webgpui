@@ -30,3 +30,24 @@ jobs:
 
       - name: Cargo test (workspace)
         run: cargo test --workspace --all-targets
+
+  test-gpu:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry + target
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install software Vulkan (lavapipe)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y mesa-vulkan-drivers libvulkan1
+
+      - name: Cargo test (webgpui-render-wgpu, --features test-gpu)
+        run: cargo test -p webgpui-render-wgpu --features test-gpu

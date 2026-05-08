@@ -18,6 +18,7 @@ winit                = { workspace = true }
 log                  = { workspace = true }
 env_logger           = { workspace = true }
 thiserror            = { workspace = true }
+image                = { workspace = true }
 
 [features]
 backend-wgpu = ["webgpui-render/backend-wgpu"]

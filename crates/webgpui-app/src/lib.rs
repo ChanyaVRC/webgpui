@@ -41,9 +41,10 @@ use webgpui_input::{FocusManager, InputEvent, InputState, Modifiers};
 pub use webgpui_input::{KeyCode, MouseButton};
 use webgpui_profiler::FrameTimer;
 pub use webgpui_render::BackendSelector;
+pub use webgpui_render::ImageHandle;
 use webgpui_render::{DrawList, RenderError, Renderer};
 use webgpui_render_graph::ClearColor;
-use webgpui_render_wgpu::{WgpuContext, WgpuRenderer};
+use webgpui_render_wgpu::{PendingImage, WgpuContext, WgpuRenderer};
 
 // ---------------------------------------------------------------------------
 // BackendSwitcher
@@ -133,6 +134,67 @@ pub enum AppError {
     /// A per-frame render error from the backend.
     #[error("render error: {0}")]
     Render(#[from] RenderError),
+    /// Failed to load or decode an image file.
+    #[error("image load error: {0}")]
+    ImageLoad(String),
+}
+
+// ---------------------------------------------------------------------------
+// ImageRegistry
+// ---------------------------------------------------------------------------
+
+/// Per-application image loading and caching registry.
+///
+/// Obtained via [`DrawContext::images`]. Call [`load`][Self::load] to decode a
+/// PNG/JPEG file and obtain an [`ImageHandle`] that can be passed to
+/// [`DrawContext::draw_image`].
+pub struct ImageRegistry {
+    next_id: u32,
+    /// Already-registered paths → handle (avoids re-decoding across frames).
+    loaded: std::collections::HashMap<String, ImageHandle>,
+    /// Newly decoded images waiting for GPU upload.
+    pending: Vec<PendingImage>,
+}
+
+impl ImageRegistry {
+    fn new() -> Self {
+        Self {
+            next_id: 0,
+            loaded: std::collections::HashMap::new(),
+            pending: Vec::new(),
+        }
+    }
+
+    /// Loads a PNG or JPEG image from `path` and returns a reusable [`ImageHandle`].
+    ///
+    /// If the same path has been loaded before, the cached handle is returned
+    /// without re-reading the file.
+    pub fn load(&mut self, path: impl AsRef<std::path::Path>) -> Result<ImageHandle, AppError> {
+        let key = path.as_ref().to_string_lossy().into_owned();
+        if let Some(&handle) = self.loaded.get(&key) {
+            return Ok(handle);
+        }
+        let img = image::open(path.as_ref())
+            .map_err(|e| AppError::ImageLoad(e.to_string()))?
+            .into_rgba8();
+        let (w, h) = img.dimensions();
+        let id = self.next_id;
+        self.next_id += 1;
+        self.pending.push(PendingImage {
+            id,
+            pixels: img.into_raw(),
+            width: w,
+            height: h,
+        });
+        let handle = ImageHandle(id);
+        self.loaded.insert(key, handle);
+        Ok(handle)
+    }
+
+    /// Drains all pending (not yet GPU-uploaded) images.
+    fn take_pending(&mut self) -> Vec<PendingImage> {
+        std::mem::take(&mut self.pending)
+    }
 }
 
 /// Convenience alias for `Result<T, AppError>`.
@@ -159,6 +221,8 @@ pub struct DrawContext<'a> {
     pub dirty: &'a mut DirtyTracker,
     /// Focus state manager.
     pub focus: &'a mut FocusManager,
+    /// Image loading and caching registry.
+    pub images: &'a mut ImageRegistry,
 }
 
 impl<'a> DrawContext<'a> {
@@ -170,6 +234,7 @@ impl<'a> DrawContext<'a> {
         node_tree: &'a mut NodeTree,
         dirty: &'a mut DirtyTracker,
         focus: &'a mut FocusManager,
+        images: &'a mut ImageRegistry,
     ) -> Self {
         Self {
             draw_list,
@@ -179,6 +244,7 @@ impl<'a> DrawContext<'a> {
             node_tree,
             dirty,
             focus,
+            images,
         }
     }
 
@@ -209,6 +275,21 @@ impl<'a> DrawContext<'a> {
     /// Returns the underlying draw list for advanced usage.
     pub fn draw_list(&mut self) -> &mut DrawList {
         self.draw_list
+    }
+
+    /// Loads a PNG or JPEG image from `path` and returns a reusable [`ImageHandle`].
+    ///
+    /// Delegates to [`ImageRegistry::load`]; returns a cached handle on subsequent calls.
+    pub fn load_image(
+        &mut self,
+        path: impl AsRef<std::path::Path>,
+    ) -> Result<ImageHandle, AppError> {
+        self.images.load(path)
+    }
+
+    /// Draws a previously loaded image filling `rect`.
+    pub fn draw_image(&mut self, rect: Rect, handle: ImageHandle) {
+        self.draw_list.draw_image(rect, handle);
     }
 }
 
@@ -417,6 +498,7 @@ impl App {
         let mut node_tree = NodeTree::new();
         let mut dirty_tracker = DirtyTracker::new();
         let mut focus = FocusManager::new();
+        let mut image_registry = ImageRegistry::new();
         let mut cursor_pos = Point::ZERO;
         let frame_interval = self.config.target_fps.and_then(|fps| {
             if fps == 0 {
@@ -489,8 +571,15 @@ impl App {
                                 &mut node_tree,
                                 &mut dirty_tracker,
                                 &mut focus,
+                                &mut image_registry,
                             );
                             frame_fn(&mut ctx);
+
+                            // Upload any newly decoded images to the GPU.
+                            let pending = image_registry.take_pending();
+                            if !pending.is_empty() {
+                                renderer.upload_images(pending);
+                            }
 
                             // Run the active side renderer (validation / side effects).
                             if let Some(ref mut sr) = side_renderer {
@@ -749,5 +838,61 @@ fn convert_named_key(key: &NamedKey) -> KeyCode {
         NamedKey::F11 => KeyCode::F11,
         NamedKey::F12 => KeyCode::F12,
         _ => KeyCode::Unknown,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn write_tmp_png(name: &str) -> std::path::PathBuf {
+        let path = std::env::temp_dir().join(name);
+        image::RgbaImage::new(4, 4).save(&path).unwrap();
+        path
+    }
+
+    #[test]
+    fn image_registry_same_path_returns_cached_handle() {
+        let path = write_tmp_png("webgpui_test_cache.png");
+        let mut reg = ImageRegistry::new();
+        let h1 = reg.load(&path).unwrap();
+        let h2 = reg.load(&path).unwrap();
+        assert_eq!(h1, h2);
+        // Second call must not enqueue another upload.
+        assert_eq!(reg.take_pending().len(), 1);
+    }
+
+    #[test]
+    fn image_registry_different_paths_get_different_handles() {
+        let p1 = write_tmp_png("webgpui_test_diff1.png");
+        let p2 = write_tmp_png("webgpui_test_diff2.png");
+        let mut reg = ImageRegistry::new();
+        let h1 = reg.load(&p1).unwrap();
+        let h2 = reg.load(&p2).unwrap();
+        assert_ne!(h1, h2);
+        assert_eq!(reg.take_pending().len(), 2);
+    }
+
+    #[test]
+    fn image_registry_invalid_path_returns_error() {
+        let mut reg = ImageRegistry::new();
+        assert!(reg.load("nonexistent_webgpui_image.png").is_err());
+    }
+
+    #[test]
+    fn image_registry_take_pending_drains_queue() {
+        let path = write_tmp_png("webgpui_test_drain.png");
+        let mut reg = ImageRegistry::new();
+        reg.load(&path).unwrap();
+        let first = reg.take_pending();
+        assert_eq!(first.len(), 1);
+        assert_eq!(first[0].width, 4);
+        assert_eq!(first[0].height, 4);
+        // After draining, pending is empty.
+        assert!(reg.take_pending().is_empty());
     }
 }

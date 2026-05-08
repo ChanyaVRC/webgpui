@@ -29,9 +29,24 @@ pub enum RenderError {
     Timeout,
     #[error("backend not available; check feature flags or installed CUDA")]
     BackendUnavailable,
+    #[error("image load error: {0}")]
+    ImageLoad(String),
     #[error("GPU error: {0}")]
     Other(String),
 }
+
+// ---------------------------------------------------------------------------
+// ImageHandle
+// ---------------------------------------------------------------------------
+
+/// An opaque handle to a GPU-uploaded image.
+///
+/// Obtain via [`DrawContext::load_image`][crate::DrawContext::load_image] and
+/// pass to [`DrawContext::draw_image`] to render it.
+///
+/// Handles are valid for the lifetime of the application.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ImageHandle(pub u32);
 
 pub type RenderResult<T> = Result<T, RenderError>;
 
@@ -87,6 +102,12 @@ pub enum DrawCommand {
     PopClip,
     /// Set the depth/z-order for subsequent commands.
     SetZOrder(u16),
+    /// Draw a GPU-uploaded image scaled to fit `rect`.
+    DrawImage {
+        rect: Rect,
+        handle: ImageHandle,
+        blend: BlendMode,
+    },
 }
 
 // ---------------------------------------------------------------------------
@@ -163,6 +184,15 @@ impl DrawList {
         self.push(DrawCommand::PopClip);
     }
 
+    /// Draws a GPU-uploaded image scaled to fit `rect`.
+    pub fn draw_image(&mut self, rect: Rect, handle: ImageHandle) {
+        self.push(DrawCommand::DrawImage {
+            rect,
+            handle,
+            blend: BlendMode::Alpha,
+        });
+    }
+
     pub fn set_z(&mut self, z: u16) {
         self.push(DrawCommand::SetZOrder(z));
     }
@@ -227,5 +257,24 @@ mod tests {
         assert_eq!(dl.len(), 1);
         dl.clear();
         assert!(dl.is_empty());
+    }
+
+    #[test]
+    fn draw_image_appends_command() {
+        let mut dl = DrawList::new();
+        let handle = ImageHandle(42);
+        dl.draw_image(Rect::new(0.0, 0.0, 100.0, 100.0), handle);
+        assert_eq!(dl.len(), 1);
+        match dl.commands().iter().next().unwrap() {
+            DrawCommand::DrawImage { handle: h, .. } => assert_eq!(*h, handle),
+            _ => panic!("expected DrawImage"),
+        }
+    }
+
+    #[test]
+    fn image_handle_is_copy() {
+        let h = ImageHandle(7);
+        let h2 = h; // copy — must compile without move error
+        assert_eq!(h, h2);
     }
 }
