@@ -106,6 +106,11 @@ impl DemoUiState {
             );
         }
 
+        // Point the dev-tools inspector at the animation demo node (or ROOT on
+        // the first frame before the node is created).
+        #[cfg(feature = "dev-tools")]
+        ctx.dev_inspect(self.anim_fade_node);
+
         ctx.fill_background(Color::new(0.11, 0.12, 0.15, 1.0));
         ctx.fill_rect(
             Rect::from_origin_size(Point::ZERO, Size::new(w, 52.0)),

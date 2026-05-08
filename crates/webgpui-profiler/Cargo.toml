@@ -6,3 +6,6 @@ license.workspace = true
 
 [dependencies]
 log = { workspace = true }
+
+[features]
+dev-tools = []
