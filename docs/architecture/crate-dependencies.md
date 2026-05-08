@@ -58,6 +58,23 @@ Layer 5 (application)
 
 \* optional feature
 
+## Feature flags
+
+| Crate | Feature | Enables |
+|---|---|---|
+| `webgpui-render-graph` | `filters` | `PassKind::Filter`, `FilterKind`, `BlurParams`, `ColorMatrixParams` |
+| `webgpui-render-wgpu` | `filters` | WGSL filter shaders, offscreen texture, `→ render-graph/filters` |
+| `webgpui-app` | `filters` | `AppBuilder::enable_filter`, `AppConfig::filters`, `→ render-wgpu/filters` |
+| `webgpui-render-wgpu` | `test-gpu` | GPU-requiring tests (lavapipe in CI) |
+| `webgpui-app` | `backend-cpu` | pulls in `webgpui-render-cpu` |
+
+## Key external dependencies (M6+)
+
+| Crate | Used by | Purpose |
+|---|---|---|
+| `image` | `webgpui-render-wgpu`, `webgpui-app` | PNG/JPEG decode and pixel layout |
+| `resvg` / `tiny-skia` | `webgpui-app` | SVG rasterization to RGBA pixels |
+
 ## Notes
 
 - There is no `webgpui` facade crate in this workspace. `webgpui-app` is the top-level

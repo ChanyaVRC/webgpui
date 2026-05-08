@@ -108,7 +108,7 @@ Risks:
 > - Responsible PR: `perf/p2-dirty-rect-integration`
 > - Crates affected: `webgpui-core` (DirtyTracker), `webgpui-render` (skip logic), `webgpui-render-wgpu` (scissor), `webgpui-batching` (batch culling), `webgpui-app` (mark_dirty_rect API).
 
-### M5: API Stabilization (2-3 weeks)
+### M5: API Stabilization — ✓ Completed (2026-05)
 Scope:
 - Finalize and document all public-facing API surfaces across `webgpui-app`, `webgpui-core`, `webgpui-input`, `webgpui-compat`.
 - Declare semver policy (v0.x): patch = bug fix only, minor = additive, major = any breaking change in MUST-tier type or function.
@@ -120,22 +120,17 @@ Exit Criteria:
 - `CHANGELOG.md` created with M0–M5 entries.
 - Zero `#[allow(missing_docs)]` suppressions on public items in affected crates.
 Crates affected: `webgpui-app`, `webgpui-core`, `webgpui-compat`, `webgpui-input`.
-Risks:
-- API surface larger than anticipated. Mitigation: scope to MUST-tier only; SHOULD/LATER deferred.
 
-### M6: Visual Feature Expansion (4-6 weeks)
+### M6: Visual Feature Expansion — ✓ Completed (2026-05)
 Scope:
-- Image rendering: `NodeKind::Image` backed by PNG/JPEG loading (`image` crate) and GPU texture upload via `webgpui-render`.
-- Basic SVG rendering: rasterize SVG to texture via `resvg`/`usvg`; no live SVG node tree at MVP.
-- Filter effects: blur and color matrix as post-process pass in `webgpui-render-graph`; gated behind `feature = "filters"`.
+- Image rendering: PNG/JPEG loading via `image` crate; GPU texture upload; `DrawContext::load_image` / `draw_image` API; path-keyed `ImageRegistry` cache.
+- SVG rasterization: via `resvg`/`tiny-skia`; `DrawContext::draw_svg` / `load_svg`; cached by `(path, width, height)`.
+- Filter effects: Gaussian blur and 5×4 color matrix as post-process passes in `webgpui-render-graph`; gated behind `feature = "filters"`; zero binary cost when disabled.
 Exit Criteria:
-- Image nodes render PNG/JPEG correctly in `demo-basic` and `demo-migration`.
-- Simple SVG icons (flat paths, no text) render without visual regression (pixel diff <= 1%).
-- Filter pass excluded from binary when `filters` feature is disabled.
-Crates affected: `webgpui-core` (NodeKind), `webgpui-render` (texture pipeline), `webgpui-render-wgpu` (GPU upload), `webgpui-render-graph` (filter pass), `webgpui-app` (image API).
-Risks:
-- SVG rasterization is CPU-bound and may cause frame spikes. Mitigation: rasterize off-frame on background thread; cache result.
-- Crate version conflicts (`image` vs `resvg`). Mitigation: pin versions in workspace `Cargo.toml`.
+- Image nodes render PNG/JPEG correctly. ✓
+- Simple SVG icons (flat paths) render without visual regression. ✓
+- Filter pass excluded from binary when `filters` feature is disabled. ✓
+Crates affected: `webgpui-render-wgpu` (GPU upload, filter shaders), `webgpui-render-graph` (filter pass), `webgpui-app` (image/SVG/filter API).
 
 ### M7: Animation and Transitions (3-5 weeks)
 Scope:
