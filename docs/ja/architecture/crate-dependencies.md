@@ -21,7 +21,7 @@ Layer 2
   webgpui-render-cuda     → geometry, render
 
 Layer 3
-  webgpui-render-graph    → batching
+  webgpui-render-graph    → geometry, batching
   webgpui-input           → geometry, core
   webgpui-platform        → geometry, input
 
@@ -48,7 +48,7 @@ Layer 5（アプリケーション）
 | `webgpui-core` | geometry, layout |
 | `webgpui-render-cpu` | geometry, render |
 | `webgpui-render-cuda` | geometry, render |
-| `webgpui-render-graph` | batching |
+| `webgpui-render-graph` | geometry, batching |
 | `webgpui-input` | geometry, core |
 | `webgpui-platform` | geometry, input |
 | `webgpui-render-wgpu` | geometry, render, batching, render-graph |
@@ -61,6 +61,6 @@ Layer 5（アプリケーション）
 ## 補足
 
 - このワークスペースに `webgpui` ファサードクレートは存在しません。`webgpui-app` が最上位の統合クレートです。
-- `webgpui-render-graph` は `webgpui-batching` のみに依存しており、`webgpui-render` や `webgpui-geometry` への直接依存はありません。
+- `webgpui-render-graph` は `webgpui-geometry`（`Color` → `ClearColor` 変換のため）と `webgpui-batching` に依存しており、`webgpui-render` への直接依存はありません。
 - `webgpui-app` は `webgpui-platform` および `webgpui-platform-winit` に依存しません。これらはエンベッダー側で使用されます。
 - `webgpui-render-cpu` と `webgpui-render-cuda` は `webgpui-render-wgpu` と同じ `geometry + render` インターフェースを持つ代替バックエンドです。
