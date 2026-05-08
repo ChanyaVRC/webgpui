@@ -21,7 +21,7 @@ Layer 2
   webgpui-render-cuda     → geometry, render
 
 Layer 3
-  webgpui-render-graph    → batching
+  webgpui-render-graph    → geometry, batching
   webgpui-input           → geometry, core
   webgpui-platform        → geometry, input
 
@@ -48,7 +48,7 @@ Layer 5 (application)
 | `webgpui-core` | geometry, layout |
 | `webgpui-render-cpu` | geometry, render |
 | `webgpui-render-cuda` | geometry, render |
-| `webgpui-render-graph` | batching |
+| `webgpui-render-graph` | geometry, batching |
 | `webgpui-input` | geometry, core |
 | `webgpui-platform` | geometry, input |
 | `webgpui-render-wgpu` | geometry, render, batching, render-graph |
@@ -62,8 +62,8 @@ Layer 5 (application)
 
 - There is no `webgpui` facade crate in this workspace. `webgpui-app` is the top-level
   integration crate.
-- `webgpui-render-graph` depends only on `webgpui-batching`, not on `webgpui-render` or
-  `webgpui-geometry` directly.
+- `webgpui-render-graph` depends on `webgpui-geometry` (for `Color` → `ClearColor` conversion)
+  and `webgpui-batching`, but not on `webgpui-render` directly.
 - `webgpui-app` does not depend on `webgpui-platform` or `webgpui-platform-winit`; those
   are used by the embedder, not the app library itself.
 - `webgpui-render-cpu` and `webgpui-render-cuda` are alternative backends that mirror the

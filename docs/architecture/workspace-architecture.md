@@ -157,8 +157,8 @@ webgpui-render-cpu
 	-> webgpui-geometry
 
 webgpui-render-graph
-	-> webgpui-render
 	-> webgpui-geometry
+	-> webgpui-batching
 
 webgpui-batching
 	-> webgpui-render
