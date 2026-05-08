@@ -52,3 +52,4 @@ thiserror  = "1"
 bytemuck   = { version = "1", features = ["derive"] }
 cudarc     = "0.12"
 image      = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+resvg      = { version = "0.40", default-features = false }
