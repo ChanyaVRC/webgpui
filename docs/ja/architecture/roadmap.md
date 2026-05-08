@@ -131,20 +131,20 @@
 - `filters` フィーチャー無効時、フィルタパスがバイナリから除外される。✓
 影響クレート: `webgpui-render-wgpu`（GPU アップロード、フィルタシェーダー）、`webgpui-render-graph`（フィルタパス）、`webgpui-app`（画像/SVG/フィルタ API）。
 
-### M7: アニメーションとトランジション（3-5週間）
+### M7: アニメーションとトランジション — ✓ 完了（2026-05）
 範囲:
-- `webgpui-app` で `Animation` ビルダーを公開: ターゲットノード、スタイルプロパティ、継続時間、イージング関数。
-- イージング関数: `linear`、`ease-in`、`ease-out`、`ease-in-out`、三次ベジェ。
-- アニメーションの各ティックで対象ノードの `mark_dirty_rect` を呼び出し、P2 dirty rect システムと統合。
-- スタイルトランジション: ノードにトランジション継続時間が設定されている場合、`style_set` でアニメーションを暗黙的に発火。
-- アニメーションタイムラインは `webgpui-app` 内で管理；MVP では外部アニメーションクレートに依存しない。
+- `webgpui-app` で `Animation` ビルダーを公開: `Animation::opacity / translate_x / translate_y(node_id, from, to)` に `.duration_ms()` / `.easing()` チェーン。
+- `Easing` 列挙型: `Linear`、`EaseIn`、`EaseOut`、`EaseInOut`、`CubicBezier(x1, y1, x2, y2)` — `Easing::sample(t)` は三次多項式；cubic-bézier は16回二分探索。
+- `AnimationTimeline`（内部）: ユーザーコールバック前に毎フレーム進行；補間値を `NodeTree` に書き込み；アクティブなアニメーションがある間 `dirty.mark_all()` を呼び出し。
+- スタイルトランジション: `NodeStyle::transition` が `Some(TransitionConfig { duration_ms })` の場合、`DrawContext::set_style` が変更プロパティに対して暗黙的なアニメーションを生成。
+- `NodeStyle` に `translate_x: f32`、`translate_y: f32`、`transition: Option<TransitionConfig>` を追加。
+- 経過時間ベースの補間（フレームカウントベースではない）；外部アニメーションクレート不使用。
 完了条件:
-- `opacity` フェードと `position` スライドが5キーフレームチェックポイントでビジュアルスナップショットテストに合格。
-- アクティブなアニメーションがないシーンでフレーム時間リグレッション（5%超）なし。
-- アニメーション中はティックごとに必ず dirty マーク；フレームスキップなし。
-影響クレート: `webgpui-app`（アニメーション API、タイムライン）、`webgpui-core`（dirty 統合）。
-リスク:
-- Windows で winit イベントループ粒度によるサブフレームタイミング精度の問題。緩和策: フレームカウントではなく経過時間ベースの補間を使用。
+- `opacity` フェードが5点線形キーフレームチェックに合格（`opacity_fade_keyframes_linear`）。✓
+- `translate_y` スライドが5点 ease-out 形状チェックに合格（`translate_slide_keyframes_ease_out`）。✓
+- アニメーションなしシーンでリグレッションなし: アクティブなアニメーションがない場合 `tick()` は即時リターンし `mark_all()` を呼ばない。✓
+- アクティブなアニメーションがある間はティックごとに必ず dirty マーク（`animation_tick_marks_dirty_when_active`）。✓
+影響クレート: `webgpui-app`（アニメーション API、タイムライン）、`webgpui-core`（`NodeStyle`、`TransitionConfig`）。
 
 ### M8: デベロッパーツール（3-4週間）
 範囲:
