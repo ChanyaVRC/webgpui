@@ -28,8 +28,14 @@ jobs:
       - name: Cargo check (workspace)
         run: cargo check --workspace
 
+      - name: Cargo check (filters feature)
+        run: cargo check -p webgpui-render-graph -p webgpui-render-wgpu -p webgpui-app --features filters
+
       - name: Cargo test (workspace)
         run: cargo test --workspace --all-targets
+
+      - name: Cargo test (filters feature)
+        run: cargo test -p webgpui-render-graph -p webgpui-render-wgpu -p webgpui-app --features filters
 
   test-gpu:
     runs-on: ubuntu-latest
@@ -51,3 +57,6 @@ jobs:
 
       - name: Cargo test (webgpui-render-wgpu, --features test-gpu)
         run: cargo test -p webgpui-render-wgpu --features test-gpu
+
+      - name: Cargo test (webgpui-render-wgpu, --features test-gpu,filters)
+        run: cargo test -p webgpui-render-wgpu --features test-gpu,filters

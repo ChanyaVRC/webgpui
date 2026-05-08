@@ -31,7 +31,7 @@ impl std::fmt::Display for PassId {
 // ---------------------------------------------------------------------------
 
 /// Categorises what a render pass does; drives how the renderer handles it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum PassKind {
     /// Clears the render target.
     Clear,
@@ -39,6 +39,61 @@ pub enum PassKind {
     Ui,
     /// Draws debug overlays on top of everything else.
     Overlay,
+    /// Post-process filter (only available with the `filters` feature).
+    #[cfg(feature = "filters")]
+    Filter(FilterKind),
+}
+
+// ---------------------------------------------------------------------------
+// Filter types (filters feature)
+// ---------------------------------------------------------------------------
+
+/// Parameters for a Gaussian blur filter pass.
+#[cfg(feature = "filters")]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct BlurParams {
+    /// Blur radius in pixels.
+    pub radius: f32,
+}
+
+/// Parameters for a 5×4 color matrix filter pass.
+///
+/// The matrix is stored in row-major order, 4 rows × 5 columns.
+/// Each output channel: `out[i] = dot(row_i[0..4], rgba) + row_i[4]`.
+#[cfg(feature = "filters")]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ColorMatrixParams {
+    /// Row-major 5×4 matrix (20 floats).
+    pub matrix: [f32; 20],
+}
+
+#[cfg(feature = "filters")]
+impl ColorMatrixParams {
+    /// Identity matrix — passes colour through unchanged.
+    pub const IDENTITY: Self = Self {
+        matrix: [
+            1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0,
+            0.0, 1.0, 0.0,
+        ],
+    };
+
+    /// Grayscale (luminance) conversion matrix.
+    pub const GRAYSCALE: Self = Self {
+        matrix: [
+            0.299, 0.587, 0.114, 0.0, 0.0, 0.299, 0.587, 0.114, 0.0, 0.0, 0.299, 0.587, 0.114, 0.0,
+            0.0, 0.0, 0.0, 0.0, 1.0, 0.0,
+        ],
+    };
+}
+
+/// Selects which filter effect a [`PassKind::Filter`] pass applies.
+#[cfg(feature = "filters")]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum FilterKind {
+    /// Gaussian blur with configurable pixel radius.
+    Blur(BlurParams),
+    /// 5×4 RGBA color matrix transformation.
+    ColorMatrix(ColorMatrixParams),
 }
 
 // ---------------------------------------------------------------------------
@@ -228,6 +283,38 @@ impl RenderGraph {
         if let Some(clear) = self.pass_by_name_mut("clear") {
             clear.clear_color = color;
         }
+    }
+
+    /// Adds a Gaussian blur filter pass that runs after the `ui` pass.
+    ///
+    /// Returns the [`PassId`] of the new pass.
+    #[cfg(feature = "filters")]
+    pub fn add_blur_pass(&mut self, radius: f32) -> PassId {
+        let id = self.add_pass(
+            "blur",
+            PassKind::Filter(FilterKind::Blur(BlurParams { radius })),
+        );
+        if let Some(ui) = self.pass_by_name("ui") {
+            let ui_id = ui.id;
+            self.add_dependency(id, ui_id);
+        }
+        id
+    }
+
+    /// Adds a 5×4 color matrix filter pass that runs after the `ui` pass.
+    ///
+    /// Returns the [`PassId`] of the new pass.
+    #[cfg(feature = "filters")]
+    pub fn add_color_matrix_pass(&mut self, matrix: [f32; 20]) -> PassId {
+        let id = self.add_pass(
+            "color-matrix",
+            PassKind::Filter(FilterKind::ColorMatrix(ColorMatrixParams { matrix })),
+        );
+        if let Some(ui) = self.pass_by_name("ui") {
+            let ui_id = ui.id;
+            self.add_dependency(id, ui_id);
+        }
+        id
     }
 
     /// Enables or disables the overlay pass.
