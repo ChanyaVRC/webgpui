@@ -6,7 +6,39 @@ Versioning follows [Semantic Versioning](https://semver.org/) — see [docs/semv
 
 ---
 
-## [Unreleased] — M7: Animation and Transitions
+## [Unreleased] — M8: Developer Tools
+
+---
+
+## [0.8.0] — M7: Animation and Transitions
+
+### Added
+- **`Easing`** enum in `webgpui-app`: `Linear`, `EaseIn`, `EaseOut`, `EaseInOut`,
+  `CubicBezier(x1, y1, x2, y2)` (CSS `cubic-bezier()` compatible). `Easing::sample(t)`
+  evaluates the curve; cubic-bézier uses 16-iteration binary search — sufficient for 60 fps.
+- **`Animation`** builder: `Animation::opacity / translate_x / translate_y(node_id, from, to)`
+  with fluent `.duration_ms(ms)` and `.easing(Easing)` chaining. Default: 300 ms, linear.
+- **`AnimatedProperty`** enum (`Opacity`, `TranslateX`, `TranslateY`).
+- **`AnimationTimeline`** (internal to `webgpui-app`): owns the list of running animations;
+  each frame `tick()` interpolates values, writes them into `NodeTree` via `set_style`, and
+  calls `dirty.mark_all()` while any animation is active. Completed animations are removed.
+- **`DrawContext::start_animation(Animation)`**: enqueues a one-shot animation starting on
+  the current frame.
+- **`DrawContext::set_style(NodeId, NodeStyle)`**: applies a style change and automatically
+  creates transition animations for changed animatable properties when
+  `NodeStyle::transition` is `Some(TransitionConfig { duration_ms })`.
+- `AnimationTimeline::tick` is called before the user frame callback each frame, so
+  animated values are already applied when `frame_fn` reads `node.style`.
+- **`NodeStyle`** gains two new fields in `webgpui-core`:
+  - `translate_x: f32` — X-axis render-time offset (default `0.0`).
+  - `translate_y: f32` — Y-axis render-time offset (default `0.0`).
+- **`TransitionConfig { duration_ms: f64 }`** and `NodeStyle::transition:
+  Option<TransitionConfig>` for implicit style animations.
+- `NodeId` re-exported from `webgpui-app` for convenient single-crate imports.
+- `apps/demo-basic` extended with a startup animation strip: opacity fade-in (0 → 1,
+  900 ms, EaseInOut) and translate-Y slide-in (−32 → 0 px, 600 ms, EaseOut).
+- 15 new unit tests: easing endpoint/shape/symmetry/clamp, 5-point opacity keyframe check,
+  5-point translate shape check, `AnimationTimeline` dirty/no-dirty/zero-duration/transition.
 
 ---
 

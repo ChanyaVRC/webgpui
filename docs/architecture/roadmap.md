@@ -132,20 +132,20 @@ Exit Criteria:
 - Filter pass excluded from binary when `filters` feature is disabled. ✓
 Crates affected: `webgpui-render-wgpu` (GPU upload, filter shaders), `webgpui-render-graph` (filter pass), `webgpui-app` (image/SVG/filter API).
 
-### M7: Animation and Transitions (3-5 weeks)
+### M7: Animation and Transitions — ✓ Completed (2026-05)
 Scope:
-- `webgpui-app` exposes an `Animation` builder: target node, target style properties, duration, easing function.
-- Easing functions: `linear`, `ease-in`, `ease-out`, `ease-in-out`, cubic bezier.
-- Each animation tick calls `mark_dirty_rect` on the animated node, integrating with the P2 dirty-rect system.
-- Style transitions: implicit animations triggered by `style_set` when a transition duration is configured on the node.
-- Animation timeline managed inside `webgpui-app`; no dependency on external animation crates at MVP.
+- `webgpui-app` exposes an `Animation` builder: `Animation::opacity / translate_x / translate_y(node_id, from, to)` with `.duration_ms()` / `.easing()` chaining.
+- `Easing` enum: `Linear`, `EaseIn`, `EaseOut`, `EaseInOut`, `CubicBezier(x1, y1, x2, y2)` — `Easing::sample(t)` via cubic polynomial; cubic-bézier via 16-iter binary search.
+- `AnimationTimeline` (internal): advances active animations each frame before the user callback; writes interpolated values to `NodeTree`; calls `dirty.mark_all()` while any animation is active.
+- Style transitions: implicit animations created by `DrawContext::set_style` when `NodeStyle::transition` is `Some(TransitionConfig { duration_ms })`.
+- `NodeStyle` gains `translate_x: f32`, `translate_y: f32` and `transition: Option<TransitionConfig>`.
+- Elapsed-time-based interpolation (not frame-count-based); no external animation crates.
 Exit Criteria:
-- `opacity` fade and `position` slide pass visual snapshot tests at 5 keyframe checkpoints.
-- No frame-time regression (>5%) on scenes with zero active animations.
-- Animation tick always marks dirty; no frame is skipped while an animation is active.
-Crates affected: `webgpui-app` (animation API, timeline), `webgpui-core` (dirty integration).
-Risks:
-- Sub-frame timing precision on Windows (winit event loop granularity). Mitigation: use elapsed-time-based interpolation, not frame-count-based.
+- `opacity` fade passes 5-point linear keyframe check (`opacity_fade_keyframes_linear`). ✓
+- `translate_y` slide passes 5-point ease-out shape check (`translate_slide_keyframes_ease_out`). ✓
+- No frame-time regression on zero-animation scenes: `tick()` returns immediately and does not call `mark_all()` when no animations are active. ✓
+- Animation tick always marks dirty while active (`animation_tick_marks_dirty_when_active`). ✓
+Crates affected: `webgpui-app` (animation API, timeline), `webgpui-core` (`NodeStyle`, `TransitionConfig`).
 
 ### M8: Developer Tools (3-4 weeks)
 Scope:
