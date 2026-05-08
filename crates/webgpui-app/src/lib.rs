@@ -903,12 +903,9 @@ impl App {
         }
 
         let mut renderer = WgpuRenderer::new(ctx);
-        renderer.render_graph_mut().set_clear_color(ClearColor::new(
-            bg.r as f64,
-            bg.g as f64,
-            bg.b as f64,
-            bg.a as f64,
-        ));
+        renderer
+            .render_graph_mut()
+            .set_clear_color(ClearColor::from(bg));
         #[cfg(feature = "filters")]
         for filter in self.config.filters {
             match filter {
@@ -1549,6 +1546,25 @@ mod tests {
             (ty - 0.0).abs() < 1e-5,
             "translate_y should reach 0.0, got {ty}"
         );
+    }
+
+    // ---- ClearColor::from(Color) equivalence ----
+
+    #[test]
+    fn clear_color_from_matches_manual_construction() {
+        use webgpui_render_graph::ClearColor;
+        let color = Color::WHITE;
+        let via_from = ClearColor::from(color);
+        let manual = ClearColor::new(
+            color.r as f64,
+            color.g as f64,
+            color.b as f64,
+            color.a as f64,
+        );
+        assert!((via_from.r - manual.r).abs() < 1e-9);
+        assert!((via_from.g - manual.g).abs() < 1e-9);
+        assert!((via_from.b - manual.b).abs() < 1e-9);
+        assert!((via_from.a - manual.a).abs() < 1e-9);
     }
 
     #[test]
