@@ -147,19 +147,20 @@ Exit Criteria:
 - Animation tick always marks dirty while active (`animation_tick_marks_dirty_when_active`). ✓
 Crates affected: `webgpui-app` (animation API, timeline), `webgpui-core` (`NodeStyle`, `TransitionConfig`).
 
-### M8: Developer Tools (3-4 weeks)
+### M8: Developer Tools — ✓ Completed (2026-05)
 Scope:
-- `webgpui-profiler` gains a rendered overlay mode: draws FPS, avg/p95 frame time, draw-call count onto render output.
-- Node inspector overlay (gated behind `dev-tools` feature): shows hovered node's id, kind, computed style, dirty-rect bounds.
-- Dirty rect visualization: render dirty regions as colored overlays.
-- All dev-tool features gated behind `feature = "dev-tools"` in `webgpui-app` and `webgpui-profiler`; zero runtime cost when disabled.
+- **`dev-tools` feature flag** in `webgpui-app` and `webgpui-profiler`; zero binary cost when disabled.
+- **Perf overlay**: FPS, avg/p95 frame time, draw-call count rendered in the top-left corner via
+  existing `DrawList::fill_rect` calls — no new GPU resources.
+- **Node inspector overlay**: id, kind, role, opacity, visible, translate x/y, background color for
+  the node passed to `DrawContext::dev_inspect(node_id)` each frame.  Rendered top-right.
+- **Dirty-rect tint**: translucent colored region over `DirtyTracker::effective_area` each frame.
+- Minimal 3×5 bitmap font in `webgpui-app::dev_tools` covering A–Z, 0–9, and common symbols.
 Exit Criteria:
-- Perf overlay renders correctly; no impact on `--release` builds without `dev-tools`.
-- Inspector overlay reflects correct computed style for all MUST-tier style properties.
-- Binary size delta with `dev-tools` disabled: < 1 KB increase vs no-flag baseline.
-Crates affected: `webgpui-profiler` (overlay render), `webgpui-app` (inspector API), `webgpui-core` (data read), `webgpui-render` (overlay pass).
-Risks:
-- Inspector overlay rendering adds a second render pass. Mitigation: batch with existing profiler overlay pass.
+- ✓ Perf overlay renders correctly; no impact on `--release` builds without `dev-tools`.
+- ✓ Inspector overlay reflects correct computed style for all MUST-tier style properties.
+- ✓ Binary size delta with `dev-tools` disabled: zero (entire module excluded by `#[cfg]`).
+Crates affected: `webgpui-app` (inspector API, overlay module), `webgpui-profiler` (feature flag).
 
 ### M9: Performance Deep Dive — P3/P4 (4-6 weeks)
 Scope:

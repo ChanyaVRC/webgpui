@@ -6,7 +6,32 @@ Versioning follows [Semantic Versioning](https://semver.org/) — see [docs/semv
 
 ---
 
-## [Unreleased] — M8: Developer Tools
+## [Unreleased] — M9: Performance Deep Dive
+
+---
+
+## [0.9.0] — M8: Developer Tools
+
+### Added
+- **`dev-tools` feature flag** in `webgpui-app` and `webgpui-profiler`; zero binary cost and zero
+  runtime overhead when the feature is disabled — all overlay code lives inside
+  `#[cfg(feature = "dev-tools")]` blocks.
+- **Perf overlay** (top-left corner): FPS derived from the rolling-window avg frame time,
+  avg and p95 frame times in ms, and user draw-call count for the current frame.
+  Rendered via existing `DrawList::fill_rect` primitives — no new GPU resources required.
+- **Node inspector overlay** (top-right corner): shows id, kind, role, opacity, visible flag,
+  `translate_x/y`, and background color (RGB) for the node selected by
+  `DrawContext::dev_inspect(node_id)` each frame.
+- **Dirty-rect tint overlay**: translucent red region drawn over `DirtyTracker::effective_area`
+  each frame, making redrawn regions visually obvious.
+- **Minimal 3×5 bitmap font** in `webgpui-app::dev_tools`: uppercase A–Z, digits 0–9, and common
+  symbols rendered as SCALE×SCALE `fill_rect` calls — no font loading, no extra crate dependencies.
+- **`DrawContext::dev_inspect(node_id)`** (`dev-tools` feature only): sets which node is reflected
+  by the inspector overlay for the current frame.
+- `demo-basic`: `dev-tools` feature threaded through; calls `ctx.dev_inspect(anim_fade_node)`
+  to demonstrate the inspector alongside the M7 animation demo.
+- Seven new tests in `dev_tools_tests` covering all M8 exit criteria: overlay draw-command
+  emission, correct reflection of opacity/visible/translate fields, and dirty-rect tint behavior.
 
 ---
 
