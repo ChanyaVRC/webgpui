@@ -146,19 +146,18 @@
 - アクティブなアニメーションがある間はティックごとに必ず dirty マーク（`animation_tick_marks_dirty_when_active`）。✓
 影響クレート: `webgpui-app`（アニメーション API、タイムライン）、`webgpui-core`（`NodeStyle`、`TransitionConfig`）。
 
-### M8: デベロッパーツール（3-4週間）
+### M8: デベロッパーツール — ✓ 完了（2026-05）
 範囲:
-- `webgpui-profiler` にレンダードオーバーレイモードを追加: FPS、avg/p95 フレーム時間、draw call 数を描画出力上に表示。
-- ノードインスペクターオーバーレイ（`dev-tools` フィーチャーで管理）: ホバー中ノードの id、kind、計算済みスタイル、dirty rect 境界を表示。
-- dirty rect 可視化: dirty 領域を色付きオーバーレイで描画。
-- すべての開発ツール機能を `webgpui-app` と `webgpui-profiler` の `feature = "dev-tools"` でゲート；無効時はランタイムコストゼロ。
+- **`dev-tools` フィーチャーフラグ**を `webgpui-app` と `webgpui-profiler` に追加；無効時はバイナリコストゼロ。
+- **パフォーマンスオーバーレイ**: FPS、avg/p95 フレーム時間、draw call 数を既存の `DrawList::fill_rect` のみで左上に描画 — 追加 GPU リソース不要。
+- **ノードインスペクターオーバーレイ**: `DrawContext::dev_inspect(node_id)` で指定したノードの id、kind、role、opacity、visible、translate x/y、背景色を右上に表示。
+- **dirty rect ティント**: `DirtyTracker::effective_area` に半透明の色付き領域をフレームごとに描画。
+- `webgpui-app::dev_tools` 内に A–Z、0–9、一般記号をカバーする 3×5 ビットマップフォントを実装。
 完了条件:
-- `dev-tools` なし `--release` ビルドへの影響なしでペルフオーバーレイが正しく描画される。
-- インスペクターが MUST ティア全スタイルプロパティの計算済みスタイルを正確に反映する。
-- `dev-tools` 無効時のバイナリサイズ増加 < 1 KB（フラグなしベースライン比）。
-影響クレート: `webgpui-profiler`（オーバーレイ描画）、`webgpui-app`（インスペクター API）、`webgpui-core`（データ参照）、`webgpui-render`（オーバーレイパス）。
-リスク:
-- インスペクターオーバーレイが第2レンダーパスを追加。緩和策: 既存のプロファイラーオーバーレイパスと統合してバッチ処理。
+- ✓ `dev-tools` なし `--release` ビルドへの影響なしでパフォーマンスオーバーレイが正しく描画される。
+- ✓ インスペクターが MUST ティア全スタイルプロパティの計算済みスタイルを正確に反映する。
+- ✓ `dev-tools` 無効時のバイナリサイズ増加: ゼロ（モジュール全体が `#[cfg]` で除外）。
+影響クレート: `webgpui-app`（インスペクター API、オーバーレイモジュール）、`webgpui-profiler`（フィーチャーフラグ）。
 
 ### M9: 性能深化 — P3/P4（4-6週間）
 範囲:
