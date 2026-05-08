@@ -376,4 +376,35 @@ mod tests {
         assert_eq!(batches.len(), 1);
         assert_eq!(batches[0].triangle_count(), 4);
     }
+
+    #[test]
+    fn batcher_ignores_draw_image_produces_no_geometry() {
+        // DrawImage bypasses the batcher entirely — no color geometry should be emitted.
+        let mut dl = DrawList::new();
+        dl.draw_image(
+            Rect::new(0.0, 0.0, 100.0, 100.0),
+            webgpui_render::ImageHandle(0),
+        );
+        let mut batcher = Batcher::new();
+        let batches = batcher.process(&dl);
+        let total: usize = batches.iter().map(|b| b.triangle_count()).sum();
+        assert_eq!(total, 0);
+    }
+
+    #[test]
+    fn batcher_draw_image_does_not_affect_color_geometry() {
+        // DrawImage interspersed with color rects must not disturb color batching.
+        let mut dl = DrawList::new();
+        dl.fill_rect(Rect::new(0.0, 0.0, 50.0, 50.0), Color::RED);
+        dl.draw_image(
+            Rect::new(0.0, 0.0, 100.0, 100.0),
+            webgpui_render::ImageHandle(0),
+        );
+        dl.fill_rect(Rect::new(60.0, 0.0, 50.0, 50.0), Color::BLUE);
+        let mut batcher = Batcher::new();
+        let batches = batcher.process(&dl);
+        // Two color rects → merged into one batch of 4 triangles.
+        assert_eq!(batches.len(), 1);
+        assert_eq!(batches[0].triangle_count(), 4);
+    }
 }

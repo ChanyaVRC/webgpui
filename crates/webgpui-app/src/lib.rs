@@ -840,3 +840,59 @@ fn convert_named_key(key: &NamedKey) -> KeyCode {
         _ => KeyCode::Unknown,
     }
 }
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn write_tmp_png(name: &str) -> std::path::PathBuf {
+        let path = std::env::temp_dir().join(name);
+        image::RgbaImage::new(4, 4).save(&path).unwrap();
+        path
+    }
+
+    #[test]
+    fn image_registry_same_path_returns_cached_handle() {
+        let path = write_tmp_png("webgpui_test_cache.png");
+        let mut reg = ImageRegistry::new();
+        let h1 = reg.load(&path).unwrap();
+        let h2 = reg.load(&path).unwrap();
+        assert_eq!(h1, h2);
+        // Second call must not enqueue another upload.
+        assert_eq!(reg.take_pending().len(), 1);
+    }
+
+    #[test]
+    fn image_registry_different_paths_get_different_handles() {
+        let p1 = write_tmp_png("webgpui_test_diff1.png");
+        let p2 = write_tmp_png("webgpui_test_diff2.png");
+        let mut reg = ImageRegistry::new();
+        let h1 = reg.load(&p1).unwrap();
+        let h2 = reg.load(&p2).unwrap();
+        assert_ne!(h1, h2);
+        assert_eq!(reg.take_pending().len(), 2);
+    }
+
+    #[test]
+    fn image_registry_invalid_path_returns_error() {
+        let mut reg = ImageRegistry::new();
+        assert!(reg.load("nonexistent_webgpui_image.png").is_err());
+    }
+
+    #[test]
+    fn image_registry_take_pending_drains_queue() {
+        let path = write_tmp_png("webgpui_test_drain.png");
+        let mut reg = ImageRegistry::new();
+        reg.load(&path).unwrap();
+        let first = reg.take_pending();
+        assert_eq!(first.len(), 1);
+        assert_eq!(first[0].width, 4);
+        assert_eq!(first[0].height, 4);
+        // After draining, pending is empty.
+        assert!(reg.take_pending().is_empty());
+    }
+}

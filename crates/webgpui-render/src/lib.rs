@@ -258,4 +258,23 @@ mod tests {
         dl.clear();
         assert!(dl.is_empty());
     }
+
+    #[test]
+    fn draw_image_appends_command() {
+        let mut dl = DrawList::new();
+        let handle = ImageHandle(42);
+        dl.draw_image(Rect::new(0.0, 0.0, 100.0, 100.0), handle);
+        assert_eq!(dl.len(), 1);
+        match dl.commands().iter().next().unwrap() {
+            DrawCommand::DrawImage { handle: h, .. } => assert_eq!(*h, handle),
+            _ => panic!("expected DrawImage"),
+        }
+    }
+
+    #[test]
+    fn image_handle_is_copy() {
+        let h = ImageHandle(7);
+        let h2 = h; // copy — must compile without move error
+        assert_eq!(h, h2);
+    }
 }
