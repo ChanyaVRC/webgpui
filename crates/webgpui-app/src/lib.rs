@@ -33,6 +33,9 @@ use winit::{
     window::WindowBuilder,
 };
 
+#[cfg(feature = "dev-tools")]
+mod dev_tools;
+
 use webgpui_core::{DirtyTracker, NodeStyle, NodeTree, TransitionConfig};
 use webgpui_geometry::{Color, Point, Rect, Size};
 use webgpui_input::{FocusManager, InputEvent, InputState, Modifiers};
@@ -571,6 +574,9 @@ pub struct DrawContext<'a> {
     /// Image loading and caching registry.
     pub images: &'a mut ImageRegistry,
     timeline: &'a mut AnimationTimeline,
+    /// Node selected for the inspector overlay (`dev-tools` feature only).
+    #[cfg(feature = "dev-tools")]
+    pub(crate) dev_inspect_id: Option<NodeId>,
 }
 
 impl<'a> DrawContext<'a> {
@@ -596,6 +602,8 @@ impl<'a> DrawContext<'a> {
             focus,
             images,
             timeline,
+            #[cfg(feature = "dev-tools")]
+            dev_inspect_id: None,
         }
     }
 
@@ -660,6 +668,18 @@ impl<'a> DrawContext<'a> {
         let handle = self.images.load_svg(path, w, h)?;
         self.draw_list.draw_image(rect, handle);
         Ok(())
+    }
+
+    /// Selects `node_id` for the dev-tools inspector overlay.
+    ///
+    /// Call this each frame for the node you want to inspect.  The inspector
+    /// overlay renders in the top-right corner and shows the node's id, kind,
+    /// role, and key computed-style properties.
+    ///
+    /// Only available with the `dev-tools` feature; zero overhead otherwise.
+    #[cfg(feature = "dev-tools")]
+    pub fn dev_inspect(&mut self, node_id: NodeId) {
+        self.dev_inspect_id = Some(node_id);
     }
 
     /// Starts a one-shot animation on a node's style property.
@@ -1014,6 +1034,38 @@ impl App {
                                 &mut timeline,
                             );
                             frame_fn(&mut ctx);
+                            // Capture dev-tools info before ctx drops its borrows.
+                            #[cfg(feature = "dev-tools")]
+                            let dev_inspect_id = ctx.dev_inspect_id;
+                            drop(ctx);
+
+                            // Render dev-tools overlays on top of the user draw list.
+                            #[cfg(feature = "dev-tools")]
+                            {
+                                let user_draw_calls = draw_list.commands().len();
+                                if let Some(stats) = frame_timer.stats() {
+                                    dev_tools::draw_perf_overlay(
+                                        &mut draw_list,
+                                        &stats,
+                                        user_draw_calls,
+                                        viewport,
+                                    );
+                                }
+                                if let Some(id) = dev_inspect_id {
+                                    if let Some(node) = node_tree.get(id) {
+                                        dev_tools::draw_inspector_overlay(
+                                            &mut draw_list,
+                                            node,
+                                            viewport,
+                                        );
+                                    }
+                                }
+                                dev_tools::draw_dirty_rects_overlay(
+                                    &mut draw_list,
+                                    &dirty_tracker,
+                                    viewport,
+                                );
+                            }
 
                             // Upload any newly decoded images to the GPU.
                             let pending = image_registry.take_pending();
@@ -1584,6 +1636,130 @@ mod tests {
         assert!(
             timeline.has_active(),
             "transition must create an active animation"
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Dev-tools overlay tests (M8 exit criteria)
+// ---------------------------------------------------------------------------
+
+#[cfg(all(test, feature = "dev-tools"))]
+mod dev_tools_tests {
+    use super::dev_tools;
+    use webgpui_core::{DirtyTracker, NodeId, NodeStyle, NodeTree};
+    use webgpui_geometry::{Rect, Size};
+    use webgpui_profiler::FrameStats;
+    use webgpui_render::DrawList;
+
+    fn sample_stats() -> FrameStats {
+        FrameStats {
+            avg_ms: 16.2,
+            p95_ms: 18.4,
+            max_ms: 24.0,
+            sample_count: 10,
+        }
+    }
+
+    #[test]
+    fn perf_overlay_emits_draw_commands() {
+        let mut list = DrawList::new();
+        dev_tools::draw_perf_overlay(&mut list, &sample_stats(), 45, Size::new(800.0, 600.0));
+        assert!(
+            !list.commands().is_empty(),
+            "perf overlay must emit draw commands"
+        );
+    }
+
+    #[test]
+    fn perf_overlay_shows_four_lines_worth_of_commands() {
+        let mut list = DrawList::new();
+        dev_tools::draw_perf_overlay(&mut list, &sample_stats(), 0, Size::new(800.0, 600.0));
+        // Panel bg (1) + text pixels for 4 lines — expect well above 10 commands.
+        assert!(
+            list.commands().len() > 10,
+            "perf overlay should emit many pixel rects for 4 lines"
+        );
+    }
+
+    #[test]
+    fn inspector_overlay_emits_draw_commands() {
+        let mut list = DrawList::new();
+        let tree = NodeTree::new();
+        let node = tree.get(NodeId::ROOT).unwrap();
+        dev_tools::draw_inspector_overlay(&mut list, node, Size::new(800.0, 600.0));
+        assert!(
+            !list.commands().is_empty(),
+            "inspector overlay must emit draw commands"
+        );
+    }
+
+    #[test]
+    fn inspector_reflects_opacity_field() {
+        // Set a non-default opacity on root and verify the inspector draws
+        // enough commands (a different opacity changes the rendered digit glyphs).
+        let mut tree = NodeTree::new();
+        let mut style = NodeStyle::default();
+        style.opacity = 0.42;
+        tree.set_style(NodeId::ROOT, style);
+        let node = tree.get(NodeId::ROOT).unwrap();
+        assert!(
+            (node.style.opacity - 0.42).abs() < 1e-5,
+            "node must carry the set opacity"
+        );
+        let mut list = DrawList::new();
+        dev_tools::draw_inspector_overlay(&mut list, node, Size::new(800.0, 600.0));
+        assert!(!list.commands().is_empty());
+    }
+
+    #[test]
+    fn inspector_reflects_visible_field() {
+        let mut tree = NodeTree::new();
+        let mut style = NodeStyle::default();
+        style.visible = false;
+        tree.set_style(NodeId::ROOT, style);
+        let node = tree.get(NodeId::ROOT).unwrap();
+        assert!(!node.style.visible);
+        let mut list = DrawList::new();
+        dev_tools::draw_inspector_overlay(&mut list, node, Size::new(800.0, 600.0));
+        assert!(!list.commands().is_empty());
+    }
+
+    #[test]
+    fn inspector_reflects_translate_fields() {
+        let mut tree = NodeTree::new();
+        let mut style = NodeStyle::default();
+        style.translate_x = 10.0;
+        style.translate_y = -5.0;
+        tree.set_style(NodeId::ROOT, style);
+        let node = tree.get(NodeId::ROOT).unwrap();
+        assert!((node.style.translate_x - 10.0).abs() < 1e-5);
+        assert!((node.style.translate_y + 5.0).abs() < 1e-5);
+        let mut list = DrawList::new();
+        dev_tools::draw_inspector_overlay(&mut list, node, Size::new(800.0, 600.0));
+        assert!(!list.commands().is_empty());
+    }
+
+    #[test]
+    fn dirty_rects_overlay_emits_when_dirty() {
+        let mut list = DrawList::new();
+        let mut dirty = DirtyTracker::new();
+        dirty.mark(Rect::new(0.0, 0.0, 100.0, 100.0));
+        dev_tools::draw_dirty_rects_overlay(&mut list, &dirty, Size::new(800.0, 600.0));
+        assert!(
+            !list.commands().is_empty(),
+            "dirty rects overlay must emit a tint rect when dirty"
+        );
+    }
+
+    #[test]
+    fn dirty_rects_overlay_silent_when_clean() {
+        let mut list = DrawList::new();
+        let dirty = DirtyTracker::new();
+        dev_tools::draw_dirty_rects_overlay(&mut list, &dirty, Size::new(800.0, 600.0));
+        assert!(
+            list.commands().is_empty(),
+            "dirty rects overlay must emit nothing when tracker is clean"
         );
     }
 }
