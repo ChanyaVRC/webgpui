@@ -139,13 +139,13 @@ static GLOBAL: OnceLock<Mutex<CompatState>> = OnceLock::new();
 /// Runs `f` with exclusive access to the process-global [`CompatState`].
 pub(crate) fn with_state<R>(f: impl FnOnce(&mut CompatState) -> R) -> R {
     let m = GLOBAL.get_or_init(|| Mutex::new(CompatState::new()));
-    f(&mut m.lock().unwrap())
+    f(&mut m.lock().unwrap_or_else(|p| p.into_inner()))
 }
 
 /// Runs `f` with shared read access to the process-global [`NodeTree`].
 pub fn with_tree<R>(f: impl FnOnce(&NodeTree) -> R) -> R {
     let m = GLOBAL.get_or_init(|| Mutex::new(CompatState::new()));
-    f(&m.lock().unwrap().tree)
+    f(&m.lock().unwrap_or_else(|p| p.into_inner()).tree)
 }
 
 /// Replaces the global state with a fresh instance.
@@ -155,5 +155,5 @@ pub fn with_tree<R>(f: impl FnOnce(&NodeTree) -> R) -> R {
 #[cfg(test)]
 pub(crate) fn reset_for_test() {
     let m = GLOBAL.get_or_init(|| Mutex::new(CompatState::new()));
-    *m.lock().unwrap() = CompatState::new();
+    *m.lock().unwrap_or_else(|p| p.into_inner()) = CompatState::new();
 }

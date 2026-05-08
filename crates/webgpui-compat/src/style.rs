@@ -11,9 +11,13 @@ use crate::types::{CompatError, CompatResult, NodeId, StyleProp};
 // Color parsing
 // ---------------------------------------------------------------------------
 
-fn hex1(c: char) -> Option<u8> {
-    let d = c.to_digit(16)? as u8;
-    Some(d << 4 | d)
+fn hex1(c: char) -> u8 {
+    match c {
+        '0'..='9' => c as u8 - b'0',
+        'a'..='f' => c as u8 - b'a' + 10,
+        'A'..='F' => c as u8 - b'A' + 10,
+        _ => 0,
+    }
 }
 
 fn hex2(s: &str) -> Option<u8> {
@@ -27,10 +31,10 @@ fn parse_color(s: &str) -> CompatResult<Color> {
         .ok_or_else(|| CompatError::StyleParseError(format!("unsupported color: {s}")))?;
     let (r, g, b, a) = match hex.len() {
         3 => {
-            let r = hex1(hex.as_bytes()[0] as char).ok_or_else(|| bad_color(s))?;
-            let g = hex1(hex.as_bytes()[1] as char).ok_or_else(|| bad_color(s))?;
-            let b = hex1(hex.as_bytes()[2] as char).ok_or_else(|| bad_color(s))?;
-            (r, g, b, 255u8)
+            let r = hex1(hex.as_bytes()[0] as char);
+            let g = hex1(hex.as_bytes()[1] as char);
+            let b = hex1(hex.as_bytes()[2] as char);
+            (r << 4 | r, g << 4 | g, b << 4 | b, 255u8)
         }
         6 => {
             let r = hex2(&hex[0..2]).ok_or_else(|| bad_color(s))?;
@@ -285,5 +289,50 @@ mod tests {
     fn parse_color_invalid() {
         assert!(parse_color("red").is_err());
         assert!(parse_color("#gg0000").is_err());
+    }
+
+    #[test]
+    fn hex1_ascii_correctness() {
+        // digits 0–9
+        for (ch, expected) in [
+            ('0', 0u8),
+            ('1', 1),
+            ('2', 2),
+            ('3', 3),
+            ('4', 4),
+            ('5', 5),
+            ('6', 6),
+            ('7', 7),
+            ('8', 8),
+            ('9', 9),
+        ] {
+            assert_eq!(hex1(ch), expected, "char '{ch}'");
+        }
+        // lowercase a–f
+        for (ch, expected) in [
+            ('a', 10u8),
+            ('b', 11),
+            ('c', 12),
+            ('d', 13),
+            ('e', 14),
+            ('f', 15),
+        ] {
+            assert_eq!(hex1(ch), expected, "char '{ch}'");
+        }
+        // uppercase A–F
+        for (ch, expected) in [
+            ('A', 10u8),
+            ('B', 11),
+            ('C', 12),
+            ('D', 13),
+            ('E', 14),
+            ('F', 15),
+        ] {
+            assert_eq!(hex1(ch), expected, "char '{ch}'");
+        }
+        // invalid char
+        assert_eq!(hex1('g'), 0, "invalid char 'g'");
+        assert_eq!(hex1('Z'), 0, "invalid char 'Z'");
+        assert_eq!(hex1('!'), 0, "invalid char '!'");
     }
 }
