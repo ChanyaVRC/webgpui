@@ -25,3 +25,4 @@ resvg                = { workspace = true }
 backend-wgpu = ["webgpui-render/backend-wgpu"]
 backend-cuda = ["webgpui-render/backend-cuda"]
 backend-cpu  = ["dep:webgpui-render-cpu", "webgpui-render/backend-cpu"]
+filters      = ["webgpui-render-graph/filters", "webgpui-render-wgpu/filters"]

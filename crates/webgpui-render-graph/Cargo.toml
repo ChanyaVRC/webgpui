@@ -7,3 +7,7 @@ license.workspace = true
 [dependencies]
 webgpui-batching = { workspace = true }
 webgpui-geometry = { workspace = true }
+
+[features]
+default = []
+filters = []

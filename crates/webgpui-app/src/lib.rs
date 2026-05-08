@@ -44,6 +44,8 @@ pub use webgpui_render::BackendSelector;
 pub use webgpui_render::ImageHandle;
 use webgpui_render::{DrawList, RenderError, Renderer};
 use webgpui_render_graph::ClearColor;
+#[cfg(feature = "filters")]
+use webgpui_render_graph::FilterKind;
 use webgpui_render_wgpu::{PendingImage, WgpuContext, WgpuRenderer};
 
 // ---------------------------------------------------------------------------
@@ -393,6 +395,9 @@ pub struct AppConfig {
     pub background: Color,
     /// Optional backend switcher for runtime backend switching.
     pub backend_switcher: Option<BackendSwitcher>,
+    /// Post-process filter passes to apply each frame (only with `filters` feature).
+    #[cfg(feature = "filters")]
+    pub filters: Vec<FilterKind>,
 }
 
 impl Default for AppConfig {
@@ -406,6 +411,8 @@ impl Default for AppConfig {
             target_fps: Some(60),
             background: Color::BLACK,
             backend_switcher: None,
+            #[cfg(feature = "filters")]
+            filters: Vec::new(),
         }
     }
 }
@@ -475,6 +482,16 @@ impl AppBuilder {
     /// Attaches a [`BackendSwitcher`] enabling runtime backend switching.
     pub fn backend_switcher(mut self, switcher: BackendSwitcher) -> Self {
         self.config.backend_switcher = Some(switcher);
+        self
+    }
+
+    /// Adds a post-process filter pass applied every frame (requires `filters` feature).
+    ///
+    /// Filters run after the `ui` pass in render-graph order.  Multiple calls
+    /// stack multiple passes (each reads the same UI output and writes to the surface).
+    #[cfg(feature = "filters")]
+    pub fn enable_filter(mut self, filter: FilterKind) -> Self {
+        self.config.filters.push(filter);
         self
     }
 
@@ -558,6 +575,17 @@ impl App {
             bg.b as f64,
             bg.a as f64,
         ));
+        #[cfg(feature = "filters")]
+        for filter in self.config.filters {
+            match filter {
+                FilterKind::Blur(p) => {
+                    renderer.render_graph_mut().add_blur_pass(p.radius);
+                }
+                FilterKind::ColorMatrix(p) => {
+                    renderer.render_graph_mut().add_color_matrix_pass(p.matrix);
+                }
+            }
+        }
 
         // Side renderer for non-wgpu backends (CPU, CUDA placeholder).
         let mut side_renderer: Option<Box<dyn Renderer>> = create_side_renderer(
