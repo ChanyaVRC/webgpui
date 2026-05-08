@@ -18,6 +18,7 @@ raw-window-handle    = "0.6"
 image                = { workspace = true }
 
 [features]
-default     = []
-backend-cpu = []
+default      = []
+backend-cpu  = []
 backend-wgpu = []
+test-gpu     = []

@@ -953,3 +953,163 @@ impl Renderer for WgpuRenderer {
         (self.ctx.config.width, self.ctx.config.height)
     }
 }
+
+// ---------------------------------------------------------------------------
+// Tests — GPU-independent
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pending_image_fields_preserved() {
+        let img = PendingImage {
+            id: 42,
+            pixels: vec![255u8; 4 * 4 * 4],
+            width: 4,
+            height: 4,
+        };
+        assert_eq!(img.id, 42);
+        assert_eq!(img.width, 4);
+        assert_eq!(img.height, 4);
+        assert_eq!(img.pixels.len(), 64);
+    }
+
+    #[test]
+    fn image_vertex_size_and_bytemuck() {
+        // position: [f32; 2] + uv: [f32; 2] = 16 bytes, align 4
+        assert_eq!(std::mem::size_of::<ImageVertex>(), 16);
+        assert_eq!(std::mem::align_of::<ImageVertex>(), 4);
+        let v = ImageVertex {
+            position: [1.0, 2.0],
+            uv: [0.5, 0.75],
+        };
+        let bytes: &[u8] = bytemuck::bytes_of(&v);
+        assert_eq!(bytes.len(), 16);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Tests — GPU-required (cargo test --features test-gpu)
+// ---------------------------------------------------------------------------
+
+#[cfg(all(test, feature = "test-gpu"))]
+mod gpu_tests {
+    use super::*;
+
+    struct HeadlessGpu {
+        device: wgpu::Device,
+        queue: wgpu::Queue,
+    }
+
+    /// Returns `None` when no adapter is available (headless CI without GPU).
+    fn init_headless() -> Option<HeadlessGpu> {
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::all(),
+            ..Default::default()
+        });
+        let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+            power_preference: wgpu::PowerPreference::None,
+            compatible_surface: None,
+            force_fallback_adapter: false,
+        }))?;
+        let (device, queue) = pollster::block_on(adapter.request_device(
+            &wgpu::DeviceDescriptor {
+                label: None,
+                required_features: wgpu::Features::empty(),
+                required_limits: wgpu::Limits::downlevel_defaults(),
+            },
+            None,
+        ))
+        .ok()?;
+        Some(HeadlessGpu { device, queue })
+    }
+
+    #[test]
+    fn image_shader_compiles() {
+        let Some(gpu) = init_headless() else {
+            return;
+        };
+        // Panics if WGSL is syntactically or semantically invalid.
+        let _ = gpu
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("image-shader-test"),
+                source: wgpu::ShaderSource::Wgsl(IMAGE_SHADER_SRC.into()),
+            });
+    }
+
+    #[test]
+    fn texture_upload_rgba8_succeeds() {
+        let Some(gpu) = init_headless() else {
+            return;
+        };
+        let (w, h) = (8u32, 8u32);
+        let pixels = vec![128u8; (4 * w * h) as usize];
+        let texture = gpu.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("test-tex"),
+            size: wgpu::Extent3d {
+                width: w,
+                height: h,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+        gpu.queue.write_texture(
+            wgpu::ImageCopyTexture {
+                texture: &texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            &pixels,
+            wgpu::ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(4 * w),
+                rows_per_image: Some(h),
+            },
+            wgpu::Extent3d {
+                width: w,
+                height: h,
+                depth_or_array_layers: 1,
+            },
+        );
+        gpu.queue.submit([]);
+    }
+
+    #[test]
+    fn image_bind_group_layout_accepted() {
+        let Some(gpu) = init_headless() else {
+            return;
+        };
+        let _bgl = gpu
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: None,
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                ],
+            });
+    }
+}
