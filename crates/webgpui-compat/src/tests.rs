@@ -6,7 +6,8 @@
 //! Because all functions share process-global state, each test must acquire
 //! `TEST_LOCK` and call `reset_for_test()` before touching the API.
 
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
+use std::thread;
 
 use crate::app::{app_mount, app_unmount, render_request, render_vsync, viewport_resize};
 use crate::event::{event_on, event_stop_propagation, focus_set};
@@ -592,4 +593,42 @@ fn viewport_resize_requests_render() {
     with_state(|s| s.render_requested = false);
     viewport_resize(800, 600).unwrap();
     with_state(|s| assert!(s.render_requested));
+}
+
+// ---------------------------------------------------------------------------
+// Mutex poison recovery
+// ---------------------------------------------------------------------------
+
+#[test]
+fn with_state_recovers_from_poison() {
+    // Serialize against all other tests that touch process-global state.
+    let _guard = TEST_LOCK.lock().unwrap_or_else(|p| p.into_inner());
+    reset_for_test();
+
+    // Use a barrier so the spawned thread definitely acquires the global mutex
+    // before we try (prevents a race where our join wins the lock first).
+    let barrier = Arc::new(std::sync::Barrier::new(2));
+    let barrier_clone = Arc::clone(&barrier);
+
+    let handle = thread::spawn(move || {
+        // Acquire the global mutex by calling with_state, then panic inside
+        // the closure — this poisons the mutex.
+        with_state(|_s| {
+            // Signal the main thread that we have the lock.
+            barrier_clone.wait();
+            // Panic to poison the mutex.
+            panic!("intentional poison");
+        });
+    });
+
+    // Wait until the spawned thread has the lock, then let it panic.
+    barrier.wait();
+    let _ = handle.join(); // The join result is Err (thread panicked) — that's expected.
+
+    // After the panic the mutex is poisoned.  with_state must NOT panic; it
+    // should recover via unwrap_or_else(|p| p.into_inner()).
+    with_state(|s| {
+        // Just confirm we can access the state without panicking.
+        let _ = s.next_compat_id;
+    });
 }
