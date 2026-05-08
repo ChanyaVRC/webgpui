@@ -352,7 +352,7 @@ pub struct WgpuRenderer {
     /// Staging buffers reused across frames to avoid per-frame allocation.
     staging_vertices: Vec<Vertex>,
     staging_indices: Vec<u32>,
-    staging_batch_ranges: Vec<(u32, u32, u32)>,
+    staging_batch_ranges: Vec<(u32, u32)>,
     // ---- Image pipeline ----
     image_pipeline: wgpu::RenderPipeline,
     image_bgl: wgpu::BindGroupLayout,
@@ -845,7 +845,7 @@ impl WgpuRenderer {
 
     fn ensure_vertex_buffer(&mut self, needed: u64) {
         if needed > self.vertex_buffer_capacity {
-            let new_size = needed.next_power_of_two().max(needed);
+            let new_size = needed.next_power_of_two();
             self.vertex_buffer = self.ctx.device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some("vertex-buf"),
                 size: new_size,
@@ -859,7 +859,7 @@ impl WgpuRenderer {
 
     fn ensure_image_vertex_buffer(&mut self, needed: u64) {
         if needed > self.image_vertex_capacity {
-            let new_size = needed.next_power_of_two().max(needed);
+            let new_size = needed.next_power_of_two();
             self.image_vertex_buffer = self.ctx.device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some("image-vbuf"),
                 size: new_size,
@@ -872,7 +872,7 @@ impl WgpuRenderer {
 
     fn ensure_image_index_buffer(&mut self, needed: u64) {
         if needed > self.image_index_capacity {
-            let new_size = needed.next_power_of_two().max(needed);
+            let new_size = needed.next_power_of_two();
             self.image_index_buffer = self.ctx.device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some("image-ibuf"),
                 size: new_size,
@@ -1093,7 +1093,10 @@ impl WgpuRenderer {
                 FilterKind::Blur(_) => &self.blur_pipeline,
                 FilterKind::ColorMatrix(_) => &self.color_matrix_pipeline,
             };
-            let bg = self.filter_bind_group.as_ref().unwrap();
+            let bg = self
+                .filter_bind_group
+                .as_ref()
+                .expect("ensure_filter_texture must be called before apply_filters");
             {
                 let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("filter-pass"),
@@ -1118,7 +1121,7 @@ impl WgpuRenderer {
 
     fn ensure_index_buffer(&mut self, needed: u64) {
         if needed > self.index_buffer_capacity {
-            let new_size = needed.next_power_of_two().max(needed);
+            let new_size = needed.next_power_of_two();
             self.index_buffer = self.ctx.device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some("index-buf"),
                 size: new_size,
@@ -1183,7 +1186,7 @@ impl WgpuRenderer {
                 self.staging_indices.push(idx + v_base);
             }
             let i_end = self.staging_indices.len() as u32;
-            self.staging_batch_ranges.push((v_base, i_start, i_end));
+            self.staging_batch_ranges.push((i_start, i_end));
         }
 
         let load_op = if clear_enabled {
@@ -1247,7 +1250,7 @@ impl WgpuRenderer {
         pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
 
-        for (_, i_start, i_end) in &self.staging_batch_ranges {
+        for (i_start, i_end) in &self.staging_batch_ranges {
             pass.draw_indexed(*i_start..*i_end, 0, 0..1);
         }
     }
