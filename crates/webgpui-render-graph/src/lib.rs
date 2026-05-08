@@ -10,6 +10,7 @@
 
 use std::collections::HashMap;
 use webgpui_batching::DrawBatch;
+use webgpui_geometry::Color;
 
 // ---------------------------------------------------------------------------
 // PassId
@@ -86,6 +87,17 @@ impl ClearColor {
 impl Default for ClearColor {
     fn default() -> Self {
         Self::BLACK
+    }
+}
+
+impl From<Color> for ClearColor {
+    fn from(c: Color) -> Self {
+        Self {
+            r: c.r as f64,
+            g: c.g as f64,
+            b: c.b as f64,
+            a: c.a as f64,
+        }
     }
 }
 
@@ -357,5 +369,15 @@ mod tests {
         let clear_pos = order.iter().position(|p| p.name == "clear").unwrap();
         let ui_pos = order.iter().position(|p| p.name == "ui").unwrap();
         assert!(clear_pos < ui_pos);
+    }
+
+    #[test]
+    fn clear_color_from_color() {
+        use webgpui_geometry::Color;
+        let c = ClearColor::from(Color::WHITE);
+        assert!((c.r - 1.0).abs() < 1e-9);
+        assert!((c.g - 1.0).abs() < 1e-9);
+        assert!((c.b - 1.0).abs() < 1e-9);
+        assert!((c.a - 1.0).abs() < 1e-9);
     }
 }
