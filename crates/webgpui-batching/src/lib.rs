@@ -134,6 +134,102 @@ impl DrawBatch {
             .extend_from_slice(&[base, base + 1, base + 2, base + 2, base + 3, base]);
     }
 
+    /// Appends a rounded rectangle using CPU-side corner fans.
+    ///
+    /// Each corner arc is approximated with `SEGS` triangle segments.
+    /// If all corner radii are zero the call is equivalent to [`push_rect`](Self::push_rect).
+    /// Non-uniform radii (different per corner) are supported; each corner is
+    /// independently clamped to fit within the rect.
+    pub fn push_rounded_rect(
+        &mut self,
+        rect: Rect,
+        radius: webgpui_geometry::BorderRadius,
+        color: Color,
+    ) {
+        const SEGS: usize = 8; // triangles per quarter-arc
+
+        let half_w = rect.size.width * 0.5;
+        let half_h = rect.size.height * 0.5;
+        let max_r = half_w.min(half_h).max(0.0);
+
+        let tl = radius.top_left.clamp(0.0, max_r);
+        let tr = radius.top_right.clamp(0.0, max_r);
+        let br = radius.bottom_right.clamp(0.0, max_r);
+        let bl = radius.bottom_left.clamp(0.0, max_r);
+
+        if tl == 0.0 && tr == 0.0 && br == 0.0 && bl == 0.0 {
+            return self.push_rect(rect, color);
+        }
+
+        let x0 = rect.min_x();
+        let y0 = rect.min_y();
+        let x1 = rect.max_x();
+        let y1 = rect.max_y();
+
+        use std::f32::consts::PI;
+        // (cx, cy, r, start_angle) for each corner — angles in radians, CCW from +x axis.
+        // In screen space (y-down): TL=180°→270°, TR=270°→360°, BR=0°→90°, BL=90°→180°.
+        let corner_defs: [(f32, f32, f32, f32); 4] = [
+            (x0 + tl, y0 + tl, tl, PI),             // top-left:     180°→270°
+            (x1 - tr, y0 + tr, tr, 3.0 * PI / 2.0), // top-right:    270°→360°
+            (x1 - br, y1 - br, br, 0.0),            // bottom-right: 0°→90°
+            (x0 + bl, y1 - bl, bl, PI / 2.0),       // bottom-left:  90°→180°
+        ];
+
+        let mut arc_pts: [Vec<[f32; 2]>; 4] = [vec![], vec![], vec![], vec![]];
+
+        for (i, &(cx, cy, r, start)) in corner_defs.iter().enumerate() {
+            let pts = &mut arc_pts[i];
+            pts.clear();
+            if r == 0.0 {
+                // Degenerate: single point at the sharp corner.
+                let px = match i {
+                    0 | 3 => x0,
+                    _ => x1,
+                };
+                let py = match i {
+                    0 | 1 => y0,
+                    _ => y1,
+                };
+                pts.push([px, py]);
+            } else {
+                for s in 0..=SEGS {
+                    let angle = start + (PI / 2.0) * s as f32 / SEGS as f32;
+                    pts.push([cx + r * angle.cos(), cy + r * angle.sin()]);
+                }
+            }
+        }
+
+        // Collect all outline points in order (TL arc → TR arc → BR arc → BL arc),
+        // skipping the last point of each arc (it equals the first of the next).
+        let mut outline: Vec<[f32; 2]> = Vec::new();
+        for pts in &arc_pts {
+            outline.extend_from_slice(&pts[..pts.len().saturating_sub(1)]);
+        }
+        let n = outline.len();
+        if n < 3 {
+            return self.push_rect(rect, color);
+        }
+
+        // Emit as a triangle fan from the centroid.
+        let cx = (x0 + x1) * 0.5;
+        let cy = (y0 + y1) * 0.5;
+        let base = self.vertices.len() as u32;
+
+        // Center vertex.
+        self.vertices.push(Vertex::new(cx, cy, color));
+        // Outline vertices.
+        for &[px, py] in &outline {
+            self.vertices.push(Vertex::new(px, py, color));
+        }
+        // Triangles: center (base), outline[i] (base+1+i), outline[(i+1)%n] (base+1+(i+1)%n).
+        for i in 0..n as u32 {
+            let next = (i + 1) % n as u32;
+            self.indices
+                .extend_from_slice(&[base, base + 1 + i, base + 1 + next]);
+        }
+    }
+
     /// Appends a rectangular border as four quads (top, right, bottom, left).
     pub fn push_border(&mut self, rect: Rect, color: Color, width: f32) {
         let w = width.max(0.0);
@@ -231,11 +327,14 @@ impl Batcher {
                     self.get_or_create(key).push_rect(*rect, *color);
                 }
                 DrawCommand::FillRoundedRect {
-                    rect, color, blend, ..
+                    rect,
+                    color,
+                    radius,
+                    blend,
                 } => {
-                    // MVP: render rounded rects as plain rects.
                     let key = self.make_key(*blend);
-                    self.get_or_create(key).push_rect(*rect, *color);
+                    self.get_or_create(key)
+                        .push_rounded_rect(*rect, *radius, *color);
                 }
                 DrawCommand::DrawBorder {
                     rect,
@@ -463,6 +562,48 @@ mod tests {
         // Two color rects → merged into one batch of 4 triangles.
         assert_eq!(batches.len(), 1);
         assert_eq!(batches[0].triangle_count(), 4);
+    }
+
+    #[test]
+    fn rounded_rect_zero_radius_equals_rect() {
+        use webgpui_geometry::{BorderRadius, Point, Rect, Size};
+        let mut plain = DrawBatch::new(BatchKey::default());
+        let mut rounded = DrawBatch::new(BatchKey::default());
+        let rect = Rect {
+            origin: Point::new(10.0, 20.0),
+            size: Size::new(100.0, 50.0),
+        };
+        plain.push_rect(rect, Color::WHITE);
+        rounded.push_rounded_rect(rect, BorderRadius::ZERO, Color::WHITE);
+        assert_eq!(plain.vertices.len(), rounded.vertices.len());
+        assert_eq!(plain.indices.len(), rounded.indices.len());
+    }
+
+    #[test]
+    fn rounded_rect_nonzero_radius_has_more_verts() {
+        use webgpui_geometry::{BorderRadius, Point, Rect, Size};
+        let mut b = DrawBatch::new(BatchKey::default());
+        let rect = Rect {
+            origin: Point::new(0.0, 0.0),
+            size: Size::new(100.0, 100.0),
+        };
+        b.push_rounded_rect(rect, BorderRadius::all(10.0), Color::RED);
+        // Fan from center + arc points; must have more vertices than a plain quad (4).
+        assert!(b.vertices.len() > 4);
+        assert!(b.triangle_count() > 2);
+    }
+
+    #[test]
+    fn rounded_rect_radius_clamped_to_half_size() {
+        use webgpui_geometry::{BorderRadius, Point, Rect, Size};
+        let mut b = DrawBatch::new(BatchKey::default());
+        let rect = Rect {
+            origin: Point::new(0.0, 0.0),
+            size: Size::new(40.0, 40.0),
+        };
+        // Radius larger than half the rect — must not panic, must produce valid geometry.
+        b.push_rounded_rect(rect, BorderRadius::all(9999.0), Color::BLUE);
+        assert!(b.triangle_count() > 0);
     }
 
     #[test]
