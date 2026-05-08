@@ -56,7 +56,6 @@ pub struct ClearColor {
 
 impl ClearColor {
     /// Opaque black `(0, 0, 0, 1)`.
-    /// Opaque black `(0, 0, 0, 1)`.
     pub const BLACK: Self = Self {
         r: 0.0,
         g: 0.0,
