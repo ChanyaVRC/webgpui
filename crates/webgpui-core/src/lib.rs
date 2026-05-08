@@ -257,12 +257,12 @@ impl NodeTree {
         self.live_count
     }
 
-    /// Returns `true` only if the arena contains no nodes at all.
+    /// Returns `true` only if the tree contains no live nodes.
     ///
     /// Note: a freshly-created [`NodeTree`] always contains the root node, so
     /// this returns `false` in all normal circumstances.
     pub fn is_empty(&self) -> bool {
-        self.nodes.is_empty()
+        self.live_count == 0
     }
 
     /// Returns a shared reference to the node with `id`, or `None` if not found.
@@ -455,14 +455,17 @@ impl NodeTree {
     /// only internal arena indices change (they are not part of the public API).
     pub fn compact(&mut self) {
         let old_len = self.nodes.len();
-        let mut old_to_new: Vec<Option<usize>> = vec![None; old_len];
+        let mut old_to_new: std::collections::HashMap<usize, usize> =
+            std::collections::HashMap::new();
 
         // Pass 1: build old→new index map and move live nodes simultaneously.
+        // Using HashMap means allocation scales with surviving node count rather
+        // than raw arena size (fixes #228).
         let old_nodes = std::mem::take(&mut self.nodes);
         let mut new_nodes: Vec<Node> = Vec::new();
         for (i, node) in old_nodes.into_iter().enumerate() {
             if !node.is_tombstone() {
-                old_to_new[i] = Some(new_nodes.len());
+                old_to_new.insert(i, new_nodes.len());
                 new_nodes.push(node);
             }
         }
@@ -474,11 +477,11 @@ impl NodeTree {
         // Pass 2: remap arena indices and rebuild id→index map in one sweep.
         self.id_to_index.clear();
         for (new_idx, node) in new_nodes.iter_mut().enumerate() {
-            node.parent = node.parent.and_then(|p| old_to_new[p]);
+            node.parent = node.parent.and_then(|p| old_to_new.get(&p).copied());
             node.children = node
                 .children
                 .iter()
-                .filter_map(|&c| old_to_new[c])
+                .filter_map(|&c| old_to_new.get(&c).copied())
                 .collect();
             self.id_to_index.insert(node.id, new_idx);
         }
@@ -779,6 +782,67 @@ mod tests {
         // next_id must not have been consumed
         let real = tree.add_node(NodeId::ROOT, NodeKind::Container).unwrap();
         assert_eq!(real.0, 1); // first real allocation still gets id=1
+    }
+
+    // ---- is_empty() consistent with len() (#242) ------------------------
+
+    #[test]
+    fn is_empty_after_all_nodes_removed() {
+        let mut tree = NodeTree::new();
+        let id = tree.add_node(NodeId::ROOT, NodeKind::Container).unwrap();
+        tree.remove_node(id);
+        // After removing `id`, the arena holds 2 raw slots: the live root and
+        // a tombstone.  Before the fix, is_empty() returned
+        // self.nodes.is_empty(), which is always false once any slot exists —
+        // correct here by coincidence, but wrong in general.  The fix changes
+        // is_empty() to return self.live_count == 0, making it consistent with
+        // len().  Verify the invariant: is_empty() must equal (len() == 0).
+        assert_eq!(tree.len(), 1); // root is live
+        assert!(!tree.is_empty()); // consistent with len() == 1
+        assert_eq!(tree.is_empty(), tree.len() == 0);
+    }
+
+    // ---- compact() remap correctness (#228) -----------------------------
+
+    #[test]
+    fn compact_remap_correctness() {
+        let mut tree = NodeTree::new();
+        let a = tree.add_node(NodeId::ROOT, NodeKind::Container).unwrap();
+        let b = tree.add_node(NodeId::ROOT, NodeKind::Container).unwrap();
+        let c = tree.add_node(NodeId::ROOT, NodeKind::Container).unwrap();
+        let d = tree.add_node(a, NodeKind::Text).unwrap();
+        // 5 live nodes: root + a + b + c + d
+        assert_eq!(tree.len(), 5);
+
+        // Remove b and c to create tombstones.
+        tree.remove_node(b);
+        tree.remove_node(c);
+        assert_eq!(tree.len(), 3); // root + a + d
+
+        tree.compact();
+
+        // After compaction the surviving nodes remain accessible.
+        assert_eq!(tree.len(), 3);
+        assert!(tree.get(a).is_some(), "node a must survive compaction");
+        assert!(tree.get(d).is_some(), "node d must survive compaction");
+        assert!(
+            tree.get(b).is_none(),
+            "node b was removed, must not be accessible"
+        );
+        assert!(
+            tree.get(c).is_none(),
+            "node c was removed, must not be accessible"
+        );
+
+        // Parent–child relationships must be preserved.
+        assert!(
+            tree.children_of(a).contains(&d),
+            "d must still be a child of a after compaction"
+        );
+        assert!(
+            tree.children_of(NodeId::ROOT).contains(&a),
+            "a must still be a child of ROOT after compaction"
+        );
     }
 
     // ---- Focus ring ------------------------------------------------------
