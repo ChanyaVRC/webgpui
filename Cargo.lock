@@ -2157,6 +2157,7 @@ dependencies = [
 name = "webgpui-compat"
 version = "0.1.0"
 dependencies = [
+ "log",
  "thiserror",
  "webgpui-core",
  "webgpui-geometry",

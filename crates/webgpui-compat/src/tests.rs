@@ -154,7 +154,7 @@ fn node_remove_invalid_errors() {
 fn node_update_staged_ok() {
     fresh!();
     let id = node_create(NodeKind::Container).unwrap();
-    assert!(node_update(id, "text=hello").is_ok());
+    assert!(node_update(id, "width=100").is_ok());
 }
 
 #[test]
@@ -172,6 +172,36 @@ fn node_update_invalid_errors() {
         node_update(NodeId(9999), ""),
         Err(CompatError::InvalidNode)
     ));
+}
+
+#[test]
+fn node_update_patch_applies_style() {
+    fresh!();
+    let id = node_create(NodeKind::Container).unwrap();
+    assert!(node_update(id, "width=150;height=80").is_ok());
+    with_state(|s| {
+        assert_eq!(s.staged[&id.0].layout.width, Some(150.0));
+        assert_eq!(s.staged[&id.0].layout.height, Some(80.0));
+    });
+}
+
+#[test]
+fn node_update_empty_patch_ok() {
+    fresh!();
+    let id = node_create(NodeKind::Container).unwrap();
+    assert!(node_update(id, "").is_ok());
+}
+
+#[test]
+fn node_update_unknown_segment_skipped() {
+    fresh!();
+    let id = node_create(NodeKind::Container).unwrap();
+    // Segments without '=' are skipped with a warning; known keys still apply.
+    assert!(node_update(id, "width=100;not-a-real-prop;height=50").is_ok());
+    with_state(|s| {
+        assert_eq!(s.staged[&id.0].layout.width, Some(100.0));
+        assert_eq!(s.staged[&id.0].layout.height, Some(50.0));
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -456,6 +486,14 @@ fn event_on_listener_ids_are_unique() {
 fn event_stop_propagation_always_ok() {
     fresh!();
     assert!(event_stop_propagation().is_ok());
+}
+
+#[test]
+fn event_stop_propagation_sets_flag() {
+    fresh!();
+    with_state(|s| s.stop_propagation = false);
+    event_stop_propagation().unwrap();
+    with_state(|s| assert!(s.stop_propagation));
 }
 
 // ---------------------------------------------------------------------------

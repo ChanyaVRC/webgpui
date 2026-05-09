@@ -41,10 +41,11 @@ pub fn event_on(
 }
 
 /// Signals that event propagation should stop at the current node.
-///
-/// For MVP this is a no-op placeholder; full capture/bubble support is M1.
 pub fn event_stop_propagation() -> CompatResult<()> {
-    Ok(())
+    with_state(|s| {
+        s.stop_propagation = true;
+        Ok(())
+    })
 }
 
 /// Moves keyboard focus to `node`.

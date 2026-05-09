@@ -84,16 +84,36 @@ pub fn node_remove(_parent: NodeId, child: NodeId) -> CompatResult<()> {
     })
 }
 
-/// Marks `node` as needing re-evaluation.
+/// Marks `node` as needing re-evaluation and applies `patch`.
 ///
-/// For MVP the `patch` string is accepted but not applied; use the `style_*`
-/// functions for style mutations.
-pub fn node_update(node: NodeId, _patch: &str) -> CompatResult<()> {
-    with_state(|s| {
-        if s.id_map.contains_key(&node.0) || s.staged.contains_key(&node.0) {
-            Ok(())
-        } else {
-            Err(CompatError::InvalidNode)
+/// `patch` is a semicolon- and/or newline-separated list of `key=value` pairs
+/// which are forwarded to [`crate::style::style_set`].  An empty patch string
+/// is a clean no-op (after validating that `node` exists).  Segments that
+/// contain no `=` sign are silently skipped with a `log::warn!`.
+pub fn node_update(node: NodeId, patch: &str) -> CompatResult<()> {
+    if patch.is_empty() {
+        // Validate node exists even for empty patch.
+        return with_state(|s| {
+            if s.id_map.contains_key(&node.0) || s.staged.contains_key(&node.0) {
+                Ok(())
+            } else {
+                Err(CompatError::InvalidNode)
+            }
+        });
+    }
+    for segment in patch.split([';', '\n']) {
+        let segment = segment.trim();
+        if segment.is_empty() {
+            continue;
         }
-    })
+        if let Some((key, value)) = segment.split_once('=') {
+            crate::style::style_set(node, key.trim(), value.trim())?;
+        } else {
+            log::warn!(
+                "[compat] node_update: ignored unrecognised patch segment {:?}",
+                segment
+            );
+        }
+    }
+    Ok(())
 }
