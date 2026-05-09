@@ -11,3 +11,4 @@ webgpui-geometry = { workspace = true }
 webgpui-layout   = { workspace = true }
 webgpui-input    = { workspace = true }
 thiserror = "1"
+log       = { workspace = true }

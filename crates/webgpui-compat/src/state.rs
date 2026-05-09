@@ -54,6 +54,7 @@ pub(crate) struct CompatState {
     pub vsync: bool,
     pub viewport: (u32, u32),
     pub mounted: bool,
+    pub stop_propagation: bool,
 }
 
 impl CompatState {
@@ -70,7 +71,12 @@ impl CompatState {
             vsync: true,
             viewport: (0, 0),
             mounted: false,
+            stop_propagation: false,
         }
+    }
+
+    pub(crate) fn clear_stop_propagation(&mut self) {
+        self.stop_propagation = false;
     }
 
     pub fn alloc_compat_id(&mut self) -> u64 {
