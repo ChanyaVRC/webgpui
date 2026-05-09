@@ -80,7 +80,7 @@
 
 影響クレート: `webgpui-core`（ウィジェットステートマシン、NodeRole）、`webgpui-app`（DrawContext ウィジェットヘルパー）、`webgpui-batching`（ウィジェットジオメトリのバッチ生成）、`apps/demo-basic`。
 
-### M4: 移行と置換妥当性の検証（進行中 🚧）
+### M4: 移行と置換妥当性の検証（完了 ✓）
 前提条件 — 達成済み:
 - `webgpui-compat` クレートの MUST ティア全 21 API が実装済み（`NotSupported` スタブを完全実装に置換）。
 - `apps/demo-migration` アプリが作成済み（100% MUST API をカバー）。

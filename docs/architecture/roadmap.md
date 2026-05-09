@@ -9,7 +9,7 @@ Close the gap from "GPU UI core" to a production-ready WebUI stack.
 
 ## 3. Milestones
 
-### M0: Stability and CI Baseline (1-2 weeks)
+### M0: Stability and CI Baseline — ✓ Completed
 Scope:
 - Keep CI green for fmt/test/gates.
 - Remove warning regressions.
@@ -18,7 +18,7 @@ Exit Criteria:
 - 7 consecutive days with no red main branch CI.
 - Zero rustfmt failures in PR checks.
 
-### M1: Input and Event Model (2-3 weeks)
+### M1: Input and Event Model — ✓ Completed
 Scope:
 - Complete pointer semantics (move/down/up/scroll consistency).
 - Add capture/bubble event propagation in compat-facing API.
@@ -27,7 +27,7 @@ Exit Criteria:
 - Event-order tests for capture -> target -> bubble.
 - Focus traversal tests for Tab/Shift+Tab.
 
-### M2: Text and Layout Foundation (3-5 weeks)
+### M2: Text and Layout Foundation — ✓ Completed
 Scope:
 - Introduce real text pipeline (font loading, shaping-ready interfaces).
 - Implement baseline text metrics and wrapping.
@@ -36,7 +36,7 @@ Exit Criteria:
 - Text rendering for mixed strings at stable positions.
 - Reproducible layout results for predefined fixtures.
 
-### M3: Browser UI Component Layer (10-14 weeks total, 4 sub-milestones)
+### M3: Browser UI Component Layer — ✓ Completed
 
 The minimum set of widgets needed to build a functional browser UI.
 Each sub-milestone ships independently and keeps CI green.
@@ -80,7 +80,7 @@ Exit Criteria:
 
 Crates affected: `webgpui-core` (widget state machines, NodeRole), `webgpui-app` (DrawContext widget helpers), `webgpui-batching` (batch generation for widget geometry), `apps/demo-basic`.
 
-### M4: Migration and Replacement Validation (2-4 weeks)
+### M4: Migration and Replacement Validation — ✓ Completed
 Prerequisites:
 - `webgpui-compat` crate must exist with all MUST-tier APIs implemented (see api-mapping.md §13).
 - `apps/demo-migration` app must be created as the validation target.
@@ -201,12 +201,6 @@ Risks:
 - `std::time::Instant` unavailable on `wasm32`. Mitigation: gate with `cfg(target_arch = "wasm32")`; use `web-sys` `performance.now()`.
 - wgpu WebGPU browser support varies. Mitigation: `webgl` fallback as CI default; `webgpu` opt-in via feature flag.
 - Pointer event coordinate semantics differ on touch devices. Mitigation: normalize in `webgpui-platform-web`; document known differences.
-
-> **Parallel track during M4 — Performance P2 (dirty rect):**
-> - Integrate `mark_dirty_rect` / `commit_dirty` into the render pipeline.
-> - Enable render skip on unchanged frames.
-> - Acceptance: GPU time continuously decreases on no-update frames.
-> - This track runs alongside M4 and does not block M4 exit criteria.
 
 ### M5: API Stabilization (2-3 weeks)
 Scope:
