@@ -1182,9 +1182,8 @@ impl WgpuRenderer {
             let v_base = self.staging_vertices.len() as u32;
             let i_start = self.staging_indices.len() as u32;
             self.staging_vertices.extend_from_slice(&batch.vertices);
-            for &idx in &batch.indices {
-                self.staging_indices.push(idx + v_base);
-            }
+            self.staging_indices
+                .extend(batch.indices.iter().map(|&idx| idx + v_base));
             let i_end = self.staging_indices.len() as u32;
             self.staging_batch_ranges.push((i_start, i_end));
         }
