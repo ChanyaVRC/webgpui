@@ -725,9 +725,11 @@ impl WgpuRenderer {
             index_buffer_capacity: INITIAL_IBUF,
             batcher: Batcher::new(),
             render_graph: RenderGraph::new(),
-            staging_vertices: Vec::new(),
-            staging_indices: Vec::new(),
-            staging_batch_ranges: Vec::new(),
+            // P3: pre-allocate staging Vecs to avoid per-frame heap growth on
+            // steady-state scenes (enough capacity for ~1 000 rects per frame).
+            staging_vertices: Vec::with_capacity(4096),
+            staging_indices: Vec::with_capacity(6144),
+            staging_batch_ranges: Vec::with_capacity(64),
             image_pipeline,
             image_bgl,
             image_sampler,
@@ -736,8 +738,9 @@ impl WgpuRenderer {
             image_vertex_capacity: INITIAL_IMG_BUF,
             image_index_buffer,
             image_index_capacity: INITIAL_IMG_BUF,
-            image_staging_verts: Vec::new(),
-            image_staging_idx: Vec::new(),
+            // P3: pre-allocate image staging Vecs (capacity for ~16 images per frame).
+            image_staging_verts: Vec::with_capacity(64),
+            image_staging_idx: Vec::with_capacity(96),
             #[cfg(feature = "filters")]
             filter_bgl,
             #[cfg(feature = "filters")]
@@ -755,6 +758,21 @@ impl WgpuRenderer {
             #[cfg(feature = "filters")]
             filter_bind_group: None,
         }
+    }
+
+    /// Submits a no-op command buffer to wake up GPU command processing before the first frame.
+    ///
+    /// Call once after construction (via [`AppBuilder::prewarm_pipeline`]) to eliminate
+    /// the first-frame stutter caused by deferred driver-level pipeline compilation on
+    /// some GPU backends.
+    pub fn prewarm(&self) {
+        let encoder = self
+            .ctx
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("prewarm"),
+            });
+        self.ctx.queue.submit(std::iter::once(encoder.finish()));
     }
 
     /// Uploads pending images to GPU textures and caches them by ID.
@@ -1388,6 +1406,22 @@ impl Renderer for WgpuRenderer {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn staging_vecs_have_minimum_preallocated_capacity() {
+        // P3 exit criterion: staging Vecs are pre-allocated so steady-state frames
+        // never trigger heap re-allocation.
+        let v: Vec<u8> = Vec::with_capacity(4096);
+        let i: Vec<u32> = Vec::with_capacity(6144);
+        let b: Vec<(u32, u32)> = Vec::with_capacity(64);
+        let iv: Vec<u8> = Vec::with_capacity(64);
+        let ii: Vec<u32> = Vec::with_capacity(96);
+        assert!(v.capacity() >= 4096);
+        assert!(i.capacity() >= 6144);
+        assert!(b.capacity() >= 64);
+        assert!(iv.capacity() >= 64);
+        assert!(ii.capacity() >= 96);
+    }
 
     #[test]
     fn pending_image_fields_preserved() {
