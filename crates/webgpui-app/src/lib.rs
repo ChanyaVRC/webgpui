@@ -752,6 +752,11 @@ pub struct AppConfig {
     /// Post-process filter passes to apply each frame (only with `filters` feature).
     #[cfg(feature = "filters")]
     pub filters: Vec<FilterKind>,
+    /// If `true`, submit a warm-up command to the GPU before the event loop starts.
+    ///
+    /// Eliminates first-frame stutter caused by deferred driver pipeline compilation
+    /// on some backends.  Enable via [`AppBuilder::prewarm_pipeline`].
+    pub prewarm_pipeline: bool,
 }
 
 impl Default for AppConfig {
@@ -767,6 +772,7 @@ impl Default for AppConfig {
             backend_switcher: None,
             #[cfg(feature = "filters")]
             filters: Vec::new(),
+            prewarm_pipeline: false,
         }
     }
 }
@@ -849,6 +855,42 @@ impl AppBuilder {
         self
     }
 
+    /// Submits a GPU warm-up pass before the event loop to eliminate first-frame stutter.
+    ///
+    /// On some GPU backends the pipeline shaders are compiled lazily on the first draw
+    /// call.  Setting this flag forces the driver to complete that work at startup, so
+    /// the first user frame runs at normal speed.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use webgpui_app::AppBuilder;
+    ///
+    /// let app = AppBuilder::new().prewarm_pipeline().build();
+    /// ```
+    pub fn prewarm_pipeline(mut self) -> Self {
+        self.config.prewarm_pipeline = true;
+        self
+    }
+
+    /// Hint to pre-rasterize a character set into the glyph cache before the first frame.
+    ///
+    /// This is a no-op in the current implementation.  The method exists to establish
+    /// the API surface for when a real glyph cache is introduced.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use webgpui_app::AppBuilder;
+    ///
+    /// let app = AppBuilder::new()
+    ///     .prewarm_glyph_cache("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789")
+    ///     .build();
+    /// ```
+    pub fn prewarm_glyph_cache(self, _charset: &str) -> Self {
+        self
+    }
+
     /// Consumes the builder and returns a configured [`App`].
     pub fn build(self) -> App {
         App {
@@ -923,6 +965,9 @@ impl App {
         }
 
         let mut renderer = WgpuRenderer::new(ctx);
+        if self.config.prewarm_pipeline {
+            renderer.prewarm();
+        }
         renderer
             .render_graph_mut()
             .set_clear_color(ClearColor::from(bg));
@@ -1067,25 +1112,31 @@ impl App {
                                 );
                             }
 
-                            // Upload any newly decoded images to the GPU.
-                            let pending = image_registry.take_pending();
-                            if !pending.is_empty() {
-                                renderer.upload_images(pending);
-                            }
-
-                            // Run the active side renderer (validation / side effects).
-                            if let Some(ref mut sr) = side_renderer {
-                                let _ = sr.render(&draw_list);
-                            }
-
-                            match renderer.render(&draw_list) {
-                                Ok(()) => {}
-                                Err(RenderError::SurfaceLost) => {
-                                    let (w, h) = renderer.surface_size();
-                                    renderer.resize(w, h);
+                            // P4: skip GPU submission entirely when no dirty regions exist
+                            // and no animations are running.  The timeline tick above
+                            // already called mark_all() for every active animation, so
+                            // checking is_dirty() here covers both cases.
+                            if dirty_tracker.is_dirty() {
+                                // Upload any newly decoded images to the GPU.
+                                let pending = image_registry.take_pending();
+                                if !pending.is_empty() {
+                                    renderer.upload_images(pending);
                                 }
-                                Err(e) => {
-                                    log::error!("[app] render error: {}", e);
+
+                                // Run the active side renderer (validation / side effects).
+                                if let Some(ref mut sr) = side_renderer {
+                                    let _ = sr.render(&draw_list);
+                                }
+
+                                match renderer.render(&draw_list) {
+                                    Ok(()) => {}
+                                    Err(RenderError::SurfaceLost) => {
+                                        let (w, h) = renderer.surface_size();
+                                        renderer.resize(w, h);
+                                    }
+                                    Err(e) => {
+                                        log::error!("[app] render error: {}", e);
+                                    }
                                 }
                             }
 
@@ -1636,6 +1687,99 @@ mod tests {
         assert!(
             timeline.has_active(),
             "transition must create an active animation"
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// M9 performance tests (P3 / P4 exit criteria)
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod m9_tests {
+    use super::*;
+    use webgpui_core::{DirtyTracker, NodeTree};
+    use webgpui_geometry::Rect;
+
+    // P4: verify the skip-render precondition — a fresh DirtyTracker is clean.
+    #[test]
+    fn dirty_tracker_clean_on_init() {
+        let tracker = DirtyTracker::new();
+        assert!(
+            !tracker.is_dirty(),
+            "fresh DirtyTracker must be clean so P4 render-skip fires correctly"
+        );
+    }
+
+    // P4: verify mark_all makes the tracker dirty (render skip must NOT fire).
+    #[test]
+    fn dirty_tracker_dirty_after_mark_all() {
+        let mut tracker = DirtyTracker::new();
+        tracker.mark_all();
+        assert!(
+            tracker.is_dirty(),
+            "mark_all must make tracker dirty so render is not skipped"
+        );
+    }
+
+    // P4: verify that an active animation tick sets the tracker dirty.
+    #[test]
+    fn animation_tick_marks_dirty_so_render_not_skipped() {
+        let mut timeline = AnimationTimeline::new();
+        let mut tree = NodeTree::new();
+        let mut dirty = DirtyTracker::new();
+        // A long-duration animation keeps the tracker dirty every tick.
+        timeline.start(Animation::opacity(NodeId::ROOT, 0.0, 1.0).duration_ms(100_000.0));
+        timeline.tick(&mut tree, &mut dirty);
+        assert!(
+            dirty.is_dirty(),
+            "active animation must mark dirty — render skip must not fire while animating"
+        );
+    }
+
+    // P4: verify empty timeline leaves tracker clean (render skip fires).
+    #[test]
+    fn empty_timeline_leaves_tracker_clean_enabling_render_skip() {
+        let mut timeline = AnimationTimeline::new();
+        let mut tree = NodeTree::new();
+        let mut dirty = DirtyTracker::new();
+        timeline.tick(&mut tree, &mut dirty);
+        assert!(
+            !dirty.is_dirty(),
+            "empty timeline must leave tracker clean so render skip fires"
+        );
+    }
+
+    // P3: verify AppBuilder prewarm_pipeline / prewarm_glyph_cache fluent chain compiles.
+    #[test]
+    fn appbuilder_prewarm_api_compiles() {
+        let app = AppBuilder::new()
+            .prewarm_pipeline()
+            .prewarm_glyph_cache("ABC0123")
+            .build();
+        assert!(app.config.prewarm_pipeline);
+    }
+
+    // P3: prewarm_glyph_cache does not panic and returns self (charset ignored for now).
+    #[test]
+    fn prewarm_glyph_cache_is_noop() {
+        let a = AppBuilder::new().prewarm_glyph_cache("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+        let b = AppBuilder::new();
+        // Both should produce equivalent configs (prewarm_pipeline not set).
+        assert!(!a.config.prewarm_pipeline);
+        assert!(!b.config.prewarm_pipeline);
+    }
+
+    // P4: verify dirty_tracker clears correctly after a simulated render cycle.
+    #[test]
+    fn dirty_tracker_clean_after_clear() {
+        let mut tracker = DirtyTracker::new();
+        tracker.mark(Rect::new(0.0, 0.0, 100.0, 100.0));
+        assert!(tracker.is_dirty());
+        tracker.clear();
+        assert!(
+            !tracker.is_dirty(),
+            "tracker must be clean after clear — enabling render skip on the next frame"
         );
     }
 }
