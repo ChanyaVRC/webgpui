@@ -162,7 +162,7 @@ Exit Criteria:
 - ✓ Binary size delta with `dev-tools` disabled: zero (entire module excluded by `#[cfg]`).
 Crates affected: `webgpui-app` (inspector API, overlay module), `webgpui-profiler` (feature flag).
 
-### M9: Performance Deep Dive — P3/P4 (4-6 weeks)
+### M9: Performance Deep Dive — ✓ Completed (2026-05)
 Scope:
 - **P3 — Transfer and cache optimization:**
   - Ring-buffer for vertex/index uploads in `webgpui-render-wgpu`; eliminate per-frame `create_buffer` calls.
@@ -174,11 +174,11 @@ Scope:
   - Separate UI tree update (main thread) from render command encoding (worker thread via `rayon` or `std::thread`).
   - SoA (Struct of Arrays) layout for hot node data in `webgpui-core`.
 Exit Criteria:
-- No single frame > 50ms at launch (startup stutter eliminated).
-- Per-frame heap allocation count = 0 on steady-state frames (measured via `dhat` or custom hook).
-- p95 frame time <= 20ms on a scene with >= 500 nodes.
-- Render pass auto-skip verified: zero GPU submissions on frames with no dirty regions.
-Crates affected: `webgpui-render-wgpu` (ring buffer, transient pool, prewarm), `webgpui-render-graph` (dependency graph, auto-skip), `webgpui-core` (SoA), `webgpui-app` (prewarm API).
+- No single frame > 50ms at launch (startup stutter eliminated). ✓
+- Per-frame heap allocation count = 0 on steady-state frames (measured via `dhat` or custom hook). ✓
+- p95 frame time <= 20ms on a scene with >= 500 nodes. ✓
+- Render pass auto-skip verified: zero GPU submissions on frames with no dirty regions. ✓
+Crates affected: `webgpui-render-wgpu` (ring buffer, transient pool, prewarm), `webgpui-render-graph` (dependency graph, auto-skip), `webgpui-core` (SoA), `webgpui-app` (prewarm API), `webgpui-profiler` (skip metric).
 Risks:
 - Worker thread render encoding: wgpu `Surface` is not `Send` on all platforms. Mitigation: encode `CommandBuffer` (which is `Send`) on worker; submit on main thread.
 - SoA refactor is a large structural change. Mitigation: dedicated PR with comprehensive snapshot + perf before/after.

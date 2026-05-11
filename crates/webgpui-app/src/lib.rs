@@ -1116,6 +1116,9 @@ impl App {
                             // and no animations are running.  The timeline tick above
                             // already called mark_all() for every active animation, so
                             // checking is_dirty() here covers both cases.
+                            if !dirty_tracker.is_dirty() {
+                                frame_timer.record_skip();
+                            }
                             if dirty_tracker.is_dirty() {
                                 // Upload any newly decoded images to the GPU.
                                 let pending = image_registry.take_pending();

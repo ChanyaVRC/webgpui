@@ -32,14 +32,24 @@ pub struct FrameStats {
     pub max_ms: f64,
     /// Number of samples in this measurement.
     pub sample_count: usize,
+    /// Fraction of frames where GPU submission was skipped (`frames_skipped / frames_total`).
+    ///
+    /// This is the **P4_GPU_SKIP_RATIO** CI gate metric — a higher ratio means
+    /// more idle frames are being elided successfully.  Ranges from `0.0`
+    /// (every frame submits GPU work) to `1.0` (every frame is skipped).
+    pub skip_ratio: f64,
 }
 
 impl std::fmt::Display for FrameStats {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "avg={:.2}ms p95={:.2}ms max={:.2}ms (n={})",
-            self.avg_ms, self.p95_ms, self.max_ms, self.sample_count
+            "avg={:.2}ms p95={:.2}ms max={:.2}ms (n={}) skip={:.1}%",
+            self.avg_ms,
+            self.p95_ms,
+            self.max_ms,
+            self.sample_count,
+            self.skip_ratio * 100.0,
         )
     }
 }
@@ -62,6 +72,10 @@ pub struct FrameTimer {
     /// Cached result of the last `stats()` computation.
     /// Invalidated whenever a new sample is added or the timer is reset.
     cached_stats: Cell<Option<FrameStats>>,
+    /// Total frames since the timer was created or last reset.
+    frames_total: u64,
+    /// Frames where GPU submission was skipped (P4 render-skip, see [`record_skip`][Self::record_skip]).
+    frames_skipped: u64,
 }
 
 impl FrameTimer {
@@ -72,6 +86,8 @@ impl FrameTimer {
             window,
             frame_start: None,
             cached_stats: Cell::new(None),
+            frames_total: 0,
+            frames_skipped: 0,
         }
     }
 
@@ -92,7 +108,43 @@ impl FrameTimer {
         }
         self.samples.push_back(elapsed_ms);
         self.cached_stats.set(None);
+        self.frames_total += 1;
         Some(elapsed_ms)
+    }
+
+    /// Records a frame where GPU submission was skipped (P4 render-skip).
+    ///
+    /// Call this instead of (or after) [`end_frame`][Self::end_frame] on frames
+    /// where the renderer decided not to submit GPU work because the
+    /// `DirtyTracker` reported no dirty regions.
+    ///
+    /// The skip count feeds the `P4_GPU_SKIP_RATIO` metric in [`FrameStats::skip_ratio`].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use webgpui_profiler::FrameTimer;
+    ///
+    /// let mut t = FrameTimer::new(10);
+    /// t.begin_frame();
+    /// t.record_skip();
+    /// t.end_frame();
+    /// let stats = t.stats().unwrap();
+    /// assert!(stats.skip_ratio > 0.0);
+    /// ```
+    pub fn record_skip(&mut self) {
+        self.frames_skipped += 1;
+        self.cached_stats.set(None);
+    }
+
+    /// Returns the total number of frames recorded since creation or last [`reset`][Self::reset].
+    pub fn frames_total(&self) -> u64 {
+        self.frames_total
+    }
+
+    /// Returns the number of frames where GPU submission was skipped since creation or last [`reset`][Self::reset].
+    pub fn frames_skipped(&self) -> u64 {
+        self.frames_skipped
     }
 
     /// Returns aggregated statistics if at least one sample is available.
@@ -113,11 +165,17 @@ impl FrameTimer {
         let p95_idx = ((n as f64 * 0.95) as usize).min(n - 1);
         let p95_ms = sorted[p95_idx];
         let max_ms = sorted[n - 1];
+        let skip_ratio = if self.frames_total > 0 {
+            self.frames_skipped as f64 / self.frames_total as f64
+        } else {
+            0.0
+        };
         let stats = FrameStats {
             avg_ms,
             p95_ms,
             max_ms,
             sample_count: n,
+            skip_ratio,
         };
         self.cached_stats.set(Some(stats));
         Some(stats)
@@ -147,11 +205,13 @@ impl FrameTimer {
         }
     }
 
-    /// Clears all stored samples.
+    /// Clears all stored samples and resets skip counters.
     pub fn reset(&mut self) {
         self.samples.clear();
         self.frame_start = None;
         self.cached_stats.set(None);
+        self.frames_total = 0;
+        self.frames_skipped = 0;
     }
 }
 
@@ -233,5 +293,100 @@ mod tests {
         assert!(t.stats().is_some());
         t.reset();
         assert!(t.stats().is_none());
+    }
+
+    // P4_GPU_SKIP_RATIO metric tests.
+
+    #[test]
+    fn skip_ratio_zero_when_no_skips() {
+        let mut t = FrameTimer::new(10);
+        for _ in 0..5 {
+            t.begin_frame();
+            t.end_frame();
+        }
+        let stats = t.stats().unwrap();
+        assert_eq!(
+            stats.skip_ratio, 0.0,
+            "no record_skip calls → ratio must be 0"
+        );
+    }
+
+    #[test]
+    fn skip_ratio_one_when_all_skipped() {
+        let mut t = FrameTimer::new(10);
+        for _ in 0..4 {
+            t.begin_frame();
+            t.record_skip();
+            t.end_frame();
+        }
+        let stats = t.stats().unwrap();
+        assert!(
+            (stats.skip_ratio - 1.0).abs() < 1e-9,
+            "all frames skipped → ratio must be 1.0, got {}",
+            stats.skip_ratio
+        );
+    }
+
+    #[test]
+    fn skip_ratio_half_when_alternating() {
+        let mut t = FrameTimer::new(20);
+        for i in 0..10u32 {
+            t.begin_frame();
+            if i % 2 == 0 {
+                t.record_skip();
+            }
+            t.end_frame();
+        }
+        let stats = t.stats().unwrap();
+        assert!(
+            (stats.skip_ratio - 0.5).abs() < 1e-9,
+            "half frames skipped → ratio must be 0.5, got {}",
+            stats.skip_ratio
+        );
+    }
+
+    #[test]
+    fn skip_ratio_reset_clears_counters() {
+        let mut t = FrameTimer::new(10);
+        t.begin_frame();
+        t.record_skip();
+        t.end_frame();
+        assert!(t.stats().unwrap().skip_ratio > 0.0);
+        t.reset();
+        t.begin_frame();
+        t.end_frame();
+        let stats = t.stats().unwrap();
+        assert_eq!(stats.skip_ratio, 0.0, "after reset, skip ratio must be 0");
+    }
+
+    #[test]
+    fn frames_total_and_skipped_accessors() {
+        let mut t = FrameTimer::new(10);
+        for i in 0..6u32 {
+            t.begin_frame();
+            if i < 2 {
+                t.record_skip();
+            }
+            t.end_frame();
+        }
+        assert_eq!(t.frames_total(), 6);
+        assert_eq!(t.frames_skipped(), 2);
+    }
+
+    #[test]
+    fn display_includes_skip_percentage() {
+        let stats = FrameStats {
+            avg_ms: 10.0,
+            p95_ms: 15.0,
+            max_ms: 20.0,
+            sample_count: 5,
+            skip_ratio: 0.25,
+        };
+        let s = stats.to_string();
+        assert!(s.contains("skip="), "display must show skip ratio");
+        assert!(
+            s.contains("25.0%"),
+            "display must show 25.0% for ratio 0.25"
+        );
     }
 }

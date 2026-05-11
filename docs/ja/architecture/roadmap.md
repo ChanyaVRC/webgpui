@@ -159,7 +159,7 @@
 - ✓ `dev-tools` 無効時のバイナリサイズ増加: ゼロ（モジュール全体が `#[cfg]` で除外）。
 影響クレート: `webgpui-app`（インスペクター API、オーバーレイモジュール）、`webgpui-profiler`（フィーチャーフラグ）。
 
-### M9: 性能深化 — P3/P4（4-6週間）
+### M9: 性能深化 — ✓ 完了（2026-05）
 範囲:
 - **P3 — 転送・キャッシュ最適化:**
   - `webgpui-render-wgpu` の頂点/インデックスアップロードにリングバッファを導入；フレームごとの `create_buffer` 呼び出しを排除。
@@ -171,11 +171,11 @@
   - UI ツリー更新（メインスレッド）とレンダーコマンドエンコード（`rayon` または `std::thread`）を分離。
   - `webgpui-core` のホットデータに SoA（Struct of Arrays）レイアウトを適用。
 完了条件:
-- 起動時にフレーム時間 50ms 超なし（スタッタリング解消）。
-- 定常フレームのヒープアロケーション回数 = 0（`dhat` またはカスタムフックで計測）。
-- 500 ノード以上のシーンで p95 フレーム時間 <= 20ms。
-- レンダーパス自動スキップ検証: dirty 領域なしフレームで GPU サブミッションゼロ。
-影響クレート: `webgpui-render-wgpu`（リングバッファ、一時プール、prewarm）、`webgpui-render-graph`（依存グラフ、自動スキップ）、`webgpui-core`（SoA）、`webgpui-app`（prewarm API）。
+- 起動時にフレーム時間 50ms 超なし（スタッタリング解消）。 ✓
+- 定常フレームのヒープアロケーション回数 = 0（`dhat` またはカスタムフックで計測）。 ✓
+- 500 ノード以上のシーンで p95 フレーム時間 <= 20ms。 ✓
+- レンダーパス自動スキップ検証: dirty 領域なしフレームで GPU サブミッションゼロ。 ✓
+影響クレート: `webgpui-render-wgpu`（リングバッファ、一時プール、prewarm）、`webgpui-render-graph`（依存グラフ、自動スキップ）、`webgpui-core`（SoA）、`webgpui-app`（prewarm API）、`webgpui-profiler`（スキップメトリクス）。
 リスク:
 - ワーカースレッドでのレンダーエンコード: 一部プラットフォームで wgpu `Surface` が `Send` でない。緩和策: `CommandBuffer`（`Send`）のみワーカーでエンコード；サブミットはメインスレッドで。
 - SoA リファクタは大きな構造変更。緩和策: 専用 PR でスナップショット + 性能の before/after を必須化。
