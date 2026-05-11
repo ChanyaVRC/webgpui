@@ -6,7 +6,37 @@ Versioning follows [Semantic Versioning](https://semver.org/) — see [docs/semv
 
 ---
 
-## [Unreleased] — M9: Performance Deep Dive
+## [Unreleased]
+
+---
+
+## [0.10.0] — M9: Performance Deep Dive (2026-05)
+
+### Added
+- **P3 — Staging Vec pre-allocation** in `webgpui-render-wgpu`: `staging_vertices` (4 096),
+  `staging_indices` (6 144), `staging_batch_ranges` (64), and both image staging Vecs are
+  now initialized with `Vec::with_capacity()` instead of `Vec::new()`.  Steady-state frames
+  no longer trigger heap reallocation, satisfying the P3 exit criterion
+  "per-frame heap allocation count = 0".
+- **`WgpuRenderer::prewarm()`**: submits a no-op command buffer before the event loop starts,
+  flushing deferred driver-level pipeline compilation and eliminating first-frame stutter.
+- **`AppBuilder::prewarm_pipeline()`**: fluent API that calls `prewarm()` after
+  `WgpuRenderer::new()` and before the event loop.
+- **`AppBuilder::prewarm_glyph_cache(charset)`**: no-op stub establishing the API surface for
+  when a real glyph atlas is introduced.
+- **P4 — Render pass auto-skip** in `App::run()`: image upload, side-renderer, and
+  `WgpuRenderer::render()` are gated on `dirty_tracker.is_dirty()`.  The animation timeline
+  tick already calls `mark_all()` while animations are active, so the guard covers both idle
+  and animating cases.  Zero GPU submissions are issued on truly idle frames, satisfying the
+  P4 exit criterion "render pass auto-skip verified".
+- **`FrameTimer::record_skip()`** in `webgpui-profiler`: records a frame where GPU submission
+  was skipped.  Called automatically by `App::run()` on skipped frames.
+- **`FrameStats::skip_ratio`**: fraction of frames where GPU submission was skipped
+  (`frames_skipped / frames_total`) — the **P4_GPU_SKIP_RATIO** CI gate metric.
+- **`FrameTimer::frames_total()` / `frames_skipped()`**: accessors exposing the raw counters.
+- **`FrameStats` `Display`** updated to include `skip=X.X%`.
+- Seven new profiler tests covering `skip_ratio` edge cases; six new `m9_tests` in
+  `webgpui-app` covering P3/P4 preconditions.
 
 ---
 
